@@ -40,7 +40,7 @@ export function ProfileSelector({ onSelect }: { onSelect: (id: ProfileId) => voi
         <div className="ps-card" onClick={() => onSelect("cinthia")}>
           <div className="ps-avatar ps-av-cinthia">C</div>
           <div>
-            <div className="ps-card-name">Cinthia</div>
+            <div className="ps-card-name">CINTHIA<br />VESTA</div>
             <div className="ps-card-desc" style={{ margin: "6px 0 10px" }}>
               Carteira XP 6414212<br />visão individual<br />&nbsp;
             </div>
@@ -176,7 +176,7 @@ const PROFILE_META: Record<ProfileId, { name: string; sub: string; avatarBg: str
     content: <span style={{ fontSize: 14 }}>🏛</span>,
   },
   cinthia: {
-    name: "Cinthia",
+    name: "CINTHIA VESTA",
     sub: "XP 6414212",
     avatarBg: "rgba(161,29,62,.08)",
     avatarColor: "var(--accent)",
