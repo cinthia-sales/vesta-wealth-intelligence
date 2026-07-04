@@ -29,7 +29,7 @@ export function ProfileSelector({ onSelect }: { onSelect: (id: ProfileId) => voi
         <div className="ps-card" onClick={() => onSelect("familiar")}>
           <div className="ps-avatar ps-av-fam" style={{ fontSize: 20 }}>🏛</div>
           <div>
-            <div className="ps-card-name">Familiar</div>
+            <div className="ps-card-name">FAMILIAR - DOMUS</div>
             <div className="ps-card-desc" style={{ margin: "6px 0 10px" }}>
               Visão consolidada<br />das duas carteiras<br />e todas as ferramentas
             </div>
