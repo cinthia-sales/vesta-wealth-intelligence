@@ -311,22 +311,22 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 /* ── PROFILE SELECTOR ── */
 #profile-screen{
   position:fixed;inset:0;z-index:9999;
-  background:#3A1E1E;
+  background:linear-gradient(180deg,#FBF5F3 0%,#F3E7E4 100%);
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   gap:0;
 }
 .ps-vesta{
   font-family:var(--font-display);
   font-size:13px;letter-spacing:.22em;text-transform:uppercase;
-  color:rgba(240,200,208,.7);margin-bottom:6px;
+  color:var(--accent);margin-bottom:6px;
 }
 .ps-title{
   font-family:var(--font-elegant);
   font-size:42px;font-weight:300;
-  color:#FAF4EE;margin-bottom:6px;letter-spacing:.04em;
+  color:#2A0F14;margin-bottom:6px;letter-spacing:.04em;
 }
 .ps-subtitle{
-  font-size:12px;color:rgba(255,255,255,.3);
+  font-size:12px;color:var(--muted);
   letter-spacing:.08em;margin-bottom:52px;
   font-family:var(--font-display);
   text-transform:uppercase;
@@ -334,41 +334,43 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 .ps-profiles{display:flex;gap:24px;align-items:stretch}
 .ps-card{
   width:180px;padding:28px 20px 24px;
-  border:1px solid rgba(240,200,208,.15);
+  border:1px solid var(--border);
   border-radius:14px;cursor:pointer;
-  background:rgba(255,255,255,.04);
-  transition:background .2s,border-color .2s,transform .2s;
+  background:#FFFFFF;
+  box-shadow:0 1px 2px rgba(42,15,20,.04);
+  transition:background .2s,border-color .2s,transform .2s,box-shadow .2s;
   display:flex;flex-direction:column;align-items:center;gap:14px;
   text-align:center;
 }
 .ps-card:hover{
-  background:rgba(240,200,208,.08);
-  border-color:rgba(240,200,208,.4);
+  background:#FFF9FA;
+  border-color:var(--accent);
   transform:translateY(-3px);
+  box-shadow:0 8px 22px rgba(161,29,62,.12);
 }
 .ps-avatar{
   width:62px;height:62px;border-radius:50%;
   display:flex;align-items:center;justify-content:center;
   font-size:24px;
-  border:1.5px solid rgba(240,200,208,.3);
+  border:1.5px solid var(--border);
 }
-.ps-av-fam{background:rgba(232,180,192,.15);color:#E8B4C0}
-.ps-av-paulo{background:rgba(180,90,110,.12);color:#B8546E}
-.ps-av-cinthia{background:rgba(180,90,110,.12);color:#B8546E}
+.ps-av-fam{background:rgba(161,29,62,.10);color:var(--accent)}
+.ps-av-paulo{background:rgba(161,29,62,.06);color:var(--accent)}
+.ps-av-cinthia{background:rgba(161,29,62,.06);color:var(--accent)}
 .ps-card-name{
   font-family:var(--font-display);
   font-size:13px;letter-spacing:.1em;
-  color:#FAF4EE;text-transform:uppercase;
+  color:#2A0F14;text-transform:uppercase;
 }
-.ps-card-desc{font-size:11px;color:rgba(255,255,255,.35);line-height:1.5}
+.ps-card-desc{font-size:11px;color:var(--muted);line-height:1.5}
 .ps-card-badge{
   font-size:10px;padding:3px 10px;border-radius:20px;
   font-family:var(--font-display);letter-spacing:.08em;
 }
-.ps-badge-fam{background:rgba(232,180,192,.15);color:rgba(240,200,208,.8);border:1px solid rgba(240,200,208,.2)}
-.ps-badge-ind{background:rgba(255,255,255,.06);color:rgba(255,255,255,.3);border:1px solid rgba(255,255,255,.1)}
+.ps-badge-fam{background:var(--accent-bg);color:var(--accent);border:1px solid rgba(161,29,62,.2)}
+.ps-badge-ind{background:#F5EEEF;color:var(--muted);border:1px solid var(--border)}
 .ps-ornament{
-  font-family:var(--font-display);color:rgba(240,200,208,.3);
+  font-family:var(--font-display);color:var(--muted);
   font-size:11px;letter-spacing:.2em;margin-top:40px;
 }
 
