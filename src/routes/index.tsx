@@ -12,5 +12,11 @@ function VestaApp() {
   const [profile, setProfile] = useState<ProfileId | null>(null);
 
   if (!profile) return <ProfileSelector onSelect={setProfile} />;
-  return <VestaShell profileId={profile} onSwitchProfile={() => setProfile(null)} />;
+  return (
+    <VestaShell
+      profileId={profile}
+      onChangeProfile={setProfile}
+      onSwitchProfile={() => setProfile(null)}
+    />
+  );
 }
