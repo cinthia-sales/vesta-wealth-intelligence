@@ -359,7 +359,10 @@ export function VestaShell({
           <div className="page on">
             {page === "home" && <HomePage />}
             {page === "posicao" && <PosicaoPage />}
-            {page !== "home" && page !== "posicao" && (
+            {page === "breakeven" && <BreakevenPage />}
+            {page === "equiv" && <EquivPage />}
+            {page === "validador" && <ValidadorPage />}
+            {!["home", "posicao", "breakeven", "equiv", "validador"].includes(page) && (
               <div className="ph">
                 <h1>Em breve</h1>
                 <p>Este módulo será migrado nas próximas rodadas.</p>
