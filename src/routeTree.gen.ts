@@ -9,8 +9,56 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SimuladoresRouteImport } from './routes/simuladores'
+import { Route as RelatoriosRouteImport } from './routes/relatorios'
+import { Route as PatrimonioRouteImport } from './routes/patrimonio'
+import { Route as MetasRouteImport } from './routes/metas'
+import { Route as IntelligenceRouteImport } from './routes/intelligence'
+import { Route as FluxoRouteImport } from './routes/fluxo'
+import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
+import { Route as CarteiraRouteImport } from './routes/carteira'
 import { Route as IndexRouteImport } from './routes/index'
 
+const SimuladoresRoute = SimuladoresRouteImport.update({
+  id: '/simuladores',
+  path: '/simuladores',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RelatoriosRoute = RelatoriosRouteImport.update({
+  id: '/relatorios',
+  path: '/relatorios',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PatrimonioRoute = PatrimonioRouteImport.update({
+  id: '/patrimonio',
+  path: '/patrimonio',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MetasRoute = MetasRouteImport.update({
+  id: '/metas',
+  path: '/metas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IntelligenceRoute = IntelligenceRouteImport.update({
+  id: '/intelligence',
+  path: '/intelligence',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FluxoRoute = FluxoRouteImport.update({
+  id: '/fluxo',
+  path: '/fluxo',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConfiguracoesRoute = ConfiguracoesRouteImport.update({
+  id: '/configuracoes',
+  path: '/configuracoes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CarteiraRoute = CarteiraRouteImport.update({
+  id: '/carteira',
+  path: '/carteira',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -19,28 +67,144 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/carteira': typeof CarteiraRoute
+  '/configuracoes': typeof ConfiguracoesRoute
+  '/fluxo': typeof FluxoRoute
+  '/intelligence': typeof IntelligenceRoute
+  '/metas': typeof MetasRoute
+  '/patrimonio': typeof PatrimonioRoute
+  '/relatorios': typeof RelatoriosRoute
+  '/simuladores': typeof SimuladoresRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/carteira': typeof CarteiraRoute
+  '/configuracoes': typeof ConfiguracoesRoute
+  '/fluxo': typeof FluxoRoute
+  '/intelligence': typeof IntelligenceRoute
+  '/metas': typeof MetasRoute
+  '/patrimonio': typeof PatrimonioRoute
+  '/relatorios': typeof RelatoriosRoute
+  '/simuladores': typeof SimuladoresRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/carteira': typeof CarteiraRoute
+  '/configuracoes': typeof ConfiguracoesRoute
+  '/fluxo': typeof FluxoRoute
+  '/intelligence': typeof IntelligenceRoute
+  '/metas': typeof MetasRoute
+  '/patrimonio': typeof PatrimonioRoute
+  '/relatorios': typeof RelatoriosRoute
+  '/simuladores': typeof SimuladoresRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/carteira'
+    | '/configuracoes'
+    | '/fluxo'
+    | '/intelligence'
+    | '/metas'
+    | '/patrimonio'
+    | '/relatorios'
+    | '/simuladores'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/carteira'
+    | '/configuracoes'
+    | '/fluxo'
+    | '/intelligence'
+    | '/metas'
+    | '/patrimonio'
+    | '/relatorios'
+    | '/simuladores'
+  id:
+    | '__root__'
+    | '/'
+    | '/carteira'
+    | '/configuracoes'
+    | '/fluxo'
+    | '/intelligence'
+    | '/metas'
+    | '/patrimonio'
+    | '/relatorios'
+    | '/simuladores'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CarteiraRoute: typeof CarteiraRoute
+  ConfiguracoesRoute: typeof ConfiguracoesRoute
+  FluxoRoute: typeof FluxoRoute
+  IntelligenceRoute: typeof IntelligenceRoute
+  MetasRoute: typeof MetasRoute
+  PatrimonioRoute: typeof PatrimonioRoute
+  RelatoriosRoute: typeof RelatoriosRoute
+  SimuladoresRoute: typeof SimuladoresRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/simuladores': {
+      id: '/simuladores'
+      path: '/simuladores'
+      fullPath: '/simuladores'
+      preLoaderRoute: typeof SimuladoresRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/relatorios': {
+      id: '/relatorios'
+      path: '/relatorios'
+      fullPath: '/relatorios'
+      preLoaderRoute: typeof RelatoriosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/patrimonio': {
+      id: '/patrimonio'
+      path: '/patrimonio'
+      fullPath: '/patrimonio'
+      preLoaderRoute: typeof PatrimonioRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/metas': {
+      id: '/metas'
+      path: '/metas'
+      fullPath: '/metas'
+      preLoaderRoute: typeof MetasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/intelligence': {
+      id: '/intelligence'
+      path: '/intelligence'
+      fullPath: '/intelligence'
+      preLoaderRoute: typeof IntelligenceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/fluxo': {
+      id: '/fluxo'
+      path: '/fluxo'
+      fullPath: '/fluxo'
+      preLoaderRoute: typeof FluxoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/configuracoes': {
+      id: '/configuracoes'
+      path: '/configuracoes'
+      fullPath: '/configuracoes'
+      preLoaderRoute: typeof ConfiguracoesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/carteira': {
+      id: '/carteira'
+      path: '/carteira'
+      fullPath: '/carteira'
+      preLoaderRoute: typeof CarteiraRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -53,17 +217,15 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CarteiraRoute: CarteiraRoute,
+  ConfiguracoesRoute: ConfiguracoesRoute,
+  FluxoRoute: FluxoRoute,
+  IntelligenceRoute: IntelligenceRoute,
+  MetasRoute: MetasRoute,
+  PatrimonioRoute: PatrimonioRoute,
+  RelatoriosRoute: RelatoriosRoute,
+  SimuladoresRoute: SimuladoresRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
