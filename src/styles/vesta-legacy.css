@@ -30,8 +30,8 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 
 /* ── SIDEBAR ── */
 .sidebar{width:228px;flex-shrink:0;background:var(--sidebar);display:flex;flex-direction:column;overflow-y:auto}
-.logo{padding:22px 18px 18px;display:flex;align-items:center;gap:11px;border-bottom:1px solid rgba(196,149,42,.15)}
-.logo-icon{width:36px;height:36px;background:rgba(196,149,42,.20);border-radius:10px;border:1px solid rgba(196,149,42,.30);display:flex;align-items:center;justify-content:center;color:#fff;font-size:17px;font-weight:700;flex-shrink:0}
+.logo{padding:22px 18px 18px;display:flex;align-items:center;gap:11px;border-bottom:1px solid rgba(232,180,192,.15)}
+.logo-icon{width:36px;height:36px;background:rgba(232,180,192,.20);border-radius:10px;border:1px solid rgba(232,180,192,.30);display:flex;align-items:center;justify-content:center;color:#fff;font-size:17px;font-weight:700;flex-shrink:0}
 .logo-name{color:#fff;font-weight:500;font-size:15px;font-family:var(--font-display);letter-spacing:.12em;text-transform:uppercase}
 .logo-sub{color:rgba(255,255,255,.32);font-size:10px;margin-top:3px;letter-spacing:.04em}
 .nav{padding:14px 10px;flex:1}
@@ -41,7 +41,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 .nav-item.on{background:var(--sidebar-active);color:rgba(255,255,255,.95);font-weight:500}
 .nav-item svg{width:17px;height:17px;flex-shrink:0;opacity:.8}
 .nav-item.on svg{opacity:1}
-.sidebar-foot{padding:12px 10px;border-top:1px solid rgba(196,149,42,.12)}
+.sidebar-foot{padding:12px 10px;border-top:1px solid rgba(232,180,192,.12)}
 
 /* ── MAIN ── */
 .main{flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden}
@@ -295,18 +295,18 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 .scenario-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;margin-bottom:14px}
 
 /* ── USER SWITCHER ── */
-.user-switcher{padding:14px 12px;border-bottom:1px solid rgba(196,149,42,.12)}
+.user-switcher{padding:14px 12px;border-bottom:1px solid rgba(232,180,192,.12)}
 .user-switcher-label{font-size:8px;color:rgba(255,255,255,.25);text-transform:uppercase;letter-spacing:.16em;margin-bottom:8px;padding:0 4px;font-family:var(--font-display)}
 .user-btn{display:flex;align-items:center;gap:9px;padding:7px 8px;border-radius:8px;cursor:pointer;transition:background .13s;margin-bottom:3px;border:none;background:none;width:100%;text-align:left}
 .user-btn:hover{background:var(--sidebar-hover)}
-.user-btn.active{background:rgba(196,126,58,.2)}
+.user-btn.active{background:rgba(197,42,71,.2)}
 .user-avatar{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex-shrink:0;color:#fff}
-.ua-paulo{background:rgba(196,149,42,.30);border:1px solid rgba(196,149,42,.40)}
+.ua-paulo{background:rgba(232,180,192,.30);border:1px solid rgba(232,180,192,.40)}
 .ua-cinthia{background:rgba(180,100,100,.25);border:1px solid rgba(180,100,100,.35)}
 .user-info{flex:1;min-width:0}
 .user-name{font-size:12px;font-weight:500;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .user-conta{font-size:10px;color:rgba(255,255,255,.35)}
-.user-check{font-size:12px;color:#C4952A;margin-left:auto;flex-shrink:0}
+.user-check{font-size:12px;color:#E8B4C0;margin-left:auto;flex-shrink:0}
 
 /* ── PROFILE SELECTOR ── */
 #profile-screen{
@@ -318,7 +318,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 .ps-vesta{
   font-family:var(--font-display);
   font-size:13px;letter-spacing:.22em;text-transform:uppercase;
-  color:rgba(212,175,55,.7);margin-bottom:6px;
+  color:rgba(240,200,208,.7);margin-bottom:6px;
 }
 .ps-title{
   font-family:var(--font-elegant);
@@ -334,7 +334,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 .ps-profiles{display:flex;gap:24px;align-items:stretch}
 .ps-card{
   width:180px;padding:28px 20px 24px;
-  border:1px solid rgba(212,175,55,.15);
+  border:1px solid rgba(240,200,208,.15);
   border-radius:14px;cursor:pointer;
   background:rgba(255,255,255,.04);
   transition:background .2s,border-color .2s,transform .2s;
@@ -342,19 +342,19 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
   text-align:center;
 }
 .ps-card:hover{
-  background:rgba(212,175,55,.08);
-  border-color:rgba(212,175,55,.4);
+  background:rgba(240,200,208,.08);
+  border-color:rgba(240,200,208,.4);
   transform:translateY(-3px);
 }
 .ps-avatar{
   width:62px;height:62px;border-radius:50%;
   display:flex;align-items:center;justify-content:center;
   font-size:24px;
-  border:1.5px solid rgba(212,175,55,.3);
+  border:1.5px solid rgba(240,200,208,.3);
 }
-.ps-av-fam{background:rgba(196,149,42,.15);color:#C4952A}
-.ps-av-paulo{background:rgba(196,100,80,.12);color:#C47050}
-.ps-av-cinthia{background:rgba(160,120,140,.12);color:#C09090}
+.ps-av-fam{background:rgba(232,180,192,.15);color:#E8B4C0}
+.ps-av-paulo{background:rgba(180,90,110,.12);color:#B8546E}
+.ps-av-cinthia{background:rgba(180,90,110,.12);color:#B8546E}
 .ps-card-name{
   font-family:var(--font-display);
   font-size:13px;letter-spacing:.1em;
@@ -365,45 +365,45 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
   font-size:10px;padding:3px 10px;border-radius:20px;
   font-family:var(--font-display);letter-spacing:.08em;
 }
-.ps-badge-fam{background:rgba(196,149,42,.15);color:rgba(212,175,55,.8);border:1px solid rgba(212,175,55,.2)}
+.ps-badge-fam{background:rgba(232,180,192,.15);color:rgba(240,200,208,.8);border:1px solid rgba(240,200,208,.2)}
 .ps-badge-ind{background:rgba(255,255,255,.06);color:rgba(255,255,255,.3);border:1px solid rgba(255,255,255,.1)}
 .ps-ornament{
-  font-family:var(--font-display);color:rgba(212,175,55,.3);
+  font-family:var(--font-display);color:rgba(240,200,208,.3);
   font-size:11px;letter-spacing:.2em;margin-top:40px;
 }
 
 /* ── SIDEBAR PERFIL INDICATOR ── */
 .active-profile-bar{
   padding:10px 14px 8px;
-  border-bottom:1px solid rgba(196,149,42,.12);
+  border-bottom:1px solid rgba(232,180,192,.12);
   display:flex;align-items:center;gap:9px;cursor:pointer;
 }
 .active-profile-bar:hover{background:rgba(255,255,255,.04)}
 .apb-avatar{
   width:26px;height:26px;border-radius:50%;
   display:flex;align-items:center;justify-content:center;font-size:12px;
-  border:1px solid rgba(212,175,55,.25);flex-shrink:0;
+  border:1px solid rgba(240,200,208,.25);flex-shrink:0;
 }
 .apb-info{flex:1;min-width:0}
 .apb-name{font-family:var(--font-display);font-size:10px;letter-spacing:.08em;
   color:rgba(255,255,255,.7);text-transform:uppercase}
 .apb-sub{font-size:10px;color:rgba(255,255,255,.3);margin-top:1px}
-.apb-change{font-size:10px;color:rgba(212,175,55,.5);flex-shrink:0}
+.apb-change{font-size:10px;color:rgba(240,200,208,.5);flex-shrink:0}
 
 /* Seção familiar exclusiva */
-.nav-sec-fam{color:rgba(212,175,55,.4) !important}
+.nav-sec-fam{color:rgba(240,200,208,.4) !important}
 
 
-.proj-badge{font-size:9px;padding:1px 6px;border-radius:8px;background:rgba(196,149,42,.1);color:rgba(196,149,42,.8);font-family:var(--font-display);letter-spacing:.05em;margin-left:6px;vertical-align:middle}
+.proj-badge{font-size:9px;padding:1px 6px;border-radius:8px;background:rgba(232,180,192,.1);color:rgba(232,180,192,.8);font-family:var(--font-display);letter-spacing:.05em;margin-left:6px;vertical-align:middle}
 .proj-badge.live{background:rgba(74,124,89,.12);color:var(--success)}
 
 /* ── PROJEÇÃO badge ── */
-.proj-badge{font-size:9px;padding:1px 6px;border-radius:8px;background:rgba(196,149,42,.1);color:rgba(196,149,42,.8);font-family:var(--font-display);letter-spacing:.05em;display:block;margin-top:3px}
+.proj-badge{font-size:9px;padding:1px 6px;border-radius:8px;background:rgba(232,180,192,.1);color:rgba(232,180,192,.8);font-family:var(--font-display);letter-spacing:.05em;display:block;margin-top:3px}
 .proj-badge.live{background:rgba(74,124,89,.12);color:var(--success)}
-.update-bar{display:flex;align-items:center;gap:10px;padding:7px 20px;background:rgba(196,149,42,.05);border-bottom:1px solid rgba(196,149,42,.12);font-size:12px;color:var(--muted)}
+.update-bar{display:flex;align-items:center;gap:10px;padding:7px 20px;background:rgba(232,180,192,.05);border-bottom:1px solid rgba(232,180,192,.12);font-size:12px;color:var(--muted)}
 .update-bar b{color:var(--text);font-family:var(--font-elegant)}
-.upd-btn{font-size:11px;padding:3px 12px;border:1px solid rgba(196,149,42,.25);border-radius:10px;background:none;color:rgba(196,149,42,.8);cursor:pointer;font-family:var(--font-display);letter-spacing:.05em}
-.upd-btn:hover{background:rgba(196,149,42,.1)}
+.upd-btn{font-size:11px;padding:3px 12px;border:1px solid rgba(232,180,192,.25);border-radius:10px;background:none;color:rgba(232,180,192,.8);cursor:pointer;font-family:var(--font-display);letter-spacing:.05em}
+.upd-btn:hover{background:rgba(232,180,192,.1)}
 .upd-dot{width:6px;height:6px;border-radius:50%;background:var(--success);animation:pulse 2s infinite;flex-shrink:0}
 .upd-dot.off{background:var(--muted);animation:none}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
