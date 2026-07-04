@@ -20,123 +20,152 @@ import {
   TrendingUp,
 } from "lucide-react";
 
-
 import { formatBRL } from "@/data/profiles";
 import { getProfileView, type ProfileId } from "@/lib/profile-derive";
-import { Temple, Goddess, Wheat, Amphora, Flame, Divider, Shield, Branch } from "./ornaments";
 
-// ─── Profile Selector (tela inicial) ─────────────────────────────────────
+// ─── Assets extraídos da referência oficial ──────────────────────────────
+import goddessAsset from "@/assets/vesta/goddess.png.asset.json";
+import logoAsset from "@/assets/vesta/logo.png.asset.json";
+import templeAsset from "@/assets/vesta/temple.png.asset.json";
+import amphoraAsset from "@/assets/vesta/amphora.png.asset.json";
+import branchAsset from "@/assets/vesta/branch.png.asset.json";
+import dividerAsset from "@/assets/vesta/divider.png.asset.json";
+import hiEstrategia from "@/assets/vesta/hi-estrategia.png.asset.json";
+import hiProtecao from "@/assets/vesta/hi-protecao.png.asset.json";
+import hiProsperidade from "@/assets/vesta/hi-prosperidade.png.asset.json";
+import qaScales from "@/assets/vesta/qa-scales.png.asset.json";
+import qaShield from "@/assets/vesta/qa-shield.png.asset.json";
+import qaTarget from "@/assets/vesta/qa-target.png.asset.json";
+import qaChart from "@/assets/vesta/qa-chart.png.asset.json";
+import qaCloud from "@/assets/vesta/qa-cloud.png.asset.json";
+
+type AssetRef = { url: string };
+
+function Art({
+  src,
+  alt = "",
+  className,
+  style,
+}: {
+  src: AssetRef;
+  alt?: string;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  return (
+    <img
+      src={src.url}
+      alt={alt}
+      aria-hidden={alt === ""}
+      draggable={false}
+      className={className}
+      style={style}
+    />
+  );
+}
+
+// ─── Profile Selector (tela inicial oficial) ─────────────────────────────
 
 const PROFILE_CARDS: {
   id: ProfileId;
   title: string;
   subtitle: string;
-  symbol: "temple" | "amphora" | "wheat";
+  art: AssetRef;
+  artClass: string;
 }[] = [
-  { id: "familiar", title: "Família", subtitle: "Visão consolidada", symbol: "temple" },
-  { id: "paulo", title: "Paulo", subtitle: "Visão individual", symbol: "amphora" },
-  { id: "cinthia", title: "Cinthia", subtitle: "Visão individual", symbol: "wheat" },
+  { id: "familiar", title: "Família", subtitle: "Visão consolidada", art: templeAsset, artClass: "h-32 w-auto" },
+  { id: "paulo", title: "Paulo", subtitle: "Visão individual", art: amphoraAsset, artClass: "h-36 w-auto" },
+  { id: "cinthia", title: "Cinthia", subtitle: "Visão individual", art: branchAsset, artClass: "h-40 w-auto" },
 ];
 
-function TopSymbolPillar({
-  icon,
+function TopSymbol({
+  art,
   label,
   hint,
 }: {
-  icon: React.ReactNode;
+  art: AssetRef;
   label: string;
   hint: string;
 }) {
   return (
     <button
       title={hint}
-      className="group flex flex-col items-center gap-1.5 px-2 text-[var(--color-vesta-copper)] transition-colors hover:text-[var(--color-vesta-night)]"
+      className="group flex w-24 flex-col items-center gap-2 text-center transition-transform hover:-translate-y-0.5"
     >
-      <div className="opacity-80 transition-opacity group-hover:opacity-100">{icon}</div>
-      <span className="text-[9px] uppercase tracking-[0.28em] text-[var(--color-vesta-petrol)]/75 group-hover:text-[var(--color-vesta-night)]">
+      <Art src={art} className="h-12 w-12 object-contain" />
+      <span className="text-[9px] uppercase tracking-[0.3em] text-[var(--color-vesta-copper)]">
         {label}
       </span>
     </button>
   );
 }
 
+function VestaLogomark({ className = "" }: { className?: string }) {
+  return <Art src={logoAsset} alt="VESTA · Guardiã do Patrimônio" className={className} />;
+}
+
 export function ProfileSelector({ onSelect }: { onSelect: (id: ProfileId) => void }) {
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-[var(--color-vesta-sand)] text-foreground">
-      {/* Deusa Vesta — canto superior esquerdo, saindo da tela */}
-      <Goddess className="pointer-events-none absolute -left-24 -top-10 h-[520px] w-[520px] text-[var(--color-vesta-copper)] opacity-[0.06]" />
-      {/* Ramos laterais */}
-      <Branch className="pointer-events-none absolute -right-16 top-16 h-[520px] w-[220px] text-[var(--color-vesta-copper)] opacity-[0.08]" />
-      <Branch className="pointer-events-none absolute -left-24 bottom-0 h-[380px] w-[180px] rotate-[8deg] text-[var(--color-vesta-copper)] opacity-[0.05]" />
+      {/* Deusa Vesta — canto superior esquerdo, marca d'água ~6% */}
+      <Art
+        src={goddessAsset}
+        className="pointer-events-none absolute left-0 top-0 h-[360px] w-auto select-none"
+        style={{ opacity: 0.14 }}
+      />
 
-      {/* Header: VESTA centralizado + símbolos à direita */}
-      <header className="relative mx-auto flex max-w-6xl items-start justify-between px-8 pt-10">
-        <div className="w-40" />
-        <div className="flex flex-col items-center text-center">
-          <Flame className="h-8 w-8 text-[var(--color-vesta-copper)] opacity-90" />
-          <p className="mt-1 text-[10px] uppercase tracking-[0.42em] text-[var(--color-vesta-copper)]">
-            Guardiã do Patrimônio
-          </p>
-          <h1 className="mt-2 font-serif text-[64px] leading-none tracking-[0.22em] text-[var(--color-vesta-night)]">
-            VESTA
-          </h1>
-          <Divider className="mt-4 h-3 w-48 text-[var(--color-vesta-copper)] opacity-70" />
-          <p className="mt-3 max-w-md font-serif italic text-[var(--color-vesta-petrol)]">
-            Lar, proteção, estratégia e prosperidade em harmonia.
-          </p>
+      {/* Header: logo centralizado + 3 símbolos à direita */}
+      <header className="relative mx-auto grid max-w-[1280px] grid-cols-[1fr_auto_1fr] items-center gap-6 px-8 pt-10">
+        <div />
+        <div className="flex flex-col items-center">
+          <VestaLogomark className="h-[130px] w-auto" />
         </div>
-        <div className="hidden w-40 items-start justify-end gap-4 pt-2 md:flex">
-          <TopSymbolPillar
-            icon={<Temple className="h-9 w-9" />}
-            label="Estratégia"
-            hint="Estratégia · Simuladores"
-          />
-          <TopSymbolPillar
-            icon={<Shield className="h-9 w-8" />}
-            label="Proteção"
-            hint="Proteção · Alertas e riscos"
-          />
-          <TopSymbolPillar
-            icon={<Wheat className="h-9 w-5" />}
-            label="Prosperidade"
-            hint="Prosperidade · Metas e crescimento"
-          />
+        <div className="flex items-start justify-end gap-6 pt-4">
+          <TopSymbol art={hiEstrategia} label="Estratégia" hint="Estratégia · Simuladores" />
+          <TopSymbol art={hiProtecao} label="Proteção" hint="Proteção · Alertas e riscos" />
+          <TopSymbol art={hiProsperidade} label="Prosperidade" hint="Prosperidade · Metas" />
         </div>
       </header>
 
-      <div className="relative mx-auto max-w-6xl px-8 pb-16 pt-14">
-        <p className="mb-8 text-center text-[11px] uppercase tracking-[0.42em] text-[var(--color-vesta-copper)]">
-          Selecione um perfil
-        </p>
+      <div className="relative mx-auto max-w-[1280px] px-8 pb-16 pt-16">
+        {/* Selecione um perfil */}
+        <div className="mb-8 flex flex-col items-center">
+          <p className="text-[11px] uppercase tracking-[0.5em] text-[var(--color-vesta-petrol)]">
+            Selecione um perfil
+          </p>
+          <Art src={dividerAsset} className="mt-3 h-3 w-40 opacity-70" />
+        </div>
 
+        {/* Cards de perfil */}
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           {PROFILE_CARDS.map((c) => (
             <button
               key={c.id}
               onClick={() => onSelect(c.id)}
-              className="group relative overflow-hidden rounded-[18px] border border-[var(--color-vesta-copper)]/25 bg-[var(--color-vesta-ivory)] px-7 py-8 text-left shadow-[0_8px_24px_rgba(31,58,82,0.06)] transition-all hover:-translate-y-0.5 hover:border-[var(--color-vesta-copper)]/60 hover:shadow-[0_16px_36px_rgba(31,58,82,0.12)]"
+              className="group relative flex h-[220px] flex-col justify-between overflow-hidden rounded-[18px] border border-[#E2D9C9] bg-[var(--color-vesta-ivory)] px-7 py-6 text-left shadow-[0_8px_24px_rgba(31,58,82,0.06)] transition-all hover:-translate-y-0.5 hover:border-[var(--color-vesta-copper)]/70 hover:shadow-[0_16px_36px_rgba(31,58,82,0.12)]"
             >
-              <p className="text-[10px] uppercase tracking-[0.32em] text-[var(--color-vesta-copper)]">
-                Perfil
-              </p>
-              <h2 className="mt-3 font-serif text-[38px] leading-none text-[var(--color-vesta-night)]">
-                {c.title}
-              </h2>
-              <p className="mt-2 text-[13px] text-[var(--color-vesta-petrol)]/80">{c.subtitle}</p>
-
-              <div className="pointer-events-none absolute right-4 bottom-16 opacity-70 transition-opacity group-hover:opacity-95">
-                {c.symbol === "temple" && (
-                  <Temple className="h-24 w-28 text-[var(--color-vesta-copper)]" />
-                )}
-                {c.symbol === "amphora" && (
-                  <Amphora className="h-28 w-20 text-[var(--color-vesta-copper)]" />
-                )}
-                {c.symbol === "wheat" && (
-                  <Wheat className="h-28 w-14 text-[var(--color-vesta-copper)]" />
-                )}
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.32em] text-[var(--color-vesta-copper)]">
+                  Perfil
+                </p>
+                <h2 className="mt-3 font-serif text-[38px] leading-none text-[var(--color-vesta-night)]">
+                  {c.title}
+                </h2>
+                <p className="mt-2 text-[13px] text-[var(--color-vesta-petrol)]/85">
+                  {c.subtitle}
+                </p>
               </div>
 
-              <div className="relative z-10 mt-24 flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.28em] text-[var(--color-vesta-copper)]">
+              <Art
+                src={c.art}
+                className={
+                  "pointer-events-none absolute right-3 bottom-3 select-none object-contain " +
+                  c.artClass
+                }
+                style={{ opacity: 0.95 }}
+              />
+
+              <div className="relative z-10 flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.28em] text-[var(--color-vesta-copper)]">
                 Entrar
                 <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
               </div>
@@ -144,18 +173,38 @@ export function ProfileSelector({ onSelect }: { onSelect: (id: ProfileId) => voi
           ))}
         </div>
 
-        {/* Rodapé: frase pequena, elegante, com divisor cobre — sem vela chamativa */}
-        <div className="mx-auto mt-16 flex max-w-2xl flex-col items-center text-center">
-          <Divider className="h-2 w-40 text-[var(--color-vesta-copper)] opacity-60" />
-          <p className="mt-4 font-serif text-[13px] italic leading-relaxed text-[var(--color-vesta-petrol)]/80">
-            "Cuidar do lar é cuidar do futuro. Cuidar do patrimônio é cuidar de todos que amamos."
+        {/* Ações Rápidas */}
+        <div className="mt-14">
+          <p className="mb-4 text-[11px] uppercase tracking-[0.32em] text-[var(--color-vesta-petrol)]">
+            Ações Rápidas
           </p>
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
+            <QuickActionRef art={qaScales} label={["Equivalência", "de Taxas"]} />
+            <QuickActionRef art={qaShield} label={["Validador", "de Troca"]} />
+            <QuickActionRef art={qaTarget} label={["Breakeven"]} />
+            <QuickActionRef art={qaChart} label={["Aporte"]} />
+            <QuickActionRef art={qaCloud} label={["Importar XP"]} />
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
+function QuickActionRef({ art, label }: { art: AssetRef; label: string[] }) {
+  return (
+    <button className="group flex items-center gap-4 rounded-[14px] border border-[#E2D9C9] bg-[var(--color-vesta-ivory)] px-5 py-4 text-left transition-all hover:-translate-y-0.5 hover:border-[var(--color-vesta-copper)]/60 hover:shadow-[0_10px_24px_-14px_rgba(31,58,82,0.35)]">
+      <Art src={art} className="h-10 w-10 shrink-0 object-contain" />
+      <span className="font-serif text-[14px] leading-tight text-[var(--color-vesta-petrol)]">
+        {label.map((l, i) => (
+          <span key={i} className="block">
+            {l}
+          </span>
+        ))}
+      </span>
+    </button>
+  );
+}
 
 // ─── Sidebar ─────────────────────────────────────────────────────────────
 
@@ -232,7 +281,7 @@ function ProfileSwitcher({
 
       {open && (
         <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-30 overflow-hidden rounded-lg border border-sidebar-border/60 bg-[color-mix(in_oklab,var(--color-vesta-night)_65%,black)] shadow-2xl">
-          {(["cinthia", "paulo", "familiar"] as ProfileId[]).map((id) => {
+          {(["familiar", "paulo", "cinthia"] as ProfileId[]).map((id) => {
             const active = id === profileId;
             return (
               <button
@@ -274,18 +323,12 @@ function Sidebar({
 }) {
   return (
     <aside className="relative flex w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground">
-      {/* subtle vertical ornament */}
       <div className="pointer-events-none absolute inset-y-0 right-0 w-px bg-gradient-to-b from-transparent via-[var(--color-vesta-gold)]/30 to-transparent" />
 
-      <div className="relative px-6 pt-7 pb-5 text-center">
-        <Flame className="pointer-events-none absolute left-1/2 top-1 h-7 w-7 -translate-x-1/2 text-[var(--color-vesta-gold)] opacity-90" />
-        <h1 className="mt-5 font-serif text-2xl tracking-[0.3em] text-[var(--color-vesta-gold)]">
-          VESTA
-        </h1>
-        <p className="mt-1 text-[9px] uppercase tracking-[0.3em] text-sidebar-foreground/60">
-          Guardiã do Patrimônio
-        </p>
-        <Divider className="mx-auto mt-3 h-2 w-20 text-[var(--color-vesta-gold)] opacity-60" />
+      <div className="relative flex flex-col items-center px-6 pt-6 pb-5">
+        <div className="rounded-md bg-[var(--color-vesta-ivory)]/95 px-3 py-2">
+          <VestaLogomark className="h-[68px] w-auto" />
+        </div>
       </div>
 
       <ProfileSwitcher profileId={profileId} onChange={onChangeProfile} />
@@ -317,17 +360,10 @@ function Sidebar({
 
       <button
         onClick={onSwitchProfile}
-        className="mx-4 mt-2 mb-3 flex items-center justify-center gap-2 rounded-lg border border-sidebar-border/40 px-3 py-2 text-[11px] uppercase tracking-[0.2em] text-sidebar-foreground/70 transition-colors hover:border-[var(--color-vesta-gold)]/40 hover:text-[var(--color-vesta-gold)]"
+        className="mx-4 mt-2 mb-5 flex items-center justify-center gap-2 rounded-lg border border-sidebar-border/40 px-3 py-2 text-[11px] uppercase tracking-[0.2em] text-sidebar-foreground/70 transition-colors hover:border-[var(--color-vesta-gold)]/40 hover:text-[var(--color-vesta-gold)]"
       >
         <LogOut className="h-3.5 w-3.5" /> Tela inicial
       </button>
-
-      <div className="relative mx-4 mb-5 rounded-lg border border-sidebar-border/40 bg-[color-mix(in_oklab,var(--color-vesta-night)_55%,black)] px-4 py-4 text-center">
-        <Wheat className="pointer-events-none absolute -top-4 left-1/2 h-8 w-4 -translate-x-1/2 text-[var(--color-vesta-gold)] opacity-70" />
-        <p className="font-serif text-[11px] italic leading-relaxed text-sidebar-foreground/75">
-          Cuidar do lar é cuidar do futuro. Cuidar do patrimônio é cuidar de todos que amamos.
-        </p>
-      </div>
     </aside>
   );
 }
@@ -336,45 +372,22 @@ function Sidebar({
 
 function TopBanner() {
   return (
-    <div className="relative overflow-hidden border-b border-[var(--color-vesta-copper)]/20 bg-[color-mix(in_oklab,var(--color-vesta-sand)_92%,var(--color-vesta-copper)_8%)]">
-      <Goddess className="pointer-events-none absolute -left-12 -top-4 h-56 w-56 text-[var(--color-vesta-copper)] opacity-[0.07]" />
-      <Branch className="pointer-events-none absolute -right-6 -top-2 h-40 w-24 text-[var(--color-vesta-copper)] opacity-[0.06]" />
-      <div className="relative mx-auto flex max-w-7xl items-center justify-between px-8 py-6">
-        <div className="w-56" />
-        <div className="flex flex-col items-center text-center">
-          <h1 className="font-serif text-3xl tracking-[0.28em] text-[var(--color-vesta-night)]">
-            VESTA
-          </h1>
-          <p className="mt-0.5 text-[10px] uppercase tracking-[0.35em] text-[var(--color-vesta-copper)]">
-            Guardiã do Patrimônio
-          </p>
-          <Divider className="mt-2 h-2 w-28 text-[var(--color-vesta-copper)] opacity-70" />
-          <p className="mt-2 font-serif text-[13px] italic text-[var(--color-vesta-petrol)]">
-            Lar, proteção, estratégia e prosperidade em harmonia.
-          </p>
-        </div>
-        <div className="hidden w-56 items-start justify-end gap-5 md:flex">
-          <Pillar icon={<Temple className="h-8 w-9" />} label="Estratégia" title="Estratégia · Simuladores" />
-          <Pillar icon={<Shield className="h-8 w-7" />} label="Proteção" title="Proteção · Alertas e riscos" />
-          <Pillar icon={<Wheat className="h-8 w-5" />} label="Prosperidade" title="Prosperidade · Metas" />
+    <div className="relative overflow-hidden border-b border-[var(--color-vesta-copper)]/20 bg-[var(--color-vesta-sand)]">
+      <Art
+        src={goddessAsset}
+        className="pointer-events-none absolute left-0 top-0 h-full w-auto select-none"
+        style={{ opacity: 0.12 }}
+      />
+      <div className="relative mx-auto grid max-w-[1280px] grid-cols-[1fr_auto_1fr] items-center gap-6 px-8 py-5">
+        <div />
+        <VestaLogomark className="h-[86px] w-auto" />
+        <div className="flex items-start justify-end gap-6">
+          <TopSymbol art={hiEstrategia} label="Estratégia" hint="Estratégia · Simuladores" />
+          <TopSymbol art={hiProtecao} label="Proteção" hint="Proteção · Alertas e riscos" />
+          <TopSymbol art={hiProsperidade} label="Prosperidade" hint="Prosperidade · Metas" />
         </div>
       </div>
     </div>
-  );
-}
-
-function Pillar({ icon, label, title }: { icon: React.ReactNode; label: string; title?: string }) {
-  return (
-    <button
-      title={title}
-      className="group flex flex-col items-center gap-1 text-[var(--color-vesta-copper)] transition-colors hover:text-[var(--color-vesta-night)]"
-    >
-      <div className="opacity-80 transition-opacity group-hover:opacity-100">{icon}</div>
-      <span className="text-[9px] uppercase tracking-[0.3em] text-[var(--color-vesta-petrol)]/80 group-hover:text-[var(--color-vesta-night)]">
-        {label}
-      </span>
-    </button>
-
   );
 }
 
@@ -413,7 +426,7 @@ function StatCard({
   label: string;
   value: string;
   hint?: string;
-  ornament?: React.ReactNode;
+  ornament?: AssetRef;
   emphasis?: "primary" | "gold" | "rose" | "copper";
 }) {
   const valueColor =
@@ -424,12 +437,18 @@ function StatCard({
         : "text-[var(--color-vesta-night)]";
   return (
     <div className="relative overflow-hidden rounded-xl border border-[var(--color-vesta-copper)]/15 bg-card px-5 py-4 shadow-[0_1px_0_rgba(31,58,82,0.04),0_18px_36px_-28px_rgba(31,58,82,0.35)]">
-      <div className="pointer-events-none absolute -right-3 -bottom-4 opacity-[0.09]">
-        {ornament}
-      </div>
+      {ornament && (
+        <Art
+          src={ornament}
+          className="pointer-events-none absolute -right-2 -bottom-3 h-24 w-auto object-contain"
+          style={{ opacity: 0.35 }}
+        />
+      )}
       <p className="font-serif text-[15px] text-[var(--color-vesta-night)]/85">{label}</p>
-      <p className={"mt-2 font-serif text-[28px] leading-tight " + valueColor}>{value}</p>
-      {hint && <p className="mt-1 text-[11px] text-muted-foreground">{hint}</p>}
+      <p className={"relative mt-2 font-serif text-[28px] leading-tight " + valueColor}>
+        {value}
+      </p>
+      {hint && <p className="relative mt-1 text-[11px] text-muted-foreground">{hint}</p>}
     </div>
   );
 }
@@ -445,7 +464,6 @@ function VisaoGeral({ profileId }: { profileId: ProfileId }) {
   const urgentCount = view.alerts.filter((a) => a.level === "urgent").length;
   const warnCount = view.alerts.filter((a) => a.level === "warn").length;
 
-  // Distribuição por classe
   const byClass = view.holdings.reduce<Record<string, number>>((acc, h) => {
     acc[h.klass] = (acc[h.klass] ?? 0) + h.value;
     return acc;
@@ -468,32 +486,31 @@ function VisaoGeral({ profileId }: { profileId: ProfileId }) {
           label="Patrimônio Total"
           value={formatBRL(totals.total)}
           hint={view.isFamily ? "Cinthia + Paulo consolidado" : `Perfil ${view.name}`}
-          ornament={<Temple className="h-28 w-28 text-[var(--color-vesta-copper)]" />}
+          ornament={templeAsset}
         />
         <StatCard
           label="Renda Fixa"
           value={`${rfPct.toFixed(1)}%`}
           hint={formatBRL(totals.rf)}
-          ornament={<Wheat className="h-28 w-14 text-[var(--color-vesta-gold)]" />}
+          ornament={hiProsperidade}
           emphasis="gold"
         />
         <StatCard
           label="Renda Variável"
           value={`${rvPct.toFixed(1)}%`}
           hint={formatBRL(totals.rv)}
-          ornament={<Amphora className="h-28 w-20 text-[var(--color-vesta-rose-burnt)]" />}
+          ornament={amphoraAsset}
           emphasis="rose"
         />
         <StatCard
           label="Alertas ativos"
           value={String(view.alerts.length)}
           hint={`${urgentCount} urgente(s) · ${warnCount} atenção`}
-          ornament={<Flame className="h-28 w-20 text-[var(--color-vesta-copper)]" />}
+          ornament={hiProtecao}
         />
       </div>
 
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
-        {/* Distribuição por Classe */}
         <div className="relative overflow-hidden rounded-xl border border-[var(--color-vesta-copper)]/15 bg-card p-5">
           <div className="mb-3 flex items-center justify-between">
             <h3 className="font-serif text-[16px] text-[var(--color-vesta-night)]">
@@ -530,44 +547,22 @@ function VisaoGeral({ profileId }: { profileId: ProfileId }) {
         <ProximosVencimentos profileId={profileId} />
       </div>
 
-      {/* Frase inspiracional com ornamentos */}
-      <div className="relative overflow-hidden rounded-xl border border-[var(--color-vesta-copper)]/15 bg-[color-mix(in_oklab,var(--color-vesta-ivory)_70%,var(--color-vesta-sand)_30%)] px-8 py-5">
-        <Wheat className="pointer-events-none absolute -left-4 -bottom-6 h-28 w-14 text-[var(--color-vesta-gold)] opacity-[0.18]" />
-        <Amphora className="pointer-events-none absolute right-6 -bottom-4 h-24 w-16 text-[var(--color-vesta-rose-burnt)] opacity-[0.15]" />
-        <Goddess className="pointer-events-none absolute right-1/3 -top-4 h-24 w-24 text-[var(--color-vesta-copper)] opacity-[0.07]" />
-        <p className="relative font-serif text-[18px] italic leading-relaxed text-[var(--color-vesta-petrol)]">
-          Cada decisão consciente hoje acende a segurança do amanhã.
-        </p>
-      </div>
-
-      {/* Ações Rápidas */}
+      {/* Ações Rápidas — usando ícones oficiais da referência */}
       <div>
-        <h3 className="mb-3 font-serif text-[16px] text-[var(--color-vesta-night)]">
+        <p className="mb-3 text-[11px] uppercase tracking-[0.32em] text-[var(--color-vesta-petrol)]">
           Ações Rápidas
-        </h3>
+        </p>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-          <QuickAction icon={<Scale className="h-6 w-6" strokeWidth={1.1} />} label="Equivalência" />
-          <QuickAction icon={<Shield className="h-6 w-5" />} label="Validador" />
-          <QuickAction icon={<Target className="h-6 w-6" strokeWidth={1.1} />} label="Breakeven" />
-          <QuickAction icon={<Wheat className="h-6 w-4" />} label="Aporte" />
-          <QuickAction icon={<Upload className="h-6 w-6" strokeWidth={1.1} />} label="Importar XP" />
+          <QuickActionRef art={qaScales} label={["Equivalência", "de Taxas"]} />
+          <QuickActionRef art={qaShield} label={["Validador", "de Troca"]} />
+          <QuickActionRef art={qaTarget} label={["Breakeven"]} />
+          <QuickActionRef art={qaChart} label={["Aporte"]} />
+          <QuickActionRef art={qaCloud} label={["Importar XP"]} />
         </div>
       </div>
     </section>
   );
 }
-
-function QuickAction({ icon, label }: { icon: React.ReactNode; label: string }) {
-  return (
-    <button className="group flex items-center justify-center gap-3 rounded-xl border border-[var(--color-vesta-copper)]/25 bg-card px-4 py-4 text-[12px] text-[var(--color-vesta-petrol)] transition-all hover:-translate-y-0.5 hover:border-[var(--color-vesta-copper)]/60 hover:shadow-[0_10px_24px_-14px_rgba(31,58,82,0.35)]">
-      <span className="text-[var(--color-vesta-copper)] opacity-80 transition-opacity group-hover:opacity-100">
-        {icon}
-      </span>
-      <span className="font-serif text-[13px]">{label}</span>
-    </button>
-  );
-}
-
 
 // ─── Alertas / Vencimentos ───────────────────────────────────────────────
 
@@ -692,20 +687,14 @@ export function VestaShell({
     if (nav === "alertas")
       return (
         <section className="space-y-4">
-          <SectionHeader
-            title="Alertas"
-            subtitle={getProfileView(profileId).subtitle}
-          />
+          <SectionHeader title="Alertas" subtitle={getProfileView(profileId).subtitle} />
           <AlertasRecentes profileId={profileId} />
         </section>
       );
     if (nav === "vencimentos")
       return (
         <section className="space-y-4">
-          <SectionHeader
-            title="Vencimentos"
-            subtitle={getProfileView(profileId).subtitle}
-          />
+          <SectionHeader title="Vencimentos" subtitle={getProfileView(profileId).subtitle} />
           <ProximosVencimentos profileId={profileId} />
         </section>
       );
