@@ -40,7 +40,7 @@ export function ProfileSelector({ onSelect }: { onSelect: (id: ProfileId) => voi
         <div className="ps-card" onClick={() => onSelect("cinthia")}>
           <div className="ps-avatar ps-av-cinthia">C</div>
           <div>
-            <div className="ps-card-name">Cinthia</div>
+            <div className="ps-card-name">CINTHIA<br />VESTA</div>
             <div className="ps-card-desc" style={{ margin: "6px 0 10px" }}>
               Carteira XP 6414212<br />visão individual<br />&nbsp;
             </div>
