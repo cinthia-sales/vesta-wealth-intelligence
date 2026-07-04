@@ -373,9 +373,9 @@ function Pillar({ icon, label, title }: { icon: React.ReactNode; label: string; 
       <div className="opacity-80 transition-opacity group-hover:opacity-100">{icon}</div>
       <span className="text-[9px] uppercase tracking-[0.3em] text-[var(--color-vesta-petrol)]/80 group-hover:text-[var(--color-vesta-night)]">
         {label}
-
       </span>
-    </div>
+    </button>
+
   );
 }
 
