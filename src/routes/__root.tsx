@@ -11,9 +11,6 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/app-sidebar";
-import { ThemeToggle } from "@/components/theme-toggle";
 
 function NotFoundComponent() {
   return (
@@ -80,18 +77,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Vesta — Centro de Comando Financeiro" },
+      { title: "Vesta ✦ Guardiã do Patrimônio" },
       {
         name: "description",
         content:
-          "Vesta centraliza patrimônio, investimentos, metas e relatórios em um único centro de comando financeiro pessoal e familiar.",
+          "Vesta — Guardiã do Patrimônio: gestão familiar de investimentos, alertas, vencimentos e simuladores.",
       },
       { name: "author", content: "Vesta" },
-      { property: "og:title", content: "Vesta — Centro de Comando Financeiro" },
+      { property: "og:title", content: "Vesta ✦ Guardiã do Patrimônio" },
       {
         property: "og:description",
-        content:
-          "Clareza para decisões financeiras. Patrimônio, investimentos e planejamento em um só lugar.",
+        content: "Gestão patrimonial familiar — Cinthia, Paulo e visão consolidada.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -113,7 +109,7 @@ function RootShell({ children }: { children: ReactNode }) {
       <head>
         <HeadContent />
       </head>
-      <body>
+      <body style={{ margin: 0 }}>
         {children}
         <Scripts />
       </body>
@@ -123,28 +119,9 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-
   return (
     <QueryClientProvider client={queryClient}>
-      <SidebarProvider>
-        <div className="flex min-h-screen w-full bg-background">
-          <AppSidebar />
-          <div className="flex flex-1 flex-col">
-            <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border bg-background/70 px-4 backdrop-blur-md">
-              <SidebarTrigger />
-              <div className="ml-2 text-sm font-medium tracking-tight text-foreground">
-                Vesta
-              </div>
-              <div className="ml-auto flex items-center gap-1">
-                <ThemeToggle />
-              </div>
-            </header>
-            <main className="flex-1">
-              <Outlet />
-            </main>
-          </div>
-        </div>
-      </SidebarProvider>
+      <Outlet />
     </QueryClientProvider>
   );
 }
