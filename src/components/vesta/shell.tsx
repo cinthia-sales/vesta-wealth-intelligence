@@ -2,6 +2,9 @@ import { type ReactElement, type ReactNode, useState } from "react";
 
 import { HomePage } from "@/components/vesta/pages/home";
 import { PosicaoPage } from "@/components/vesta/pages/posicao";
+import { BreakevenPage } from "@/components/vesta/pages/breakeven";
+import { EquivPage } from "@/components/vesta/pages/equiv";
+import { ValidadorPage } from "@/components/vesta/pages/validador";
 
 import type { ProfileId } from "@/lib/profile-derive";
 
