@@ -24,7 +24,7 @@ import {
 
 import { formatBRL } from "@/data/profiles";
 import { getProfileView, type ProfileId } from "@/lib/profile-derive";
-import { Temple, Goddess, Wheat, Amphora, Flame, Divider } from "./ornaments";
+import { Temple, Goddess, Wheat, Amphora, Flame, Divider, Shield, Branch } from "./ornaments";
 
 // ─── Profile Selector (tela inicial) ─────────────────────────────────────
 
