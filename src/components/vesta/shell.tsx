@@ -547,11 +547,11 @@ function VisaoGeral({ profileId }: { profileId: ProfileId }) {
           Ações Rápidas
         </h3>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-          <QuickAction icon={<Scale className="h-4 w-4" />} label="Equivalência" />
-          <QuickAction icon={<ShieldCheck className="h-4 w-4" />} label="Validador" />
-          <QuickAction icon={<Target className="h-4 w-4" />} label="Breakeven" />
-          <QuickAction icon={<Calculator className="h-4 w-4" />} label="Aporte" />
-          <QuickAction icon={<Upload className="h-4 w-4" />} label="Importar XP" />
+          <QuickAction icon={<Scale className="h-6 w-6" strokeWidth={1.1} />} label="Equivalência" />
+          <QuickAction icon={<Shield className="h-6 w-5" />} label="Validador" />
+          <QuickAction icon={<Target className="h-6 w-6" strokeWidth={1.1} />} label="Breakeven" />
+          <QuickAction icon={<Wheat className="h-6 w-4" />} label="Aporte" />
+          <QuickAction icon={<Upload className="h-6 w-6" strokeWidth={1.1} />} label="Importar XP" />
         </div>
       </div>
     </section>
@@ -560,12 +560,15 @@ function VisaoGeral({ profileId }: { profileId: ProfileId }) {
 
 function QuickAction({ icon, label }: { icon: React.ReactNode; label: string }) {
   return (
-    <button className="flex items-center justify-center gap-2 rounded-xl border border-[var(--color-vesta-copper)]/20 bg-card px-4 py-3 text-[12px] text-[var(--color-vesta-petrol)] transition-all hover:-translate-y-0.5 hover:border-[var(--color-vesta-copper)]/50 hover:shadow-[0_10px_20px_-14px_rgba(31,58,82,0.35)]">
-      <span className="text-[var(--color-vesta-copper)]">{icon}</span>
-      <span className="font-serif">{label}</span>
+    <button className="group flex items-center justify-center gap-3 rounded-xl border border-[var(--color-vesta-copper)]/25 bg-card px-4 py-4 text-[12px] text-[var(--color-vesta-petrol)] transition-all hover:-translate-y-0.5 hover:border-[var(--color-vesta-copper)]/60 hover:shadow-[0_10px_24px_-14px_rgba(31,58,82,0.35)]">
+      <span className="text-[var(--color-vesta-copper)] opacity-80 transition-opacity group-hover:opacity-100">
+        {icon}
+      </span>
+      <span className="font-serif text-[13px]">{label}</span>
     </button>
   );
 }
+
 
 // ─── Alertas / Vencimentos ───────────────────────────────────────────────
 
