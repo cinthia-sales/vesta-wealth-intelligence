@@ -85,6 +85,36 @@ export function Flame({ className }: P) {
   );
 }
 
+export function Shield({ className }: P) {
+  return (
+    <svg viewBox="0 0 80 100" fill="none" className={className} aria-hidden>
+      <g stroke={stroke} strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M40 8 L68 18 V50 c0 22 -14 34 -28 42 c-14 -8 -28 -20 -28 -42 V18 z" />
+        <path d="M40 14 L62 22 V50 c0 18 -12 28 -22 36 c-10 -8 -22 -18 -22 -36 V22 z" />
+        <path d="M28 44 L38 54 L54 36" />
+      </g>
+    </svg>
+  );
+}
+
+export function Branch({ className }: P) {
+  return (
+    <svg viewBox="0 0 120 260" fill="none" className={className} aria-hidden>
+      <g stroke={stroke} strokeWidth="0.9" strokeLinecap="round" strokeLinejoin="round" fill="none">
+        <path d="M60 250 C 58 200 56 150 60 90 C 62 60 68 30 76 10" />
+        <path d="M60 220 q -22 -6 -30 -26 q 20 4 30 20" />
+        <path d="M60 200 q 22 -6 30 -26 q -20 4 -30 20" />
+        <path d="M60 175 q -22 -6 -30 -26 q 20 4 30 20" />
+        <path d="M60 155 q 22 -6 30 -26 q -20 4 -30 20" />
+        <path d="M60 130 q -22 -6 -30 -26 q 20 4 30 20" />
+        <path d="M60 110 q 22 -6 30 -26 q -20 4 -30 20" />
+        <path d="M62 88 q -18 -4 -26 -22 q 16 2 26 16" />
+        <path d="M64 70 q 16 -6 22 -22 q -16 4 -22 18" />
+      </g>
+    </svg>
+  );
+}
+
 export function Divider({ className }: P) {
   return (
     <svg viewBox="0 0 200 12" fill="none" className={className} aria-hidden>
@@ -92,6 +122,7 @@ export function Divider({ className }: P) {
         <path d="M10 6 H86" />
         <path d="M114 6 H190" />
         <path d="M100 2 l4 4 l-4 4 l-4 -4 z" />
+
       </g>
     </svg>
   );
