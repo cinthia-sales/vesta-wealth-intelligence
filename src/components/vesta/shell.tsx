@@ -166,22 +166,22 @@ const PROFILE_META: Record<ProfileId, { name: string; sub: string; avatarBg: str
   familiar: {
     name: "Familiar",
     sub: "Todas as carteiras",
-    avatarBg: "rgba(196,149,42,.15)",
-    avatarColor: "#C4952A",
+    avatarBg: "rgba(161,29,62,.10)",
+    avatarColor: "var(--accent)",
     content: <span style={{ fontSize: 14 }}>🏛</span>,
   },
   cinthia: {
     name: "Cinthia",
     sub: "XP 6414212",
-    avatarBg: "rgba(160,120,140,.12)",
-    avatarColor: "#C09090",
+    avatarBg: "rgba(161,29,62,.08)",
+    avatarColor: "var(--accent)",
     content: <>C</>,
   },
   paulo: {
     name: "Paulo",
     sub: "XP 5296823",
-    avatarBg: "rgba(196,100,80,.12)",
-    avatarColor: "#C47050",
+    avatarBg: "rgba(161,29,62,.08)",
+    avatarColor: "var(--accent)",
     content: <>P</>,
   },
 };
