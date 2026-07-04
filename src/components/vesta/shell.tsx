@@ -29,7 +29,7 @@ export function ProfileSelector({ onSelect }: { onSelect: (id: ProfileId) => voi
         <div className="ps-card" onClick={() => onSelect("familiar")}>
           <div className="ps-avatar ps-av-fam" style={{ fontSize: 20 }}>🏛</div>
           <div>
-            <div className="ps-card-name">Familiar</div>
+            <div className="ps-card-name">FAMILIAR - DOMUS</div>
             <div className="ps-card-desc" style={{ margin: "6px 0 10px" }}>
               Visão consolidada<br />das duas carteiras<br />e todas as ferramentas
             </div>
@@ -169,7 +169,7 @@ type PageKey =
 
 const PROFILE_META: Record<ProfileId, { name: string; sub: string; avatarBg: string; avatarColor: string; content: ReactNode }> = {
   familiar: {
-    name: "Familiar",
+    name: "FAMILIAR - DOMUS",
     sub: "Todas as carteiras",
     avatarBg: "rgba(161,29,62,.10)",
     avatarColor: "var(--accent)",
@@ -226,7 +226,7 @@ export function VestaShell({
           <div className="logo-icon" style={{ fontSize: 18 }}>✦</div>
           <div>
             <div className="logo-name">Vesta</div>
-            <div className="logo-sub">Gestão patrimonial familiar</div>
+            <div className="logo-sub">Sitema de Gestão Patrimonial Familiar</div>
           </div>
         </div>
 
