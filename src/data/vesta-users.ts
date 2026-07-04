@@ -39,11 +39,11 @@ export type UserData = {
 const PAULO: UserData = {
   nome: "Paulo Henrique",
   conta: "XP 5296823",
-  total: 712325,
-  rf: 481006,
-  rv: 231319, // Ações 122.980 + XPAG 61.373 + TGRE 44.156 + LFTB 20.302 (ETF pós-fix) + IVVB 3.943 + NASD 2.753 + GOLD 3.977 = 259.484 na verdade divido: RF pura 481.006, resto 231.319
-  rf_pct: 67.5,
-  rv_pct: 32.5,
+  total: 717856, // Fonte: print XP 04/07/2026 20:30 · saldo R$2.122 + investido R$715.734
+  rf: 484415,
+  rv: 231319,
+  rf_pct: 67.8,
+  rv_pct: 32.2,
   saudacao: "Cinthia, você está gerenciando a carteira do Paulo.",
   topbar_sub: "Carteira Paulo sob gestão · Conta XP 5296823",
   kpi4_label: "Breakeven do plano",

@@ -5,6 +5,8 @@ import { PosicaoPage } from "@/components/vesta/pages/posicao";
 import { BreakevenPage } from "@/components/vesta/pages/breakeven";
 import { EquivPage } from "@/components/vesta/pages/equiv";
 import { ValidadorPage } from "@/components/vesta/pages/validador";
+import { ProjecaoPage } from "@/components/vesta/pages/projecao";
+import { SecundarioPage } from "@/components/vesta/pages/secundario";
 
 import type { ProfileId } from "@/lib/profile-derive";
 
@@ -153,6 +155,8 @@ type PageKey =
   | "equiv"
   | "validador"
   | "breakeven"
+  | "projecao"
+  | "secundario"
   | "regras"
   | "upload"
   | "drivers"
@@ -280,6 +284,8 @@ export function VestaShell({
           {item("equiv", "Equivalência de taxas")}
           {item("validador", "Validador de troca")}
           {item("breakeven", "Breakeven")}
+          {item("projecao", "Projeção patrimônio")}
+          {item("secundario", "Saída secundário")}
           {item("regras", "Regras — não mexer")}
           {item("upload", "Importar arquivos XP")}
           {item("drivers", "Influenciadores")}
@@ -362,7 +368,9 @@ export function VestaShell({
             {page === "breakeven" && <BreakevenPage />}
             {page === "equiv" && <EquivPage />}
             {page === "validador" && <ValidadorPage />}
-            {!["home", "posicao", "breakeven", "equiv", "validador"].includes(page) && (
+            {page === "projecao" && <ProjecaoPage profileId={profileId} />}
+            {page === "secundario" && <SecundarioPage />}
+            {!["home", "posicao", "breakeven", "equiv", "validador", "projecao", "secundario"].includes(page) && (
               <div className="ph">
                 <h1>Em breve</h1>
                 <p>Este módulo será migrado nas próximas rodadas.</p>
