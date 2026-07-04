@@ -60,7 +60,7 @@ const PAULO: UserData = {
     "Ações Brasil",
     "ETFs + Global + Ouro",
   ],
-  donut_colors: ["#4A7C59", "#C47E3A", "#8B7355", "#B8892A", "#6B8E9E", "#A89880", "#D4AF37"],
+  donut_colors: ["#A11D3E", "#4E7A5C", "#D97706", "#3E5E7A", "#B8546E", "#7A1530", "#5C2B4E"],
   rf_ativos: [
     { n: "NTN-B AGO/2026 (IPCA+9,45%)", v: 96512, t: 15.47, cdi: 120.7, venc: "15/08/2026", s: "urgente" },
     { n: "DEB ER ATIVO J&F FEV/2028 (+15,15%)", v: 90662, t: 15.15, cdi: 118.4, venc: "21/02/2028", s: "intocavel", nota: "Lote principal · 87 debêntures" },
@@ -141,7 +141,7 @@ const CINTHIA: UserData = {
     "LCA Original abr/30 (94% CDI)",
     "LCD BRDE mai/30 (93,5% CDI)",
   ],
-  donut_colors: ["#C47E3A", "#B84545", "#4A7C59", "#8B7355", "#6B8E9E"],
+  donut_colors: ["#A11D3E", "#C0392B", "#4E7A5C", "#B8546E", "#3E5E7A"],
   rf_ativos: [
     { n: "LCI BANCO XP S.A. MAI/2027", v: 225494, t: 13.13, cdi: 89.0, venc: "13/05/2027", s: "urgente", nota: "89% CDI isento · aplicada em 13/05/2026 · vence em ~10 meses" },
     { n: "LCA BANCO BOCOM BBM OUT/2030", v: 86312, t: 13.68, cdi: 92.7, venc: "21/10/2030", s: "monitorar", nota: "92,7% CDI isento · banco menor, checar rating" },
@@ -197,7 +197,7 @@ function buildFamiliar(): UserData {
     kpi4_sub: "22 meses · +R$ 692/mês",
     donut_data,
     donut_labels: ["LCA/LCI pós-fix.", "Inflação IPCA+", "Prefixado isento", "Agro + LCD flut.", "Renda variável"],
-    donut_colors: ["#C47E3A", "#4A7C59", "#8B7355", "#B8892A", "#A89880"],
+    donut_colors: ["#A11D3E", "#4E7A5C", "#B8546E", "#D97706", "#3E5E7A"],
     rf_ativos: [
       ...PAULO.rf_ativos.map((x) => ({ ...x, n: `[Paulo] ${x.n}` })),
       ...CINTHIA.rf_ativos.map((x) => ({ ...x, n: `[Cinthia] ${x.n}` })),

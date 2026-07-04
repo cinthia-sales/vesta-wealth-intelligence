@@ -174,11 +174,11 @@ export function ProjecaoPage({ profileId }: { profileId: ProfileId }) {
         <div className="card-hdr">Curva de patrimônio 2026→2036</div>
         <div className="chart-c" style={{ height: 260 }}>
           <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "100%" }}>
-            <path d={area} fill="rgba(74,124,89,.12)" />
-            <path d={path} fill="none" stroke="#4A7C59" strokeWidth={2.2} />
+            <path d={area} fill="rgba(161,29,62,.10)" />
+            <path d={path} fill="none" stroke="#A11D3E" strokeWidth={2.2} />
             {serie.map((s, i) => (
               <g key={s.ano}>
-                <circle cx={xs(i)} cy={ys(s.total)} r={3} fill="#4A7C59" />
+                <circle cx={xs(i)} cy={ys(s.total)} r={3} fill="#A11D3E" />
                 {i % 2 === 0 && (
                   <text x={xs(i)} y={H - 8} fontSize={10} textAnchor="middle" fill="var(--muted)">
                     {s.ano}
