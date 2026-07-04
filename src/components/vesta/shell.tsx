@@ -176,7 +176,7 @@ const PROFILE_META: Record<ProfileId, { name: string; sub: string; avatarBg: str
     content: <span style={{ fontSize: 14 }}>🏛</span>,
   },
   cinthia: {
-    name: "Cinthia",
+    name: "CINTHIA VESTA",
     sub: "XP 6414212",
     avatarBg: "rgba(161,29,62,.08)",
     avatarColor: "var(--accent)",
