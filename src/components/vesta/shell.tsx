@@ -1,5 +1,8 @@
 import { type ReactElement, type ReactNode, useState } from "react";
 
+import { HomePage } from "@/components/vesta/pages/home";
+import { PosicaoPage } from "@/components/vesta/pages/posicao";
+
 import type { ProfileId } from "@/lib/profile-derive";
 
 /* ============================================================
