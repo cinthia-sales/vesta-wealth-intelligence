@@ -7,6 +7,7 @@ import { EquivPage } from "@/components/vesta/pages/equiv";
 import { ValidadorPage } from "@/components/vesta/pages/validador";
 import { ProjecaoPage } from "@/components/vesta/pages/projecao";
 import { SecundarioPage } from "@/components/vesta/pages/secundario";
+import { AlertasPage } from "@/components/vesta/pages/alertas";
 
 import type { ProfileId } from "@/lib/profile-derive";
 
