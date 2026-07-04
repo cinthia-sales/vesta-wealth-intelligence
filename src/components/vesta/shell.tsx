@@ -1,721 +1,357 @@
-import { useMemo, useState } from "react";
-import {
-  Home,
-  Wallet,
-  Bell,
-  CalendarClock,
-  Target,
-  Scale,
-  ArrowLeftRight,
-  Lock,
-  Users,
-  Rocket,
-  Upload,
-  Settings,
-  ChevronDown,
-  RefreshCw,
-  ArrowRight,
-  LogOut,
-  Check,
-  TrendingUp,
-} from "lucide-react";
+import { type ReactNode, useState } from "react";
 
-import { formatBRL } from "@/data/profiles";
-import { getProfileView, type ProfileId } from "@/lib/profile-derive";
+import type { ProfileId } from "@/lib/profile-derive";
 
-// ─── Assets extraídos da referência oficial ──────────────────────────────
-import goddessAsset from "@/assets/vesta/goddess.png.asset.json";
-import logoAsset from "@/assets/vesta/logo.png.asset.json";
-import templeAsset from "@/assets/vesta/temple.png.asset.json";
-import amphoraAsset from "@/assets/vesta/amphora.png.asset.json";
-import branchAsset from "@/assets/vesta/branch.png.asset.json";
-import dividerAsset from "@/assets/vesta/divider.png.asset.json";
-import hiEstrategia from "@/assets/vesta/hi-estrategia.png.asset.json";
-import hiProtecao from "@/assets/vesta/hi-protecao.png.asset.json";
-import hiProsperidade from "@/assets/vesta/hi-prosperidade.png.asset.json";
-import qaScales from "@/assets/vesta/qa-scales.png.asset.json";
-import qaShield from "@/assets/vesta/qa-shield.png.asset.json";
-import qaTarget from "@/assets/vesta/qa-target.png.asset.json";
-import qaChart from "@/assets/vesta/qa-chart.png.asset.json";
-import qaCloud from "@/assets/vesta/qa-cloud.png.asset.json";
-
-type AssetRef = { url: string };
-
-function Art({
-  src,
-  alt = "",
-  className,
-  style,
-}: {
-  src: AssetRef;
-  alt?: string;
-  className?: string;
-  style?: React.CSSProperties;
-}) {
-  return (
-    <img
-      src={src.url}
-      alt={alt}
-      aria-hidden={alt === ""}
-      draggable={false}
-      className={className}
-      style={style}
-    />
-  );
-}
-
-// ─── Profile Selector (tela inicial oficial) ─────────────────────────────
-
-const PROFILE_CARDS: {
-  id: ProfileId;
-  title: string;
-  subtitle: string;
-  art: AssetRef;
-  artClass: string;
-}[] = [
-  { id: "familiar", title: "Família", subtitle: "Visão consolidada", art: templeAsset, artClass: "h-32 w-auto" },
-  { id: "paulo", title: "Paulo", subtitle: "Visão individual", art: amphoraAsset, artClass: "h-36 w-auto" },
-  { id: "cinthia", title: "Cinthia", subtitle: "Visão individual", art: branchAsset, artClass: "h-40 w-auto" },
-];
-
-function TopSymbol({
-  art,
-  label,
-  hint,
-}: {
-  art: AssetRef;
-  label: string;
-  hint: string;
-}) {
-  return (
-    <button
-      title={hint}
-      className="group flex w-24 flex-col items-center gap-2 text-center transition-transform hover:-translate-y-0.5"
-    >
-      <Art src={art} className="h-12 w-12 object-contain" />
-      <span className="text-[9px] uppercase tracking-[0.3em] text-[var(--color-vesta-copper)]">
-        {label}
-      </span>
-    </button>
-  );
-}
-
-function VestaLogomark({ className = "" }: { className?: string }) {
-  return <Art src={logoAsset} alt="VESTA · Guardiã do Patrimônio" className={className} />;
-}
-
+/* ============================================================
+   ProfileSelector — replica exata de #profile-screen do vesta.html
+   ============================================================ */
 export function ProfileSelector({ onSelect }: { onSelect: (id: ProfileId) => void }) {
   return (
-    <div className="relative min-h-screen w-full overflow-hidden bg-[var(--color-vesta-sand)] text-foreground">
-      {/* Deusa Vesta — canto superior esquerdo, marca d'água ~6% */}
-      <Art
-        src={goddessAsset}
-        className="pointer-events-none absolute left-0 top-0 h-[360px] w-auto select-none"
-        style={{ opacity: 0.14 }}
-      />
+    <div id="profile-screen">
+      <div className="ps-vesta">✦ Vesta ✦</div>
+      <div className="ps-title">Guardiã do Patrimônio</div>
+      <div className="ps-subtitle">Selecione o perfil de acesso</div>
 
-      {/* Header: logo centralizado + 3 símbolos à direita */}
-      <header className="relative mx-auto grid max-w-[1280px] grid-cols-[1fr_auto_1fr] items-center gap-6 px-8 pt-10">
-        <div />
-        <div className="flex flex-col items-center">
-          <VestaLogomark className="h-[130px] w-auto" />
-        </div>
-        <div className="flex items-start justify-end gap-6 pt-4">
-          <TopSymbol art={hiEstrategia} label="Estratégia" hint="Estratégia · Simuladores" />
-          <TopSymbol art={hiProtecao} label="Proteção" hint="Proteção · Alertas e riscos" />
-          <TopSymbol art={hiProsperidade} label="Prosperidade" hint="Prosperidade · Metas" />
-        </div>
-      </header>
-
-      <div className="relative mx-auto max-w-[1280px] px-8 pb-16 pt-16">
-        {/* Selecione um perfil */}
-        <div className="mb-8 flex flex-col items-center">
-          <p className="text-[11px] uppercase tracking-[0.5em] text-[var(--color-vesta-petrol)]">
-            Selecione um perfil
-          </p>
-          <Art src={dividerAsset} className="mt-3 h-3 w-40 opacity-70" />
+      <div className="ps-profiles">
+        <div className="ps-card" onClick={() => onSelect("familiar")}>
+          <div className="ps-avatar ps-av-fam" style={{ fontSize: 20 }}>🏛</div>
+          <div>
+            <div className="ps-card-name">Familiar</div>
+            <div className="ps-card-desc" style={{ margin: "6px 0 10px" }}>
+              Visão consolidada<br />das duas carteiras<br />e todas as ferramentas
+            </div>
+            <div className="ps-card-badge ps-badge-fam">Acesso total</div>
+          </div>
         </div>
 
-        {/* Cards de perfil */}
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-          {PROFILE_CARDS.map((c) => (
-            <button
-              key={c.id}
-              onClick={() => onSelect(c.id)}
-              className="group relative flex h-[220px] flex-col justify-between overflow-hidden rounded-[18px] border border-[#E2D9C9] bg-[var(--color-vesta-ivory)] px-7 py-6 text-left shadow-[0_8px_24px_rgba(31,58,82,0.06)] transition-all hover:-translate-y-0.5 hover:border-[var(--color-vesta-copper)]/70 hover:shadow-[0_16px_36px_rgba(31,58,82,0.12)]"
-            >
-              <div>
-                <p className="text-[10px] uppercase tracking-[0.32em] text-[var(--color-vesta-copper)]">
-                  Perfil
-                </p>
-                <h2 className="mt-3 font-serif text-[38px] leading-none text-[var(--color-vesta-night)]">
-                  {c.title}
-                </h2>
-                <p className="mt-2 text-[13px] text-[var(--color-vesta-petrol)]/85">
-                  {c.subtitle}
-                </p>
-              </div>
-
-              <Art
-                src={c.art}
-                className={
-                  "pointer-events-none absolute right-3 bottom-3 select-none object-contain " +
-                  c.artClass
-                }
-                style={{ opacity: 0.95 }}
-              />
-
-              <div className="relative z-10 flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.28em] text-[var(--color-vesta-copper)]">
-                Entrar
-                <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
-              </div>
-            </button>
-          ))}
+        <div className="ps-card" onClick={() => onSelect("cinthia")}>
+          <div className="ps-avatar ps-av-cinthia">C</div>
+          <div>
+            <div className="ps-card-name">Cinthia</div>
+            <div className="ps-card-desc" style={{ margin: "6px 0 10px" }}>
+              Carteira XP 6414212<br />visão individual<br />&nbsp;
+            </div>
+            <div className="ps-card-badge ps-badge-ind">Individual</div>
+          </div>
         </div>
 
-        {/* Ações Rápidas */}
-        <div className="mt-14">
-          <p className="mb-4 text-[11px] uppercase tracking-[0.32em] text-[var(--color-vesta-petrol)]">
-            Ações Rápidas
-          </p>
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
-            <QuickActionRef art={qaScales} label={["Equivalência", "de Taxas"]} />
-            <QuickActionRef art={qaShield} label={["Validador", "de Troca"]} />
-            <QuickActionRef art={qaTarget} label={["Breakeven"]} />
-            <QuickActionRef art={qaChart} label={["Aporte"]} />
-            <QuickActionRef art={qaCloud} label={["Importar XP"]} />
+        <div className="ps-card" onClick={() => onSelect("paulo")}>
+          <div className="ps-avatar ps-av-paulo">P</div>
+          <div>
+            <div className="ps-card-name">Paulo</div>
+            <div className="ps-card-desc" style={{ margin: "6px 0 10px" }}>
+              Carteira XP 5296823<br />visão individual<br />&nbsp;
+            </div>
+            <div className="ps-card-badge ps-badge-ind">Individual</div>
           </div>
         </div>
       </div>
+
+      <div className="ps-ornament">Família Furtado · 2026</div>
     </div>
   );
 }
 
-function QuickActionRef({ art, label }: { art: AssetRef; label: string[] }) {
-  return (
-    <button className="group flex items-center gap-4 rounded-[14px] border border-[#E2D9C9] bg-[var(--color-vesta-ivory)] px-5 py-4 text-left transition-all hover:-translate-y-0.5 hover:border-[var(--color-vesta-copper)]/60 hover:shadow-[0_10px_24px_-14px_rgba(31,58,82,0.35)]">
-      <Art src={art} className="h-10 w-10 shrink-0 object-contain" />
-      <span className="font-serif text-[14px] leading-tight text-[var(--color-vesta-petrol)]">
-        {label.map((l, i) => (
-          <span key={i} className="block">
-            {l}
-          </span>
-        ))}
-      </span>
-    </button>
-  );
-}
+/* ============================================================
+   Nav items — SVGs replicados do vesta.html
+   ============================================================ */
+const NAV_ICONS: Record<string, JSX.Element> = {
+  home: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+      <polyline points="9 22 9 12 15 12 15 22" />
+    </svg>
+  ),
+  posicao: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <rect x="3" y="4" width="18" height="18" rx="2" />
+      <line x1="16" y1="2" x2="16" y2="6" />
+      <line x1="8" y1="2" x2="8" y2="6" />
+      <line x1="3" y1="10" x2="21" y2="10" />
+    </svg>
+  ),
+  alertas: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
+      <path d="M13.73 21a2 2 0 01-3.46 0" />
+    </svg>
+  ),
+  equiv: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <line x1="18" y1="20" x2="18" y2="10" />
+      <line x1="12" y1="20" x2="12" y2="4" />
+      <line x1="6" y1="20" x2="6" y2="14" />
+    </svg>
+  ),
+  validador: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3M3 16v3a2 2 0 002 2h3m8 0h3a2 2 0 002-2v-3" />
+    </svg>
+  ),
+  breakeven: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+      <polyline points="17 6 23 6 23 12" />
+    </svg>
+  ),
+  regras: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    </svg>
+  ),
+  upload: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+      <polyline points="17 8 12 3 7 8" />
+      <line x1="12" y1="3" x2="12" y2="15" />
+    </svg>
+  ),
+  drivers: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83" />
+    </svg>
+  ),
+  aporte: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <line x1="12" y1="5" x2="12" y2="19" />
+      <line x1="5" y1="12" x2="19" y2="12" />
+    </svg>
+  ),
+  start: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M3 12h18" />
+      <path d="M3 12l6-6" />
+      <path d="M3 12l6 6" />
+    </svg>
+  ),
+  consolidado: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+      <polyline points="9 22 9 12 15 12 15 22" />
+      <circle cx="12" cy="7" r="1" fill="currentColor" />
+    </svg>
+  ),
+  user: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+    </svg>
+  ),
+};
 
-// ─── Sidebar ─────────────────────────────────────────────────────────────
-
-type NavKey =
-  | "visao"
+type PageKey =
+  | "home"
   | "posicao"
   | "alertas"
-  | "vencimentos"
-  | "breakeven"
-  | "equivalencia"
+  | "equiv"
   | "validador"
+  | "breakeven"
   | "regras"
-  | "influenciadores"
-  | "acelerar"
-  | "importar"
-  | "config";
+  | "upload"
+  | "drivers"
+  | "aporte";
 
-const NAV: {
-  key: NavKey;
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
-  migrated: boolean;
-  hash?: string;
-}[] = [
-  { key: "visao", label: "Visão Geral", icon: Home, migrated: true },
-  { key: "posicao", label: "Posição Atual", icon: Wallet, migrated: false, hash: "posicao" },
-  { key: "alertas", label: "Alertas", icon: Bell, migrated: true },
-  { key: "vencimentos", label: "Vencimentos", icon: CalendarClock, migrated: true },
-  { key: "breakeven", label: "Breakeven", icon: Target, migrated: false, hash: "breakeven" },
-  { key: "equivalencia", label: "Equivalência de Taxas", icon: Scale, migrated: false, hash: "equivalencia" },
-  { key: "validador", label: "Validador de Troca", icon: ArrowLeftRight, migrated: false, hash: "validador" },
-  { key: "regras", label: "Regras – não mexer", icon: Lock, migrated: false, hash: "regras" },
-  { key: "influenciadores", label: "Influenciadores", icon: Users, migrated: false, hash: "drivers" },
-  { key: "acelerar", label: "Acelerar Breakeven", icon: Rocket, migrated: false, hash: "aporte" },
-  { key: "importar", label: "Importar Arquivos XP", icon: Upload, migrated: false, hash: "importar" },
-  { key: "config", label: "Configurações", icon: Settings, migrated: false, hash: "config" },
-];
-
-const PROFILE_LABEL: Record<ProfileId, string> = {
-  cinthia: "Cinthia",
-  paulo: "Paulo",
-  familiar: "Família",
+const PROFILE_META: Record<ProfileId, { name: string; sub: string; avatarBg: string; avatarColor: string; content: ReactNode }> = {
+  familiar: {
+    name: "Familiar",
+    sub: "Todas as carteiras",
+    avatarBg: "rgba(196,149,42,.15)",
+    avatarColor: "#C4952A",
+    content: <span style={{ fontSize: 14 }}>🏛</span>,
+  },
+  cinthia: {
+    name: "Cinthia",
+    sub: "XP 6414212",
+    avatarBg: "rgba(160,120,140,.12)",
+    avatarColor: "#C09090",
+    content: <>C</>,
+  },
+  paulo: {
+    name: "Paulo",
+    sub: "XP 5296823",
+    avatarBg: "rgba(196,100,80,.12)",
+    avatarColor: "#C47050",
+    content: <>P</>,
+  },
 };
 
-function ProfileSwitcher({
-  profileId,
-  onChange,
-}: {
-  profileId: ProfileId;
-  onChange: (id: ProfileId) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="relative mx-4 mb-4">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between rounded-lg border border-sidebar-border/60 bg-[color-mix(in_oklab,var(--color-vesta-night)_55%,black)] px-3 py-2.5 text-left transition-colors hover:border-[var(--color-vesta-gold)]/40"
-      >
-        <div className="min-w-0">
-          <p className="text-[9px] uppercase tracking-[0.25em] text-sidebar-foreground/60">
-            Perfil ativo
-          </p>
-          <p className="mt-0.5 truncate font-serif text-base text-sidebar-foreground">
-            {PROFILE_LABEL[profileId]}
-          </p>
-        </div>
-        <ChevronDown
-          className={
-            "h-4 w-4 shrink-0 text-sidebar-foreground/60 transition-transform " +
-            (open ? "rotate-180" : "")
-          }
-        />
-      </button>
-
-      {open && (
-        <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-30 overflow-hidden rounded-lg border border-sidebar-border/60 bg-[color-mix(in_oklab,var(--color-vesta-night)_65%,black)] shadow-2xl">
-          {(["familiar", "paulo", "cinthia"] as ProfileId[]).map((id) => {
-            const active = id === profileId;
-            return (
-              <button
-                key={id}
-                onClick={() => {
-                  onChange(id);
-                  setOpen(false);
-                }}
-                className={
-                  "flex w-full items-center justify-between px-3 py-2.5 text-left text-sm transition-colors " +
-                  (active
-                    ? "bg-[var(--color-vesta-gold)]/10 text-[var(--color-vesta-gold)]"
-                    : "text-sidebar-foreground/85 hover:bg-white/5")
-                }
-              >
-                <span className="font-serif">{PROFILE_LABEL[id]}</span>
-                {active && <Check className="h-3.5 w-3.5" />}
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function Sidebar({
-  activeKey,
-  onNav,
-  profileId,
-  onChangeProfile,
-  onSwitchProfile,
-}: {
-  activeKey: NavKey;
-  onNav: (k: NavKey) => void;
-  profileId: ProfileId;
-  onChangeProfile: (id: ProfileId) => void;
-  onSwitchProfile: () => void;
-}) {
-  return (
-    <aside className="relative flex w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground">
-      <div className="pointer-events-none absolute inset-y-0 right-0 w-px bg-gradient-to-b from-transparent via-[var(--color-vesta-gold)]/30 to-transparent" />
-
-      <div className="relative flex flex-col items-center px-6 pt-6 pb-5">
-        <div className="rounded-md bg-[var(--color-vesta-ivory)]/95 px-3 py-2">
-          <VestaLogomark className="h-[68px] w-auto" />
-        </div>
-      </div>
-
-      <ProfileSwitcher profileId={profileId} onChange={onChangeProfile} />
-
-      <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 pb-3">
-        {NAV.map((item) => {
-          const Icon = item.icon;
-          const active = activeKey === item.key;
-          return (
-            <button
-              key={item.key}
-              onClick={() => onNav(item.key)}
-              className={
-                "relative flex w-full items-center gap-3 rounded-lg px-3 py-2 text-[13px] transition-colors " +
-                (active
-                  ? "bg-[var(--color-vesta-sand)] text-[var(--color-vesta-night)] shadow-sm"
-                  : "text-sidebar-foreground/80 hover:bg-white/5 hover:text-sidebar-foreground")
-              }
-            >
-              {active && (
-                <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r bg-[var(--color-vesta-gold)]" />
-              )}
-              <Icon className="h-4 w-4 shrink-0" />
-              <span className="truncate">{item.label}</span>
-            </button>
-          );
-        })}
-      </nav>
-
-      <button
-        onClick={onSwitchProfile}
-        className="mx-4 mt-2 mb-5 flex items-center justify-center gap-2 rounded-lg border border-sidebar-border/40 px-3 py-2 text-[11px] uppercase tracking-[0.2em] text-sidebar-foreground/70 transition-colors hover:border-[var(--color-vesta-gold)]/40 hover:text-[var(--color-vesta-gold)]"
-      >
-        <LogOut className="h-3.5 w-3.5" /> Tela inicial
-      </button>
-    </aside>
-  );
-}
-
-// ─── Top Banner ──────────────────────────────────────────────────────────
-
-function TopBanner() {
-  return (
-    <div className="relative overflow-hidden border-b border-[var(--color-vesta-copper)]/20 bg-[var(--color-vesta-sand)]">
-      <Art
-        src={goddessAsset}
-        className="pointer-events-none absolute left-0 top-0 h-full w-auto select-none"
-        style={{ opacity: 0.12 }}
-      />
-      <div className="relative mx-auto grid max-w-[1280px] grid-cols-[1fr_auto_1fr] items-center gap-6 px-8 py-5">
-        <div />
-        <VestaLogomark className="h-[86px] w-auto" />
-        <div className="flex items-start justify-end gap-6">
-          <TopSymbol art={hiEstrategia} label="Estratégia" hint="Estratégia · Simuladores" />
-          <TopSymbol art={hiProtecao} label="Proteção" hint="Proteção · Alertas e riscos" />
-          <TopSymbol art={hiProsperidade} label="Prosperidade" hint="Prosperidade · Metas" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Section header (in content) ─────────────────────────────────────────
-
-function SectionHeader({ title, subtitle }: { title: string; subtitle: string }) {
-  return (
-    <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-      <div className="flex items-baseline gap-3">
-        <h2 className="font-serif text-[26px] leading-none text-[var(--color-vesta-night)]">
-          {title}
-        </h2>
-        <span className="text-[13px] text-[var(--color-vesta-rose-burnt)]">· {subtitle}</span>
-      </div>
-      <div className="flex items-center gap-3">
-        <span className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-          Atualizado em 24/05/2025
-        </span>
-        <button className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-vesta-copper)]/30 bg-card px-3 py-1.5 text-[11px] uppercase tracking-[0.2em] text-[var(--color-vesta-petrol)] transition-colors hover:border-[var(--color-vesta-copper)]/60">
-          Atualizar <RefreshCw className="h-3.5 w-3.5" />
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ─── Stat Card ───────────────────────────────────────────────────────────
-
-function StatCard({
-  label,
-  value,
-  hint,
-  ornament,
-  emphasis,
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-  ornament?: AssetRef;
-  emphasis?: "primary" | "gold" | "rose" | "copper";
-}) {
-  const valueColor =
-    emphasis === "gold"
-      ? "text-[var(--color-vesta-copper)]"
-      : emphasis === "rose"
-        ? "text-[var(--color-vesta-rose-burnt)]"
-        : "text-[var(--color-vesta-night)]";
-  return (
-    <div className="relative overflow-hidden rounded-xl border border-[var(--color-vesta-copper)]/15 bg-card px-5 py-4 shadow-[0_1px_0_rgba(31,58,82,0.04),0_18px_36px_-28px_rgba(31,58,82,0.35)]">
-      {ornament && (
-        <Art
-          src={ornament}
-          className="pointer-events-none absolute -right-2 -bottom-3 h-24 w-auto object-contain"
-          style={{ opacity: 0.35 }}
-        />
-      )}
-      <p className="font-serif text-[15px] text-[var(--color-vesta-night)]/85">{label}</p>
-      <p className={"relative mt-2 font-serif text-[28px] leading-tight " + valueColor}>
-        {value}
-      </p>
-      {hint && <p className="relative mt-1 text-[11px] text-muted-foreground">{hint}</p>}
-    </div>
-  );
-}
-
-// ─── Visão Geral ─────────────────────────────────────────────────────────
-
-function VisaoGeral({ profileId }: { profileId: ProfileId }) {
-  const view = useMemo(() => getProfileView(profileId), [profileId]);
-  const { totals } = view;
-  const rfPct = totals.total > 0 ? (totals.rf / totals.total) * 100 : 0;
-  const rvPct = totals.total > 0 ? (totals.rv / totals.total) * 100 : 0;
-
-  const urgentCount = view.alerts.filter((a) => a.level === "urgent").length;
-  const warnCount = view.alerts.filter((a) => a.level === "warn").length;
-
-  const byClass = view.holdings.reduce<Record<string, number>>((acc, h) => {
-    acc[h.klass] = (acc[h.klass] ?? 0) + h.value;
-    return acc;
-  }, {});
-  const classes: { key: string; label: string; color: string }[] = [
-    { key: "RF", label: "Renda Fixa", color: "var(--color-vesta-night)" },
-    { key: "NTN", label: "Títulos Públicos", color: "var(--color-vesta-petrol)" },
-    { key: "RV", label: "Ações", color: "var(--color-vesta-rose-burnt)" },
-    { key: "FII", label: "Fundos Imob.", color: "var(--color-vesta-copper)" },
-    { key: "ETF", label: "ETFs", color: "var(--color-vesta-gold)" },
-  ];
-  const distTotal = Object.values(byClass).reduce((s, v) => s + v, 0) || 1;
-
-  return (
-    <section className="space-y-5">
-      <SectionHeader title="Visão Geral" subtitle={view.subtitle} />
-
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          label="Patrimônio Total"
-          value={formatBRL(totals.total)}
-          hint={view.isFamily ? "Cinthia + Paulo consolidado" : `Perfil ${view.name}`}
-          ornament={templeAsset}
-        />
-        <StatCard
-          label="Renda Fixa"
-          value={`${rfPct.toFixed(1)}%`}
-          hint={formatBRL(totals.rf)}
-          ornament={hiProsperidade}
-          emphasis="gold"
-        />
-        <StatCard
-          label="Renda Variável"
-          value={`${rvPct.toFixed(1)}%`}
-          hint={formatBRL(totals.rv)}
-          ornament={amphoraAsset}
-          emphasis="rose"
-        />
-        <StatCard
-          label="Alertas ativos"
-          value={String(view.alerts.length)}
-          hint={`${urgentCount} urgente(s) · ${warnCount} atenção`}
-          ornament={hiProtecao}
-        />
-      </div>
-
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
-        <div className="relative overflow-hidden rounded-xl border border-[var(--color-vesta-copper)]/15 bg-card p-5">
-          <div className="mb-3 flex items-center justify-between">
-            <h3 className="font-serif text-[16px] text-[var(--color-vesta-night)]">
-              Distribuição por Classe
-            </h3>
-            <TrendingUp className="h-4 w-4 text-[var(--color-vesta-copper)]" />
-          </div>
-          <ul className="space-y-2.5">
-            {classes.map((c) => {
-              const v = byClass[c.key] ?? 0;
-              const pct = (v / distTotal) * 100;
-              if (v === 0) return null;
-              return (
-                <li key={c.key} className="text-[12px]">
-                  <div className="flex items-baseline justify-between">
-                    <span className="text-foreground/85">{c.label}</span>
-                    <span className="font-serif text-[13px] text-[var(--color-vesta-night)]">
-                      {pct.toFixed(1)}%
-                    </span>
-                  </div>
-                  <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-vesta-ivory)]">
-                    <div
-                      className="h-full rounded-full"
-                      style={{ width: `${pct}%`, background: c.color }}
-                    />
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-
-        <AlertasRecentes profileId={profileId} />
-        <ProximosVencimentos profileId={profileId} />
-      </div>
-
-      {/* Ações Rápidas — usando ícones oficiais da referência */}
-      <div>
-        <p className="mb-3 text-[11px] uppercase tracking-[0.32em] text-[var(--color-vesta-petrol)]">
-          Ações Rápidas
-        </p>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-          <QuickActionRef art={qaScales} label={["Equivalência", "de Taxas"]} />
-          <QuickActionRef art={qaShield} label={["Validador", "de Troca"]} />
-          <QuickActionRef art={qaTarget} label={["Breakeven"]} />
-          <QuickActionRef art={qaChart} label={["Aporte"]} />
-          <QuickActionRef art={qaCloud} label={["Importar XP"]} />
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// ─── Alertas / Vencimentos ───────────────────────────────────────────────
-
-const levelBadge: Record<string, string> = {
-  urgent: "bg-[var(--color-vesta-rose)] text-[var(--color-vesta-night)]",
-  warn: "bg-[var(--color-vesta-gold)]/40 text-[var(--color-vesta-night)]",
-  ok: "bg-[var(--color-vesta-ivory)] text-[var(--color-vesta-petrol)]",
-};
-
-function AlertasRecentes({ profileId }: { profileId: ProfileId }) {
-  const view = getProfileView(profileId);
-  return (
-    <div className="rounded-xl border border-[var(--color-vesta-copper)]/15 bg-card p-5">
-      <div className="mb-3 flex items-center justify-between">
-        <h3 className="font-serif text-[16px] text-[var(--color-vesta-night)]">Alertas Recentes</h3>
-        <Bell className="h-4 w-4 text-[var(--color-vesta-copper)]" />
-      </div>
-      {view.alerts.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Sem alertas registrados.</p>
-      ) : (
-        <ul className="space-y-2.5">
-          {view.alerts.slice(0, 5).map((a, i) => (
-            <li key={i} className="flex items-start gap-2.5">
-              <span
-                className={
-                  "mt-0.5 rounded-md px-1.5 py-0.5 text-[9px] uppercase tracking-wider " +
-                  (levelBadge[a.level] ?? levelBadge.ok)
-                }
-              >
-                {a.level === "urgent" ? "Urgente" : a.level === "warn" ? "Atenção" : "OK"}
-              </span>
-              <div className="min-w-0">
-                <p className="text-[12.5px] leading-snug text-foreground">{a.title}</p>
-                <p className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground">{a.body}</p>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-}
-
-function ProximosVencimentos({ profileId }: { profileId: ProfileId }) {
-  const view = getProfileView(profileId);
-  return (
-    <div className="rounded-xl border border-[var(--color-vesta-copper)]/15 bg-card p-5">
-      <div className="mb-3 flex items-center justify-between">
-        <h3 className="font-serif text-[16px] text-[var(--color-vesta-night)]">
-          Próximos Vencimentos
-        </h3>
-        <CalendarClock className="h-4 w-4 text-[var(--color-vesta-copper)]" />
-      </div>
-      {view.maturities.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Sem vencimentos registrados.</p>
-      ) : (
-        <ul className="divide-y divide-[var(--color-vesta-copper)]/10">
-          {view.maturities.slice(0, 6).map((m, i) => (
-            <li key={i} className="flex items-center justify-between py-2 text-[12.5px]">
-              <div className="min-w-0 pr-3">
-                <p className="truncate text-foreground">{m.name}</p>
-                {m.note && (
-                  <p className="text-[10px] uppercase tracking-wider text-[var(--color-vesta-copper)]">
-                    {m.note}
-                  </p>
-                )}
-              </div>
-              <div className="text-right">
-                <p className="text-[10.5px] uppercase tracking-wider text-muted-foreground">
-                  {m.date}
-                </p>
-                <p className="font-serif text-[13px] text-[var(--color-vesta-night)]">
-                  {formatBRL(m.value)}
-                </p>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-}
-
-// ─── Legacy fallback via iframe (para módulos ainda não migrados) ───────
-
-function LegacyFallback({ hash, label }: { hash: string; label: string }) {
-  return (
-    <section className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h2 className="font-serif text-2xl text-[var(--color-vesta-night)]">{label}</h2>
-        <span className="text-[10px] uppercase tracking-widest text-[var(--color-vesta-copper)]">
-          Módulo em migração · versão de referência
-        </span>
-      </div>
-      <div className="overflow-hidden rounded-xl border border-[var(--color-vesta-copper)]/15 bg-card shadow-sm">
-        <iframe
-          key={hash}
-          src={`/vesta.html#${hash}`}
-          title={label}
-          className="h-[75vh] w-full border-0"
-        />
-      </div>
-    </section>
-  );
-}
-
-// ─── Shell ───────────────────────────────────────────────────────────────
-
+/* ============================================================
+   VestaShell — sidebar + topbar + update bar + slot para page
+   ============================================================ */
 export function VestaShell({
   profileId,
-  onChangeProfile,
   onSwitchProfile,
+  children,
 }: {
   profileId: ProfileId;
-  onChangeProfile: (id: ProfileId) => void;
+  onChangeProfile?: (id: ProfileId) => void;
   onSwitchProfile: () => void;
+  children?: ReactNode;
 }) {
-  const [nav, setNav] = useState<NavKey>("visao");
+  const [page, setPage] = useState<PageKey>("home");
+  const meta = PROFILE_META[profileId];
+  const isFamily = profileId === "familiar";
 
-  const renderMain = () => {
-    if (nav === "visao") return <VisaoGeral profileId={profileId} />;
-    if (nav === "alertas")
-      return (
-        <section className="space-y-4">
-          <SectionHeader title="Alertas" subtitle={getProfileView(profileId).subtitle} />
-          <AlertasRecentes profileId={profileId} />
-        </section>
-      );
-    if (nav === "vencimentos")
-      return (
-        <section className="space-y-4">
-          <SectionHeader title="Vencimentos" subtitle={getProfileView(profileId).subtitle} />
-          <ProximosVencimentos profileId={profileId} />
-        </section>
-      );
-    const item = NAV.find((n) => n.key === nav);
-    return <LegacyFallback hash={item?.hash ?? ""} label={item?.label ?? ""} />;
-  };
+  const item = (key: PageKey, label: string, extra?: ReactNode) => (
+    <div
+      className={"nav-item" + (page === key ? " on" : "")}
+      onClick={() => setPage(key)}
+    >
+      {NAV_ICONS[key]}
+      {label}
+      {extra}
+    </div>
+  );
 
   return (
-    <div className="min-h-screen w-full bg-[var(--color-vesta-sand)]">
-      <TopBanner />
-      <div className="flex min-h-[calc(100vh-92px)] w-full">
-        <Sidebar
-          activeKey={nav}
-          onNav={setNav}
-          profileId={profileId}
-          onChangeProfile={onChangeProfile}
-          onSwitchProfile={onSwitchProfile}
-        />
-        <main className="min-w-0 flex-1 px-6 py-6 md:px-8">
-          <div className="mx-auto w-full max-w-6xl">{renderMain()}</div>
-        </main>
+    <div className="app">
+      <nav className="sidebar">
+        <div className="logo">
+          <div className="logo-icon" style={{ fontSize: 18 }}>✦</div>
+          <div>
+            <div className="logo-name">Vesta</div>
+            <div className="logo-sub">Gestão patrimonial familiar</div>
+          </div>
+        </div>
+
+        <div className="active-profile-bar" onClick={onSwitchProfile} title="Trocar perfil">
+          <div
+            className="apb-avatar"
+            style={{ background: meta.avatarBg, color: meta.avatarColor, fontSize: 14 }}
+          >
+            {meta.content}
+          </div>
+          <div className="apb-info">
+            <div className="apb-name">{meta.name}</div>
+            <div className="apb-sub">{meta.sub}</div>
+          </div>
+          <div className="apb-change">↩</div>
+        </div>
+
+        <div className="nav">
+          <div
+            className="nav-item"
+            onClick={onSwitchProfile}
+            style={{ color: "rgba(212,175,55,.7)" }}
+          >
+            {NAV_ICONS.start}
+            Tela inicial / perfis
+          </div>
+
+          {isFamily && (
+            <>
+              <div className="nav-sec nav-sec-fam">Família</div>
+              <div className="nav-item" onClick={() => setPage("home")}>
+                {NAV_ICONS.consolidado}
+                Consolidado Familiar
+              </div>
+            </>
+          )}
+
+          <div className="nav-sec">Principal</div>
+          {item("home", "Visão geral")}
+          {item("posicao", "Posição atual")}
+          {item(
+            "alertas",
+            "Alertas",
+            <span
+              style={{
+                marginLeft: "auto",
+                background: "var(--danger)",
+                color: "#fff",
+                fontSize: 10,
+                fontWeight: 700,
+                padding: "1px 6px",
+                borderRadius: 10,
+              }}
+            >
+              2
+            </span>,
+          )}
+
+          <div className="nav-sec">Plano</div>
+          {item("equiv", "Equivalência de taxas")}
+          {item("validador", "Validador de troca")}
+          {item("breakeven", "Breakeven")}
+          {item("regras", "Regras — não mexer")}
+          {item("upload", "Importar arquivos XP")}
+          {item("drivers", "Influenciadores")}
+          {item("aporte", "Acelerar breakeven")}
+        </div>
+
+        <div className="sidebar-foot">
+          <div
+            className="nav-item"
+            style={{ color: "rgba(255,255,255,.35)", fontSize: 12 }}
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              style={{ width: 15, height: 15 }}
+            >
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+            Ref. 02/07/2026 · CDI 14,75%
+          </div>
+        </div>
+      </nav>
+
+      <div className="main">
+        <div className="topbar">
+          <div>
+            <div className="topbar-title">
+              Vesta{" "}
+              <span
+                style={{
+                  color: "var(--accent)",
+                  fontFamily: "var(--font-display)",
+                  fontSize: 13,
+                  letterSpacing: ".05em",
+                }}
+              >
+                ✦
+              </span>{" "}
+              Centro de Decisão Financeira
+            </div>
+            <div className="topbar-sub">
+              {isFamily ? "Visão familiar · Cinthia como gestora" : `Carteira ${meta.name}`}
+            </div>
+          </div>
+          <div className="badge-alert">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+            2 alertas ativos
+          </div>
+        </div>
+
+        <div className="update-bar">
+          <div className="upd-dot off" />
+          <span>
+            CDI <b>14,75%</b>
+          </span>
+          <span>·</span>
+          <span>
+            IPCA <b>5,50%</b>
+          </span>
+          <span>·</span>
+          <span>
+            Patrimônio projetado <b>R$ 648k</b>
+          </span>
+          <span style={{ marginLeft: "auto", fontSize: 10 }} />
+          <button className="upd-btn">↻ atualizar</button>
+        </div>
+
+        <div className="content">
+          <div className="page on">{children}</div>
+        </div>
       </div>
     </div>
   );
