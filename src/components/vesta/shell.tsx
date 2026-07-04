@@ -284,6 +284,8 @@ export function VestaShell({
           {item("equiv", "Equivalência de taxas")}
           {item("validador", "Validador de troca")}
           {item("breakeven", "Breakeven")}
+          {item("projecao", "Projeção patrimônio")}
+          {item("secundario", "Saída secundário")}
           {item("regras", "Regras — não mexer")}
           {item("upload", "Importar arquivos XP")}
           {item("drivers", "Influenciadores")}
