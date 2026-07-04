@@ -8,6 +8,10 @@ import { ValidadorPage } from "@/components/vesta/pages/validador";
 import { ProjecaoPage } from "@/components/vesta/pages/projecao";
 import { SecundarioPage } from "@/components/vesta/pages/secundario";
 import { AlertasPage } from "@/components/vesta/pages/alertas";
+import { RegrasPage } from "@/components/vesta/pages/regras";
+import { UploadPage } from "@/components/vesta/pages/upload";
+import { DriversPage } from "@/components/vesta/pages/drivers";
+import { AportePage } from "@/components/vesta/pages/aporte";
 
 import type { ProfileId } from "@/lib/profile-derive";
 
@@ -372,7 +376,11 @@ export function VestaShell({
             {page === "projecao" && <ProjecaoPage profileId={profileId} />}
             {page === "secundario" && <SecundarioPage />}
             {page === "alertas" && <AlertasPage profileId={profileId} />}
-            {!["home", "posicao", "breakeven", "equiv", "validador", "projecao", "secundario", "alertas"].includes(page) && (
+            {page === "regras" && <RegrasPage profileId={profileId} />}
+            {page === "upload" && <UploadPage />}
+            {page === "drivers" && <DriversPage />}
+            {page === "aporte" && <AportePage />}
+            {!["home", "posicao", "breakeven", "equiv", "validador", "projecao", "secundario", "alertas", "regras", "upload", "drivers", "aporte"].includes(page) && (
               <div className="ph">
                 <h1>Em breve</h1>
                 <p>Este módulo será migrado nas próximas rodadas.</p>
