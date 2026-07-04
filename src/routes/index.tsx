@@ -1,22 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
+
+import { ProfileSelector, VestaShell } from "@/components/vesta/shell";
+import type { ProfileId } from "@/lib/profile-derive";
 
 export const Route = createFileRoute("/")({
   component: VestaApp,
 });
 
 function VestaApp() {
-  return (
-    <iframe
-      src="/vesta.html"
-      title="Vesta — Guardiã do Patrimônio"
-      style={{
-        position: "fixed",
-        inset: 0,
-        width: "100vw",
-        height: "100vh",
-        border: 0,
-        display: "block",
-      }}
-    />
-  );
+  const [profile, setProfile] = useState<ProfileId | null>(null);
+
+  if (!profile) return <ProfileSelector onSelect={setProfile} />;
+  return <VestaShell profileId={profile} onSwitchProfile={() => setProfile(null)} />;
 }
