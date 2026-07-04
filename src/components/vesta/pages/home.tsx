@@ -1,32 +1,43 @@
-/* HomePage — replica exata de #page-home do vesta.html */
-export function HomePage() {
+import { getUser } from "@/data/vesta-users";
+import type { ProfileId } from "@/lib/profile-derive";
+
+function fmtRK(v: number) {
+  if (v >= 1_000_000) return "R$ " + (v / 1_000_000).toFixed(2) + "M";
+  if (v >= 1_000) return "R$ " + Math.round(v / 1_000) + "k";
+  return "R$ " + Math.round(v).toLocaleString("pt-BR");
+}
+
+export function HomePage({ profileId }: { profileId: ProfileId }) {
+  const u = getUser(profileId);
+  const firstName = u.nome.split(" ")[0];
+
   return (
     <>
       <div className="ph">
         <h1>Bom dia, Cinthia</h1>
-        <p>Acompanhe e cuide da saúde financeira da família.</p>
+        <p>{u.saudacao}</p>
       </div>
 
       <div className="kpi-row">
         <div className="kpi">
-          <div className="kpi-l">Patrimônio total</div>
-          <div className="kpi-v">R$ 648.476</div>
-          <div className="kpi-s">posição 02/07/2026</div>
+          <div className="kpi-l">{profileId === "familiar" ? "Patrimônio familiar" : "Patrimônio total"}</div>
+          <div className="kpi-v">{fmtRK(u.total)}</div>
+          <div className="kpi-s">posição atualizada</div>
         </div>
         <div className="kpi">
           <div className="kpi-l">Renda fixa</div>
-          <div className="kpi-v blue">R$ 532.076</div>
-          <div className="kpi-s">82.1% da carteira</div>
+          <div className="kpi-v blue">{fmtRK(u.rf)}</div>
+          <div className="kpi-s">{u.rf_pct.toFixed(1)}% da carteira</div>
         </div>
         <div className="kpi">
           <div className="kpi-l">Renda variável</div>
-          <div className="kpi-v">R$ 116.399</div>
-          <div className="kpi-s">17.9% da carteira</div>
+          <div className="kpi-v">{u.rv > 0 ? fmtRK(u.rv) : "—"}</div>
+          <div className="kpi-s">{u.rv > 0 ? u.rv_pct.toFixed(1) + "% da carteira" : "sem renda variável"}</div>
         </div>
         <div className="kpi">
-          <div className="kpi-l">Breakeven do plano</div>
-          <div className="kpi-v blue">mai/2028</div>
-          <div className="kpi-s">22 meses · +R$ 692/mês</div>
+          <div className="kpi-l">{u.kpi4_label}</div>
+          <div className="kpi-v blue">{u.kpi4_val}</div>
+          <div className="kpi-s">{u.kpi4_sub}</div>
         </div>
       </div>
 
@@ -37,19 +48,20 @@ export function HomePage() {
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, alignItems: "center" }}>
             <div className="donut-wrap">
-              <DonutSvg />
+              <DonutSvg data={u.donut_data} colors={u.donut_colors} />
               <div className="donut-ctr">
-                <div className="donut-val">R$ 648k</div>
+                <div className="donut-val">{fmtRK(u.total)}</div>
                 <div className="donut-lbl">total</div>
               </div>
             </div>
             <div>
               <div className="legend" style={{ flexDirection: "column", gap: 6 }}>
-                <div className="leg"><div className="leg-sq" style={{ background: "#C47E3A" }} />LCA pós-fix. isento — R$142k</div>
-                <div className="leg"><div className="leg-sq" style={{ background: "#4A7C59" }} />Inflação IPCA+ — R$245k</div>
-                <div className="leg"><div className="leg-sq" style={{ background: "#8B7355" }} />Prefixado isento — R$95k</div>
-                <div className="leg"><div className="leg-sq" style={{ background: "#f59e0b" }} />XPAG11 agro — R$61k</div>
-                <div className="leg"><div className="leg-sq" style={{ background: "#A89880" }} />Renda variável — R$116k</div>
+                {u.donut_labels.map((l, i) => (
+                  <div className="leg" key={l}>
+                    <div className="leg-sq" style={{ background: u.donut_colors[i] }} />
+                    {l} — {fmtRK(u.donut_data[i])}
+                  </div>
+                ))}
               </div>
               <div
                 style={{
@@ -62,9 +74,11 @@ export function HomePage() {
                   lineHeight: 1.5,
                 }}
               >
-                <strong>83,6% em RF</strong>
+                <strong>{u.rf_pct.toFixed(1)}% em RF</strong>
                 <br />
-                Meta: manter até mai/2028 sem mexer nos intocáveis
+                {profileId === "cinthia"
+                  ? "Carteira 100% renda fixa"
+                  : "Meta: manter até mai/2028 sem mexer nos intocáveis"}
               </div>
             </div>
           </div>
@@ -72,47 +86,15 @@ export function HomePage() {
 
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div className="card" style={{ flex: 1 }}>
-            <div className="card-hdr">Resumo do plano</div>
-            <div className="aitem">
-              <div className="dot dw" />
-              <div>
-                <div className="aitem-name">Reestruturação jun/26</div>
-                <div className="aitem-det">Custo R$14.698 · ganho +R$692/mês · recupera mai/2028</div>
-              </div>
+            <div className="card-hdr">
+              {profileId === "familiar" ? "Resumo familiar ✦" : `Resumo — ${firstName} ✦`}
             </div>
-            <div className="aitem">
-              <div className="dot dg" />
-              <div>
-                <div className="aitem-name">Taxa média subiu de 11,81% → 14,86%</div>
-                <div className="aitem-det">+3,05%/ano · R$285/mês vem das debêntures novas</div>
-              </div>
-            </div>
-            <div className="aitem">
-              <div className="dot dg" />
-              <div>
-                <div className="aitem-name">4 blocos intocáveis</div>
-                <div className="aitem-det">J&F · Jalles · LCAs · NTN-B 2050 — não tocar antes de mai/2028</div>
-              </div>
-            </div>
-          </div>
-          <div className="card">
-            <div className="card-hdr">Progresso do breakeven</div>
-            {[
-              { l: "hoje (~1 mês)", r: "5%", w: 5, cls: "blue" as const },
-              { l: "dez/2026 (6 m)", r: "28%", w: 28 },
-              { l: "jun/2027 (12 m)", r: "57%", w: 57 },
-              { l: "mai/2028 — meta ✓", r: "100%", w: 100, done: true },
-            ].map((p) => (
-              <div className="prog" key={p.l}>
-                <div className="prog-hdr">
-                  <span>{p.l}</span>
-                  <span className={p.done ? "good" : p.cls}>{p.r}</span>
-                </div>
-                <div className="prog-bar">
-                  <div
-                    className="prog-fill"
-                    style={{ width: `${p.w}%`, ...(p.done ? { background: "var(--success)" } : {}) }}
-                  />
+            {u.resumo.map((r) => (
+              <div className="aitem" key={r.nome}>
+                <div className={"dot d" + r.dot} />
+                <div>
+                  <div className="aitem-name">{r.nome}</div>
+                  <div className="aitem-det">{r.det}</div>
                 </div>
               </div>
             ))}
@@ -122,39 +104,32 @@ export function HomePage() {
 
       <div className="g2">
         <div className="card">
-          <div className="card-hdr">Alertas recentes</div>
-          {[
-            { d: "dr", n: "NTN-B AGO/2026 — vence em 45 dias", t: "R$96.511 liberam em 15/08. Decidir destino AGORA para não ficar parado em conta." },
-            { d: "dw", n: "LCD BRDE — confirmar taxa na XP", t: "R$57.618 investidos em 29/06 não apareceram na posição. Checar." },
-            { d: "dw", n: "BPAC11 — -37,27% sobre preço médio", t: "Revisar tese de investimento ou definir stop loss." },
-            { d: "dg", n: "Come-cotas XPAG11 em nov/2026", t: "Verificar se ainda compensa vs LCA direta antes de novembro." },
-          ].map((a) => (
-            <div className="aitem" key={a.n}>
-              <div className={"dot " + a.d} />
+          <div className="card-hdr">
+            {profileId === "familiar" ? "Alertas recentes — família" : `Alertas recentes — ${firstName}`}
+          </div>
+          {u.alertas_list.slice(0, 4).map((a) => (
+            <div className="aitem" key={a.titulo}>
+              <div className={"dot d" + a.cor} />
               <div>
-                <div className="aitem-name">{a.n}</div>
-                <div className="aitem-det">{a.t}</div>
+                <div className="aitem-name">{a.titulo}</div>
+                <div className="aitem-det">{a.det}</div>
               </div>
             </div>
           ))}
         </div>
 
         <div className="card">
-          <div className="card-hdr">Próximos vencimentos</div>
-          {[
-            { i: "🔴", bg: "var(--danger-bg)", n: "NTN-B AGO/2026", d: "R$96.511 · 15/08/2026 · 45 dias", b: "sb-r", bl: "urgente" },
-            { i: "🔒", bg: "rgba(79,142,247,.1)", n: "DEB J&F FEV/2028", d: "R$94.830 · 21/02/2028 · 15,15% isento", b: "sb-a", bl: "intocável" },
-            { i: "🔒", bg: "rgba(79,142,247,.1)", n: "LCA ORIGINAL DEZ/2028", d: "R$26.700 · 18/12/2028 · 92,5% CDI", b: "sb-a", bl: "intocável" },
-            { i: "🔒", bg: "rgba(79,142,247,.1)", n: "LCAs SICOOB 2030 (×4)", d: "R$105.474 · mar–mai/2030 · 92% CDI", b: "sb-a", bl: "intocável" },
-            { i: "📅", bg: "var(--success-bg)", n: "DEB JALLES DEZ/2031", d: "R$70.642 · 15/12/2031 · IPCA+8,5%", b: "sb-a", bl: "intocável" },
-          ].map((v) => (
-            <div className="vitem" key={v.n}>
-              <div className="vitem-icon" style={{ background: v.bg }}>{v.i}</div>
+          <div className="card-hdr">
+            {profileId === "familiar" ? "Próximos vencimentos — família 📅" : "Próximos vencimentos 📅"}
+          </div>
+          {u.vencimentos.map((v) => (
+            <div className="vitem" key={v.nome}>
+              <div className="vitem-icon" style={{ background: v.bg }}>{v.icon}</div>
               <div style={{ flex: 1 }}>
-                <div className="vitem-name">{v.n}</div>
-                <div className="vitem-det">{v.d}</div>
+                <div className="vitem-name">{v.nome}</div>
+                <div className="vitem-det">{v.det}</div>
               </div>
-              <span className={"sb " + v.b}>{v.bl}</span>
+              <span className={"sb " + v.bc}>{v.badge}</span>
             </div>
           ))}
         </div>
@@ -163,28 +138,22 @@ export function HomePage() {
   );
 }
 
-function DonutSvg() {
-  const segs = [
-    { v: 20, c: "#C47E3A" },
-    { v: 34, c: "#4A7C59" },
-    { v: 13, c: "#8B7355" },
-    { v: 16, c: "#f59e0b" },
-    { v: 17, c: "#A89880" },
-  ];
+function DonutSvg({ data, colors }: { data: number[]; colors: string[] }) {
+  const total = data.reduce((s, v) => s + v, 0) || 1;
   const R = 60;
   const C = 2 * Math.PI * R;
   let offset = 0;
   return (
     <svg viewBox="0 0 160 160" style={{ width: "100%", height: "100%" }}>
       <g transform="translate(80 80) rotate(-90)">
-        {segs.map((s, i) => {
-          const len = (s.v / 100) * C;
+        {data.map((v, i) => {
+          const len = (v / total) * C;
           const el = (
             <circle
               key={i}
               r={R}
               fill="none"
-              stroke={s.c}
+              stroke={colors[i]}
               strokeWidth={22}
               strokeDasharray={`${len} ${C - len}`}
               strokeDashoffset={-offset}

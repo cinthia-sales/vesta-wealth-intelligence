@@ -357,8 +357,8 @@ export function VestaShell({
 
         <div className="content">
           <div className="page on">
-            {page === "home" && <HomePage />}
-            {page === "posicao" && <PosicaoPage />}
+            {page === "home" && <HomePage profileId={profileId} />}
+            {page === "posicao" && <PosicaoPage profileId={profileId} />}
             {page === "breakeven" && <BreakevenPage />}
             {page === "equiv" && <EquivPage />}
             {page === "validador" && <ValidadorPage />}
