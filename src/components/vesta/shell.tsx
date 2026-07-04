@@ -1,5 +1,8 @@
 import { type ReactElement, type ReactNode, useState } from "react";
 
+import { HomePage } from "@/components/vesta/pages/home";
+import { PosicaoPage } from "@/components/vesta/pages/posicao";
+
 import type { ProfileId } from "@/lib/profile-derive";
 
 /* ============================================================
@@ -350,7 +353,17 @@ export function VestaShell({
         </div>
 
         <div className="content">
-          <div className="page on">{children}</div>
+          <div className="page on">
+            {page === "home" && <HomePage />}
+            {page === "posicao" && <PosicaoPage />}
+            {page !== "home" && page !== "posicao" && (
+              <div className="ph">
+                <h1>Em breve</h1>
+                <p>Este módulo será migrado nas próximas rodadas.</p>
+              </div>
+            )}
+            {children}
+          </div>
         </div>
       </div>
     </div>
