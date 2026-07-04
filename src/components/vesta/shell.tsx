@@ -155,6 +155,8 @@ type PageKey =
   | "equiv"
   | "validador"
   | "breakeven"
+  | "projecao"
+  | "secundario"
   | "regras"
   | "upload"
   | "drivers"
