@@ -17,10 +17,9 @@ import {
   ArrowRight,
   LogOut,
   Check,
-  Calculator,
-  ShieldCheck,
   TrendingUp,
 } from "lucide-react";
+
 
 import { formatBRL } from "@/data/profiles";
 import { getProfileView, type ProfileId } from "@/lib/profile-derive";
