@@ -1,24 +1,25 @@
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
-  /* Vesta — chama sagrada, guardiã do patrimônio */
-  --sidebar:#3A1E1E;              /* garnet — vinho escuro, lareira */
-  --sidebar-hover:rgba(255,255,255,.055);
-  --sidebar-active:rgba(212,175,55,.18);
-  --sidebar-text:rgba(255,255,255,.50);
+  /* Vesta — vinho vivo, guardiã do patrimônio */
+  --sidebar:#2A0F14;              /* vinho quase preto */
+  --sidebar-hover:rgba(255,255,255,.06);
+  --sidebar-active:rgba(197,42,71,.22);
+  --sidebar-text:rgba(255,255,255,.55);
   --sidebar-active-text:#fff;
-  --bg:#F8F4EE;                   /* pergaminho quente */
-  --card:#FDFBF8;                 /* creme */
-  --border:#E8DDD0;               /* parchment */
-  --text:#1C1517;                 /* quase-preto quente */
-  --muted:#9A8A80;                /* taupe suave */
-  --accent:#C4952A;               /* ouro sagrado — chama Vesta */
-  --success:#5B8A6A;              /* verde sálvia suave */
-  --danger:#A85555;               /* vermelho terracota, não alarme */
-  --warning:#B8892A;              /* ouro âmbar */
-  --success-bg:#F0F6F2;
-  --danger-bg:#FAF1F1;
-  --warning-bg:#FDF8EA;
-  --accent-bg:rgba(196,149,42,.10);
+  --bg:#F7F3F1;                   /* rosé pálido */
+  --card:#FFFFFF;
+  --border:#EADFDF;               /* rosa acinzentado */
+  --text:#1A0F12;                 /* vinho quase preto */
+  --muted:#8A7A7E;                /* taupe rosado */
+  --accent:#A11D3E;               /* vinho vivo */
+  --accent-hover:#7A1530;
+  --success:#4E7A5C;              /* verde sálvia */
+  --danger:#C0392B;               /* vermelho vivo */
+  --warning:#D97706;              /* âmbar quente */
+  --success-bg:#EEF5F0;
+  --danger-bg:#FBEFEC;
+  --warning-bg:#FEF3E6;
+  --accent-bg:rgba(161,29,62,.09);
   --radius:10px;
   --font-display:'Palatino Linotype','Palatino','Book Antiqua',Palatino,serif;
   --font-elegant:Georgia,'Times New Roman',serif;
