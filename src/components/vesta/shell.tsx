@@ -32,66 +32,131 @@ const PROFILE_CARDS: {
   id: ProfileId;
   title: string;
   subtitle: string;
-  symbol: "rose" | "copper" | "gold";
+  symbol: "temple" | "amphora" | "wheat";
 }[] = [
-  { id: "cinthia", title: "Cinthia", subtitle: "Visão individual", symbol: "rose" },
-  { id: "paulo", title: "Paulo", subtitle: "Visão individual", symbol: "copper" },
-  { id: "familiar", title: "Família", subtitle: "Visão consolidada", symbol: "gold" },
+  { id: "familiar", title: "Família", subtitle: "Visão consolidada", symbol: "temple" },
+  { id: "paulo", title: "Paulo", subtitle: "Visão individual", symbol: "amphora" },
+  { id: "cinthia", title: "Cinthia", subtitle: "Visão individual", symbol: "wheat" },
 ];
+
+function TopSymbolPillar({
+  icon,
+  label,
+  hint,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  hint: string;
+}) {
+  return (
+    <button
+      title={hint}
+      className="group flex flex-col items-center gap-1.5 px-2 text-[var(--color-vesta-copper)] transition-colors hover:text-[var(--color-vesta-night)]"
+    >
+      <div className="opacity-80 transition-opacity group-hover:opacity-100">{icon}</div>
+      <span className="text-[9px] uppercase tracking-[0.28em] text-[var(--color-vesta-petrol)]/75 group-hover:text-[var(--color-vesta-night)]">
+        {label}
+      </span>
+    </button>
+  );
+}
 
 export function ProfileSelector({ onSelect }: { onSelect: (id: ProfileId) => void }) {
   return (
-    <div className="min-h-screen w-full bg-[var(--color-vesta-sand)] text-foreground">
-      <div className="mx-auto flex min-h-screen max-w-5xl flex-col items-center justify-center px-6 py-16">
-        <div className="relative mb-10 flex flex-col items-center text-center">
-          <Goddess className="pointer-events-none absolute -top-10 left-1/2 h-48 w-48 -translate-x-1/2 text-[var(--color-vesta-copper)] opacity-[0.09]" />
-          <p className="text-[10px] uppercase tracking-[0.4em] text-[var(--color-vesta-copper)]">
+    <div className="relative min-h-screen w-full overflow-hidden bg-[var(--color-vesta-sand)] text-foreground">
+      {/* Deusa Vesta — canto superior esquerdo, saindo da tela */}
+      <Goddess className="pointer-events-none absolute -left-24 -top-10 h-[520px] w-[520px] text-[var(--color-vesta-copper)] opacity-[0.06]" />
+      {/* Ramos laterais */}
+      <Branch className="pointer-events-none absolute -right-16 top-16 h-[520px] w-[220px] text-[var(--color-vesta-copper)] opacity-[0.08]" />
+      <Branch className="pointer-events-none absolute -left-24 bottom-0 h-[380px] w-[180px] rotate-[8deg] text-[var(--color-vesta-copper)] opacity-[0.05]" />
+
+      {/* Header: VESTA centralizado + símbolos à direita */}
+      <header className="relative mx-auto flex max-w-6xl items-start justify-between px-8 pt-10">
+        <div className="w-40" />
+        <div className="flex flex-col items-center text-center">
+          <Flame className="h-8 w-8 text-[var(--color-vesta-copper)] opacity-90" />
+          <p className="mt-1 text-[10px] uppercase tracking-[0.42em] text-[var(--color-vesta-copper)]">
             Guardiã do Patrimônio
           </p>
-          <h1 className="mt-3 font-serif text-6xl tracking-[0.18em] text-[var(--color-vesta-night)]">
+          <h1 className="mt-2 font-serif text-[64px] leading-none tracking-[0.22em] text-[var(--color-vesta-night)]">
             VESTA
           </h1>
-          <Divider className="mt-4 h-3 w-40 text-[var(--color-vesta-copper)] opacity-70" />
-          <p className="mt-4 max-w-md font-serif italic text-[var(--color-vesta-petrol)]">
+          <Divider className="mt-4 h-3 w-48 text-[var(--color-vesta-copper)] opacity-70" />
+          <p className="mt-3 max-w-md font-serif italic text-[var(--color-vesta-petrol)]">
             Lar, proteção, estratégia e prosperidade em harmonia.
           </p>
         </div>
+        <div className="hidden w-40 items-start justify-end gap-4 pt-2 md:flex">
+          <TopSymbolPillar
+            icon={<Temple className="h-9 w-9" />}
+            label="Estratégia"
+            hint="Estratégia · Simuladores"
+          />
+          <TopSymbolPillar
+            icon={<Shield className="h-9 w-8" />}
+            label="Proteção"
+            hint="Proteção · Alertas e riscos"
+          />
+          <TopSymbolPillar
+            icon={<Wheat className="h-9 w-5" />}
+            label="Prosperidade"
+            hint="Prosperidade · Metas e crescimento"
+          />
+        </div>
+      </header>
 
-        <p className="mb-6 text-xs uppercase tracking-[0.3em] text-muted-foreground">
+      <div className="relative mx-auto max-w-6xl px-8 pb-16 pt-14">
+        <p className="mb-8 text-center text-[11px] uppercase tracking-[0.42em] text-[var(--color-vesta-copper)]">
           Selecione um perfil
         </p>
 
-        <div className="grid w-full grid-cols-1 gap-6 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           {PROFILE_CARDS.map((c) => (
             <button
               key={c.id}
               onClick={() => onSelect(c.id)}
-              className="group relative overflow-hidden rounded-2xl border border-[var(--color-vesta-copper)]/25 bg-card px-6 py-8 text-left shadow-[0_1px_0_rgba(31,58,82,0.05),0_20px_40px_-30px_rgba(31,58,82,0.35)] transition-all hover:-translate-y-0.5 hover:border-[var(--color-vesta-copper)]/50 hover:shadow-[0_1px_0_rgba(31,58,82,0.06),0_30px_50px_-30px_rgba(31,58,82,0.45)]"
+              className="group relative overflow-hidden rounded-[18px] border border-[var(--color-vesta-copper)]/25 bg-[var(--color-vesta-ivory)] px-7 py-8 text-left shadow-[0_8px_24px_rgba(31,58,82,0.06)] transition-all hover:-translate-y-0.5 hover:border-[var(--color-vesta-copper)]/60 hover:shadow-[0_16px_36px_rgba(31,58,82,0.12)]"
             >
-              <div className="absolute -right-4 -bottom-4 opacity-[0.08] transition-opacity group-hover:opacity-[0.14]">
-                {c.symbol === "rose" && <Amphora className="h-40 w-28 text-[var(--color-vesta-rose-burnt)]" />}
-                {c.symbol === "copper" && <Temple className="h-40 w-40 text-[var(--color-vesta-copper)]" />}
-                {c.symbol === "gold" && <Wheat className="h-40 w-20 text-[var(--color-vesta-gold)]" />}
-              </div>
-              <p className="text-[10px] uppercase tracking-[0.3em] text-[var(--color-vesta-copper)]">
+              <p className="text-[10px] uppercase tracking-[0.32em] text-[var(--color-vesta-copper)]">
                 Perfil
               </p>
-              <h2 className="mt-2 font-serif text-3xl text-[var(--color-vesta-night)]">{c.title}</h2>
-              <p className="mt-1 text-sm text-muted-foreground">{c.subtitle}</p>
-              <div className="mt-8 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.2em] text-[var(--color-vesta-petrol)]">
-                Entrar <ArrowRight className="h-3.5 w-3.5" />
+              <h2 className="mt-3 font-serif text-[38px] leading-none text-[var(--color-vesta-night)]">
+                {c.title}
+              </h2>
+              <p className="mt-2 text-[13px] text-[var(--color-vesta-petrol)]/80">{c.subtitle}</p>
+
+              <div className="pointer-events-none absolute right-4 bottom-16 opacity-70 transition-opacity group-hover:opacity-95">
+                {c.symbol === "temple" && (
+                  <Temple className="h-24 w-28 text-[var(--color-vesta-copper)]" />
+                )}
+                {c.symbol === "amphora" && (
+                  <Amphora className="h-28 w-20 text-[var(--color-vesta-copper)]" />
+                )}
+                {c.symbol === "wheat" && (
+                  <Wheat className="h-28 w-14 text-[var(--color-vesta-copper)]" />
+                )}
+              </div>
+
+              <div className="relative z-10 mt-24 flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.28em] text-[var(--color-vesta-copper)]">
+                Entrar
+                <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
               </div>
             </button>
           ))}
         </div>
 
-        <p className="mt-12 max-w-md text-center font-serif italic text-sm text-muted-foreground">
-          "Cuidar do lar é cuidar do futuro. Cuidar do patrimônio é cuidar de todos que amamos."
-        </p>
+        {/* Rodapé: frase pequena, elegante, com divisor cobre — sem vela chamativa */}
+        <div className="mx-auto mt-16 flex max-w-2xl flex-col items-center text-center">
+          <Divider className="h-2 w-40 text-[var(--color-vesta-copper)] opacity-60" />
+          <p className="mt-4 font-serif text-[13px] italic leading-relaxed text-[var(--color-vesta-petrol)]/80">
+            "Cuidar do lar é cuidar do futuro. Cuidar do patrimônio é cuidar de todos que amamos."
+          </p>
+        </div>
       </div>
     </div>
   );
 }
+
 
 // ─── Sidebar ─────────────────────────────────────────────────────────────
 
