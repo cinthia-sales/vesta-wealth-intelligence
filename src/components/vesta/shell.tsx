@@ -169,7 +169,7 @@ type PageKey =
 
 const PROFILE_META: Record<ProfileId, { name: string; sub: string; avatarBg: string; avatarColor: string; content: ReactNode }> = {
   familiar: {
-    name: "Familiar",
+    name: "FAMILIAR - DOMUS",
     sub: "Todas as carteiras",
     avatarBg: "rgba(161,29,62,.10)",
     avatarColor: "var(--accent)",
@@ -226,7 +226,7 @@ export function VestaShell({
           <div className="logo-icon" style={{ fontSize: 18 }}>✦</div>
           <div>
             <div className="logo-name">Vesta</div>
-            <div className="logo-sub">Gestão patrimonial familiar</div>
+            <div className="logo-sub">Sitema de Gestão Patrimonial Familiar</div>
           </div>
         </div>
 
