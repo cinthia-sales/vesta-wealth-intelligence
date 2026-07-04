@@ -338,9 +338,10 @@ function Sidebar({
 function TopBanner() {
   return (
     <div className="relative overflow-hidden border-b border-[var(--color-vesta-copper)]/20 bg-[color-mix(in_oklab,var(--color-vesta-sand)_92%,var(--color-vesta-copper)_8%)]">
-      <Goddess className="pointer-events-none absolute -left-4 top-1 h-40 w-40 text-[var(--color-vesta-copper)] opacity-[0.09]" />
-      <div className="relative mx-auto flex max-w-7xl items-center justify-between px-8 py-5">
-        <div className="w-40" />
+      <Goddess className="pointer-events-none absolute -left-12 -top-4 h-56 w-56 text-[var(--color-vesta-copper)] opacity-[0.07]" />
+      <Branch className="pointer-events-none absolute -right-6 -top-2 h-40 w-24 text-[var(--color-vesta-copper)] opacity-[0.06]" />
+      <div className="relative mx-auto flex max-w-7xl items-center justify-between px-8 py-6">
+        <div className="w-56" />
         <div className="flex flex-col items-center text-center">
           <h1 className="font-serif text-3xl tracking-[0.28em] text-[var(--color-vesta-night)]">
             VESTA
@@ -353,21 +354,26 @@ function TopBanner() {
             Lar, proteção, estratégia e prosperidade em harmonia.
           </p>
         </div>
-        <div className="hidden w-40 items-start justify-end gap-6 md:flex">
-          <Pillar icon={<Temple className="h-8 w-8" />} label="Estratégia" />
-          <Pillar icon={<Wheat className="h-8 w-8" />} label="Prosperidade" />
+        <div className="hidden w-56 items-start justify-end gap-5 md:flex">
+          <Pillar icon={<Temple className="h-8 w-9" />} label="Estratégia" title="Estratégia · Simuladores" />
+          <Pillar icon={<Shield className="h-8 w-7" />} label="Proteção" title="Proteção · Alertas e riscos" />
+          <Pillar icon={<Wheat className="h-8 w-5" />} label="Prosperidade" title="Prosperidade · Metas" />
         </div>
       </div>
     </div>
   );
 }
 
-function Pillar({ icon, label }: { icon: React.ReactNode; label: string }) {
+function Pillar({ icon, label, title }: { icon: React.ReactNode; label: string; title?: string }) {
   return (
-    <div className="flex flex-col items-center gap-1 text-[var(--color-vesta-copper)]">
-      <div className="opacity-80">{icon}</div>
-      <span className="text-[9px] uppercase tracking-[0.3em] text-[var(--color-vesta-petrol)]/80">
+    <button
+      title={title}
+      className="group flex flex-col items-center gap-1 text-[var(--color-vesta-copper)] transition-colors hover:text-[var(--color-vesta-night)]"
+    >
+      <div className="opacity-80 transition-opacity group-hover:opacity-100">{icon}</div>
+      <span className="text-[9px] uppercase tracking-[0.3em] text-[var(--color-vesta-petrol)]/80 group-hover:text-[var(--color-vesta-night)]">
         {label}
+
       </span>
     </div>
   );
