@@ -1,0 +1,3120 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vesta — Gestão Familiar</title>
+<script>
+/* ════════════════════════════════════
+   DADOS AO VIVO via Claude API (sem CORS)
+════════════════════════════════════ */
+
+// Posições RF: val=valor aplicado, taxa=% CDI ou spread, tipo=cdi/pre/ipca
+const RF_POS = {
+  paulo: [
+    {val:37531,  taxa:0.92,   tipo:'cdi',  du:new Date(2026,5,16)},
+    {val:28225,  taxa:0.92,   tipo:'cdi',  du:new Date(2026,5,16)},
+    {val:26635,  taxa:0.925,  tipo:'cdi',  du:new Date(2026,5,25)},
+    {val:22361,  taxa:0.92,   tipo:'cdi',  du:new Date(2026,5,16)},
+    {val:16744,  taxa:0.92,   tipo:'cdi',  du:new Date(2026,5,16)},
+    {val:10392,  taxa:0.94,   tipo:'cdi',  du:new Date(2026,5,25)},
+    {val:94620,  taxa:0.1515, tipo:'pre',  du:new Date(2026,5,26)},
+    {val:70508,  taxa:0.085,  tipo:'ipca', du:new Date(2026,5,26)},
+    {val:95277,  taxa:0.0945, tipo:'ipca', du:new Date(2026,5,1)},
+    {val:61373,  taxa:0.92,   tipo:'cdi',  du:new Date(2026,5,1)},
+    {val:57646,  taxa:0, tipo:'fixo', fixo:57646, du:new Date(2026,5,29)}, // LCD BRDE valor fixo
+  ],
+  cinthia: [
+    {val:222000, taxa:0.89,  tipo:'cdi',  du:new Date(2026,4,13)},
+    {val:106833, taxa:0.925, tipo:'cdi',  du:new Date(2026,5,25)},
+    {val:86186,  taxa:0.92,  tipo:'cdi',  du:new Date(2026,5,25)},
+    {val:19533,  taxa:0.92,  tipo:'cdi',  du:new Date(2026,5,26)},
+  ],
+};
+
+const RV_FIXO = { paulo:116399, cinthia:0 };
+const NTN_FIXO = { paulo:35524+15405, cinthia:0 }; // mercado, não projeta
+
+let upd = { cdi:0.1475, ipca:0.055, stocks:{}, ts:null, ok:false };
+
+function duBetween(a, b) {
+  let n=0, d=new Date(a);
+  while(d<b){const w=d.getDay();if(w&&w!==6)n++;d.setDate(d.getDate()+1);}
+  return n;
+}
+
+function projetar(pos, cdi, ipca) {
+  if(pos.tipo==='fixo') return pos.fixo;
+  const n = duBetween(pos.du, new Date());
+  if(n<=0) return pos.val;
+  let f;
+  if(pos.tipo==='cdi')  f = Math.pow(1 + cdi*pos.taxa, n/252);
+  else if(pos.tipo==='pre')  f = Math.pow(1 + pos.taxa, n/252);
+  else /* ipca */            f = Math.pow(1+ipca, n/252)*Math.pow(1+pos.taxa, n/252);
+  return pos.val * f;
+}
+
+function calcPatrimonio(user) {
+  if(user === 'familiar') return calcPatrimonio('cinthia') + calcPatrimonio('paulo');
+  const cdi=upd.cdi, ipca=upd.ipca;
+  const pos = RF_POS[user]||[];
+  let rf = pos.reduce((s,p)=>s+projetar(p,cdi,ipca), 0);
+  rf += NTN_FIXO[user]||0;
+  
+  // RV: usa preços ao vivo se disponível, senão valor fixo
+  let rv = 0;
+  const QTDS = {PSSA3:544, ITSA4:1576, BPAC11:342, ITUB4:70};
+  const VFIXO = {LFTB11:20301, TGRE11:44155, GOLD11:3976};
+  if(Object.keys(upd.stocks).length>0) {
+    Object.entries(QTDS).forEach(([t,q])=>{
+      if(upd.stocks[t]) rv += upd.stocks[t]*q;
+    });
+    Object.entries(VFIXO).forEach(([t,v])=>{ rv += v; });
+  } else {
+    rv = RV_FIXO[user]||0;
+  }
+  return Math.round(rf+rv);
+}
+
+function aplicarDados() { try{
+  const user = currentUser||'paulo';
+  const total = calcPatrimonio(user);
+  
+  // KPIs
+  const k = document.querySelectorAll('.kpi-v');
+  if(k[0] && total>400000) {
+    k[0].textContent = fmtRK(total);
+    const card = k[0].closest('.kpi');
+    if(card){
+      let b=card.querySelector('.proj-badge');
+      if(!b){b=document.createElement('div');b.className='proj-badge';k[0].after(b);}
+      b.className='proj-badge'+(upd.ok?' live':'');
+      b.textContent=upd.ok?'ao vivo · projetado':'projetado · offline';
+    }
+  }
+
+  // Update bar
+  const fmt = v=>(v*100).toFixed(2)+'%';
+  const setT = (id,t)=>{const e=document.getElementById(id);if(e)e.textContent=t;};
+  setT('upd-cdi', fmt(upd.cdi));
+  setT('upd-ipca', fmt(upd.ipca));
+  setT('upd-val', fmtRK(total));
+  const dot=document.getElementById('upd-dot');
+  if(dot) dot.className='upd-dot'+(upd.ok?'':' off');
+  if(upd.ts){
+    const h=upd.ts.getHours().toString().padStart(2,'0');
+    const m=upd.ts.getMinutes().toString().padStart(2,'0');
+    setT('upd-ts', 'atualizado '+h+':'+m);
+  }
+
+  // Sliders cenário
+  ['sc-cdi','sl-cdi2'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=(upd.cdi*100).toFixed(2);});
+  ['sc-ipca','sl-ipca2'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=(upd.ipca*100).toFixed(2);});
+  try{if(typeof updDrivers==='function')updDrivers();}catch(_){}
+  try{if(typeof updEquiv2==='function')updEquiv2();}catch(_){}
+}catch(_){} }
+
+function updLive() {
+  // Abre modal para entrada manual de CDI e IPCA
+  const cdiAtual = (upd.cdi*100).toFixed(2);
+  const ipcaAtual = (upd.ipca*100).toFixed(2);
+  const novoCDI = prompt('CDI atual (% ao ano):\nFonte: bcb.gov.br → Selic', cdiAtual);
+  if(novoCDI===null) return;
+  const novoIPCA = prompt('IPCA acumulado 12m (% ao ano):\nFonte: bcb.gov.br → IPCA', ipcaAtual);
+  if(novoIPCA===null) return;
+  const cdi = parseFloat(novoCDI.replace(',','.'))/100;
+  const ipca = parseFloat(novoIPCA.replace(',','.'))/100;
+  if(isNaN(cdi)||isNaN(ipca)||cdi<=0||ipca<=0) { alert('Valores inválidos.'); return; }
+  upd.cdi = cdi;
+  upd.ipca = ipca;
+  upd.ok = true;
+  upd.ts = new Date();
+  aplicarDados();
+}
+
+// Calcula projeção offline (sem fetch) ao selecionar perfil
+function initProjecao() { try{ upd.ok=false; upd.ts=null; aplicarDados(); }catch(_){} }
+
+</script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  /* Vesta — chama sagrada, guardiã do patrimônio */
+  --sidebar:#3A1E1E;              /* garnet — vinho escuro, lareira */
+  --sidebar-hover:rgba(255,255,255,.055);
+  --sidebar-active:rgba(212,175,55,.18);
+  --sidebar-text:rgba(255,255,255,.50);
+  --sidebar-active-text:#fff;
+  --bg:#F8F4EE;                   /* pergaminho quente */
+  --card:#FDFBF8;                 /* creme */
+  --border:#E8DDD0;               /* parchment */
+  --text:#1C1517;                 /* quase-preto quente */
+  --muted:#9A8A80;                /* taupe suave */
+  --accent:#C4952A;               /* ouro sagrado — chama Vesta */
+  --success:#5B8A6A;              /* verde sálvia suave */
+  --danger:#A85555;               /* vermelho terracota, não alarme */
+  --warning:#B8892A;              /* ouro âmbar */
+  --success-bg:#F0F6F2;
+  --danger-bg:#FAF1F1;
+  --warning-bg:#FDF8EA;
+  --accent-bg:rgba(196,149,42,.10);
+  --radius:10px;
+  --font-display:'Palatino Linotype','Palatino','Book Antiqua',Palatino,serif;
+  --font-elegant:Georgia,'Times New Roman',serif;
+  --font-body:'Inter',system-ui,sans-serif;
+}
+html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;color:var(--text);background:var(--bg)}
+.app{display:flex;height:100vh;overflow:hidden}
+
+/* ── SIDEBAR ── */
+.sidebar{width:228px;flex-shrink:0;background:var(--sidebar);display:flex;flex-direction:column;overflow-y:auto}
+.logo{padding:22px 18px 18px;display:flex;align-items:center;gap:11px;border-bottom:1px solid rgba(196,149,42,.15)}
+.logo-icon{width:36px;height:36px;background:rgba(196,149,42,.20);border-radius:10px;border:1px solid rgba(196,149,42,.30);display:flex;align-items:center;justify-content:center;color:#fff;font-size:17px;font-weight:700;flex-shrink:0}
+.logo-name{color:#fff;font-weight:500;font-size:15px;font-family:var(--font-display);letter-spacing:.12em;text-transform:uppercase}
+.logo-sub{color:rgba(255,255,255,.32);font-size:10px;margin-top:3px;letter-spacing:.04em}
+.nav{padding:14px 10px;flex:1}
+.nav-sec{font-size:9px;color:rgba(255,255,255,.25);text-transform:uppercase;letter-spacing:.14em;padding:14px 10px 5px;font-family:var(--font-display)}
+.nav-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;cursor:pointer;color:var(--sidebar-text);font-size:12px;letter-spacing:.01em;margin-bottom:1px;transition:background .14s,color .14s;user-select:none}
+.nav-item:hover{background:var(--sidebar-hover);color:rgba(255,255,255,.85)}
+.nav-item.on{background:var(--sidebar-active);color:rgba(255,255,255,.95);font-weight:500}
+.nav-item svg{width:17px;height:17px;flex-shrink:0;opacity:.8}
+.nav-item.on svg{opacity:1}
+.sidebar-foot{padding:12px 10px;border-top:1px solid rgba(196,149,42,.12)}
+
+/* ── MAIN ── */
+.main{flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden}
+.topbar{background:var(--card);border-bottom:1px solid var(--border);padding:13px 28px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.topbar-title{font-size:16px;font-weight:400;font-family:var(--font-elegant);letter-spacing:.02em}
+.topbar-sub{font-size:12px;color:var(--muted);margin-top:1px}
+.badge-alert{background:var(--danger-bg);color:var(--danger);font-size:10px;padding:4px 11px;border-radius:20px;font-weight:500;letter-spacing:.03em;display:flex;align-items:center;gap:5px}
+
+.content{flex:1;overflow-y:auto;padding:26px 30px}
+.page{display:none}.page.on{display:block}
+
+/* ── PAGE HEADER ── */
+.ph{margin-bottom:22px}
+.ph h1{font-size:26px;font-weight:400;font-family:var(--font-elegant);letter-spacing:.01em;margin-bottom:3px}
+.ph p{font-size:13px;color:var(--muted)}
+
+/* ── KPI ROW ── */
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px}
+.kpi-l{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-family:var(--font-display);margin-bottom:5px;display:flex;align-items:center;justify-content:space-between}
+.kpi-v{font-size:24px;font-weight:400;font-family:var(--font-elegant);font-variant-numeric:tabular-nums;margin-bottom:3px}
+.kpi-s{font-size:12px;color:var(--muted)}
+.good{color:var(--success)}.bad{color:var(--danger)}.warn{color:var(--warning)}.blue{color:var(--accent)}
+
+/* ── LAYOUT GRIDS ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.g32{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:14px}
+
+/* ── CARD ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px}
+.card-hdr{font-size:15px;font-weight:400;font-family:var(--font-elegant);margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;color:var(--text);letter-spacing:.01em}
+.card-hdr span{font-size:12px;color:var(--muted);font-weight:400}
+
+/* ── DOTS/ALERTS ── */
+.aitem{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)}
+.aitem:last-child{border:none;padding-bottom:0}
+.dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.dr{background:var(--danger)}.dw{background:var(--warning)}.dg{background:var(--success)}
+.aitem-name{font-size:13px;font-weight:500;margin-bottom:2px}
+.aitem-det{font-size:12px;color:var(--muted);line-height:1.4}
+
+/* ── STATUS BADGE ── */
+.sb{font-size:10px;padding:2px 7px;border-radius:10px;font-weight:600;white-space:nowrap}
+.sb-r{background:var(--danger-bg);color:var(--danger)}
+.sb-w{background:var(--warning-bg);color:var(--warning)}
+.sb-a{background:rgba(79,142,247,.1);color:var(--accent)}
+.sb-g{background:var(--success-bg);color:var(--success)}
+.sb-n{background:#f3f4f6;color:#374151}
+
+/* ── DONUT ── */
+.donut-wrap{position:relative;width:100%;height:170px}
+.donut-ctr{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none}
+.donut-val{font-size:20px;font-weight:400;font-family:var(--font-elegant)}
+.donut-lbl{font-size:10px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;font-family:var(--font-display)}
+
+/* ── LEGEND ── */
+.legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.leg{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted)}
+.leg-sq{width:9px;height:9px;border-radius:2px;flex-shrink:0}
+
+/* ── PROGRESS ── */
+.prog{margin-bottom:11px}
+.prog-hdr{display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px}
+.prog-bar{height:6px;background:var(--border);border-radius:3px;overflow:hidden}
+.prog-fill{height:100%;border-radius:3px;background:var(--accent);transition:width .6s ease}
+
+/* ── FILTER ROW ── */
+.filter-row{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.fbtn{font-size:11px;padding:4px 14px;border:1px solid var(--border);border-radius:20px;letter-spacing:.03em;background:none;cursor:pointer;color:var(--muted);transition:all .12s}
+.fbtn:hover{border-color:var(--accent);color:var(--accent)}
+.fbtn.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+/* ── TABLE ── */
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.09em;font-family:var(--font-display);padding:0 10px 8px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
+.tbl th.r,.tbl td.r{text-align:right}
+.tbl td{padding:9px 10px;border-bottom:1px solid var(--border);white-space:nowrap}
+.tbl tr:last-child td{border:none}
+.tbl tr:hover td{background:rgba(79,142,247,.025)}
+
+/* ── VENCIMENTO ITEMS ── */
+.vitem{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
+.vitem:last-child{border:none}
+.vitem-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.vitem-name{font-size:13px;font-weight:500;margin-bottom:1px}
+.vitem-det{font-size:11px;color:var(--muted)}
+
+/* ── ALERT CARD FULL ── */
+.alert-full{border-radius:var(--radius);border:1px solid var(--border);padding:16px 20px;margin-bottom:12px;background:var(--card)}
+.alert-full.r{border-left:3px solid var(--danger)}
+.alert-full.w{border-left:3px solid var(--warning)}
+.alert-full.g{border-left:3px solid var(--success)}
+.alert-full-hdr{display:flex;align-items:center;gap:9px;margin-bottom:6px}
+.alert-full-ttl{font-size:14px;font-weight:500}
+.alert-full-body{font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:8px}
+.alert-full-act{font-size:13px;color:var(--text)}
+.btn-sm{display:inline-block;margin-top:10px;font-size:12px;padding:5px 14px;border:1px solid var(--accent);color:var(--accent);border-radius:6px;cursor:pointer;background:none;transition:background .12s}
+.btn-sm:hover{background:rgba(79,142,247,.08)}
+
+/* ── CHART CONTAINER ── */
+.chart-c{position:relative;width:100%}
+
+/* ── UPLOAD PAGE ── */
+.upload-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.drop-zone{border:2px dashed var(--border);border-radius:var(--radius);padding:32px 20px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s;position:relative;background:var(--card)}
+.drop-zone:hover,.drop-zone.over{border-color:var(--accent);background:rgba(79,142,247,.04)}
+.drop-zone.done{border-color:var(--success);border-style:solid;background:var(--success-bg)}
+.drop-zone.done .dz-icon{color:var(--success)}
+.dz-icon{font-size:36px;margin-bottom:10px;color:var(--border);transition:color .15s}
+.dz-title{font-size:14px;font-weight:500;margin-bottom:4px}
+.dz-sub{font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.5}
+.dz-badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:4px;background:#f3f4f6;color:var(--muted);font-family:monospace;margin:2px}
+.dz-status{font-size:12px;margin-top:8px;min-height:16px;font-weight:500}
+.dz-input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.preview-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;margin-bottom:12px}
+.preview-hdr{font-size:13px;font-weight:500;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between}
+.preview-tbl{width:100%;border-collapse:collapse;font-size:12px}
+.preview-tbl th{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;padding:0 8px 6px;text-align:left;border-bottom:1px solid var(--border)}
+.preview-tbl td{padding:6px 8px;border-bottom:1px solid var(--border)}
+.preview-tbl tr:last-child td{border:none}
+.apply-btn{display:block;width:100%;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius);font-size:14px;font-weight:500;cursor:pointer;margin-top:16px;transition:background .12s}
+.apply-btn:hover{background:#3a7de0}
+.apply-btn:disabled{background:var(--border);cursor:not-allowed}
+.info-box{background:#f8faff;border:1px solid rgba(79,142,247,.2);border-radius:var(--radius);padding:14px 16px;margin-bottom:16px;font-size:13px;line-height:1.6}
+.info-box strong{color:var(--accent)}
+.step-row{display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px}
+.step-row:last-child{border:none}
+.step-n{min-width:22px;height:22px;border-radius:50%;background:rgba(79,142,247,.1);color:var(--accent);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.tag-xp{display:inline-block;font-size:11px;padding:1px 7px;border-radius:3px;background:#fff3e0;color:#e65100;font-weight:500;font-family:monospace;margin-right:4px}
+
+/* ── APORTE PAGE ── */
+.aporte-grid{display:grid;grid-template-columns:1fr 1.4fr;gap:16px;margin-bottom:14px}
+.range-row{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.range-row input[type=range]{flex:1;accent-color:var(--accent)}
+.range-val{font-size:18px;font-weight:600;min-width:110px;color:var(--accent);text-align:right}
+.mix-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.mix-btn{padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;cursor:pointer;background:var(--card);text-align:left;transition:border-color .13s,background .13s}
+.mix-btn:hover{border-color:var(--accent)}
+.mix-btn.on{border-color:var(--accent);background:rgba(79,142,247,.06)}
+.mix-btn-title{font-size:12px;font-weight:600;margin-bottom:2px}
+.mix-btn-det{font-size:11px;color:var(--muted)}
+.alloc-hdr{display:grid;grid-template-columns:1.6fr 90px 85px 70px 22px;gap:6px;font-size:11px;color:var(--muted);font-weight:600;margin-bottom:6px;padding:0 2px}
+.alloc-row{display:grid;grid-template-columns:1.6fr 90px 85px 70px 22px;gap:6px;align-items:center;margin-bottom:7px}
+.alloc-row input[type=text],.alloc-row input[type=number]{width:100%;font-size:12px;padding:5px 7px;border:1px solid var(--border);border-radius:6px;color:var(--text);background:var(--card)}
+.iso-chk{display:flex;align-items:center;justify-content:center;gap:4px;font-size:11px;color:var(--muted)}
+.iso-chk input{accent-color:var(--success)}
+.rm-x{border:none;background:none;color:var(--border);cursor:pointer;font-size:18px;line-height:1;padding:0}
+.rm-x:hover{color:var(--danger)}
+.add-row-btn{font-size:12px;color:var(--accent);border:none;background:none;cursor:pointer;padding:4px 0;display:block}
+.liq-pill{font-size:11px;font-weight:700;padding:3px 7px;border-radius:6px;text-align:center}
+.be-compare{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.be-box{border-radius:var(--radius);padding:16px 18px;text-align:center;border:1.5px solid var(--border);background:var(--card)}
+.be-box.new{border-color:var(--accent);background:rgba(79,142,247,.04)}
+.be-box-lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
+.be-box-val{font-size:24px;font-weight:500;margin-bottom:3px}
+.be-box-sub{font-size:12px;color:var(--muted)}
+.ganho-rows{font-size:13px}
+.ganho-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)}
+.ganho-row:last-child{border:none;font-weight:600}
+
+/* ── EQUIVALÊNCIA ── */
+.eq-grid{display:grid;grid-template-columns:1fr 1.6fr;gap:14px;margin-bottom:14px}
+.sl-row{margin-bottom:14px}
+.sl-lbl{font-size:12px;color:var(--muted);margin-bottom:5px;display:flex;justify-content:space-between}
+.sl-lbl strong{color:var(--text);font-size:14px}
+.sl-row input[type=range]{width:100%;accent-color:var(--accent)}
+.eq-ref{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px}
+.eq-ref:last-child{border:none}
+.eq-val{font-weight:600;font-size:13px}
+.eq-mark{font-size:10px;color:var(--muted);margin-top:1px}
+.ir-sel{width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;color:var(--text);background:var(--card);margin-top:4px}
+
+/* ── VALIDADOR ── */
+.val-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.preset-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.pbtn{font-size:12px;padding:5px 13px;border:1px solid var(--border);border-radius:20px;background:var(--card);cursor:pointer;color:var(--muted);transition:all .12s}
+.pbtn:hover{border-color:var(--accent);color:var(--accent)}
+.side-card{border-radius:var(--radius);border:1.5px solid var(--border);padding:16px 18px;background:var(--card)}
+.side-card.a{border-top:3px solid var(--danger)}
+.side-card.b{border-top:3px solid var(--accent)}
+.side-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px}
+.side-title.a{color:var(--danger)}.side-title.b{color:var(--accent)}
+.fld{margin-bottom:9px}
+.fld label{font-size:11px;color:var(--muted);display:block;margin-bottom:3px}
+.fld input[type=text],.fld input[type=number],.fld select{width:100%;padding:6px 9px;font-size:13px;border:1px solid var(--border);border-radius:6px;color:var(--text);background:var(--card)}
+.fld-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.iso-toggle{display:flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:12px;color:var(--muted);background:var(--card);user-select:none;margin-top:18px}
+.iso-toggle.on{background:var(--success-bg);border-color:var(--success);color:var(--success)}
+.tip-txt{font-size:12px;color:var(--muted);font-style:italic;margin-top:6px;min-height:16px}
+.verdict{border-radius:var(--radius);padding:14px 18px;text-align:center;margin-bottom:12px}
+.verdict-title{font-size:18px;font-weight:500;margin-bottom:4px}
+.verdict-sub{font-size:13px}
+.v-green{background:var(--success-bg);border:1px solid var(--success)}
+.v-red{background:var(--danger-bg);border:1px solid var(--danger)}
+.v-warn{background:var(--warning-bg);border:1px solid var(--warning)}
+.cmp-tbl{width:100%;border-collapse:collapse;font-size:13px}
+.cmp-tbl th{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;padding:0 10px 8px;text-align:right;border-bottom:1px solid var(--border)}
+.cmp-tbl th:first-child{text-align:left}
+.cmp-tbl td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--border)}
+.cmp-tbl td:first-child{text-align:left;color:var(--muted)}
+.cmp-tbl tr:last-child td{border:none}
+.cmp-tbl tr.win td{font-weight:600}
+
+/* ── DRIVERS PAGE ── */
+.mkt-pulse{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:18px}
+.mkt-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:11px 14px;text-align:center}
+.mkt-label{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;font-family:var(--font-display)}
+.mkt-val{font-size:17px;font-weight:600;font-variant-numeric:tabular-nums;margin-bottom:2px}
+.mkt-dir{font-size:11px}
+.mkt-up{color:var(--success)}.mkt-down{color:var(--danger)}.mkt-flat{color:var(--muted)}
+.drv-filter{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.drv-assets{display:flex;flex-direction:column;gap:10px}
+.drv-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:0;overflow:hidden}
+.drv-head{display:grid;grid-template-columns:220px 1fr 1fr 130px;align-items:center;gap:0;padding:12px 16px;border-bottom:1px solid var(--border);background:#fafbff;cursor:pointer}
+.drv-head:hover{background:#f4f6ff}
+.drv-nome{font-size:13px;font-weight:600}
+.drv-val{font-size:12px;color:var(--muted);margin-top:1px}
+.drv-col-hdr{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}
+.drv-col-val{font-size:12px;font-weight:500;line-height:1.4}
+.drv-status{display:flex;align-items:center;justify-content:flex-end;gap:6px}
+.drv-badge{font-size:11px;padding:4px 10px;border-radius:20px;font-weight:600}
+.db-ok{background:var(--success-bg);color:var(--success)}
+.db-warn{background:var(--warning-bg);color:var(--warning)}
+.db-bad{background:var(--danger-bg);color:var(--danger)}
+.db-neu{background:#f3f4f6;color:#374151}
+.drv-body{display:none;padding:14px 16px}
+.drv-body.open{display:block}
+.drv-detail-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:10px}
+.drv-detail-box{background:var(--bg);border-radius:8px;padding:10px 12px}
+.drv-detail-title{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
+.drv-tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:4px;margin:2px;font-weight:500}
+.tag-selic{background:#FAF4E4;color:#8A6020}
+.tag-ipca{background:#EEF4F0;color:#2D5A3E}
+.tag-pre{background:#F5F0EB;color:#6B5040}
+.tag-cambio{background:#fef3c7;color:#b45309}
+.tag-bolsa{background:#FAF0F0;color:#8B3535}
+.tag-spread{background:#e0f2fe;color:#0369a1}
+.tag-fii{background:#F8F0F8;color:#7A5080}
+.tag-ouro{background:#FDF8E8;color:#92720A}
+.drv-arrow{font-size:18px;margin-left:auto;transition:transform .2s}
+.drv-arrow.open{transform:rotate(180deg)}
+.drv-insight{font-size:12px;color:var(--muted);line-height:1.5;padding:8px 12px;background:var(--bg);border-radius:7px;border-left:3px solid var(--border)}
+.drv-insight.ok{border-color:var(--success)}
+.drv-insight.warn{border-color:var(--warning)}
+.drv-insight.bad{border-color:var(--danger)}
+/* scenario sliders */
+.scenario-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.scenario-row label{font-size:12px;color:var(--muted);min-width:140px}
+.scenario-row input[type=range]{flex:1;accent-color:var(--accent)}
+.scenario-val{font-size:13px;font-weight:600;min-width:52px;text-align:right}
+.scenario-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;margin-bottom:14px}
+
+/* ── USER SWITCHER ── */
+.user-switcher{padding:14px 12px;border-bottom:1px solid rgba(196,149,42,.12)}
+.user-switcher-label{font-size:8px;color:rgba(255,255,255,.25);text-transform:uppercase;letter-spacing:.16em;margin-bottom:8px;padding:0 4px;font-family:var(--font-display)}
+.user-btn{display:flex;align-items:center;gap:9px;padding:7px 8px;border-radius:8px;cursor:pointer;transition:background .13s;margin-bottom:3px;border:none;background:none;width:100%;text-align:left}
+.user-btn:hover{background:var(--sidebar-hover)}
+.user-btn.active{background:rgba(196,126,58,.2)}
+.user-avatar{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex-shrink:0;color:#fff}
+.ua-paulo{background:rgba(196,149,42,.30);border:1px solid rgba(196,149,42,.40)}
+.ua-cinthia{background:rgba(180,100,100,.25);border:1px solid rgba(180,100,100,.35)}
+.user-info{flex:1;min-width:0}
+.user-name{font-size:12px;font-weight:500;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.user-conta{font-size:10px;color:rgba(255,255,255,.35)}
+.user-check{font-size:12px;color:#C4952A;margin-left:auto;flex-shrink:0}
+
+/* ── PROFILE SELECTOR ── */
+#profile-screen{
+  position:fixed;inset:0;z-index:9999;
+  background:#3A1E1E;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:0;
+}
+.ps-vesta{
+  font-family:var(--font-display);
+  font-size:13px;letter-spacing:.22em;text-transform:uppercase;
+  color:rgba(212,175,55,.7);margin-bottom:6px;
+}
+.ps-title{
+  font-family:var(--font-elegant);
+  font-size:42px;font-weight:300;
+  color:#FAF4EE;margin-bottom:6px;letter-spacing:.04em;
+}
+.ps-subtitle{
+  font-size:12px;color:rgba(255,255,255,.3);
+  letter-spacing:.08em;margin-bottom:52px;
+  font-family:var(--font-display);
+  text-transform:uppercase;
+}
+.ps-profiles{display:flex;gap:24px;align-items:stretch}
+.ps-card{
+  width:180px;padding:28px 20px 24px;
+  border:1px solid rgba(212,175,55,.15);
+  border-radius:14px;cursor:pointer;
+  background:rgba(255,255,255,.04);
+  transition:background .2s,border-color .2s,transform .2s;
+  display:flex;flex-direction:column;align-items:center;gap:14px;
+  text-align:center;
+}
+.ps-card:hover{
+  background:rgba(212,175,55,.08);
+  border-color:rgba(212,175,55,.4);
+  transform:translateY(-3px);
+}
+.ps-avatar{
+  width:62px;height:62px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:24px;
+  border:1.5px solid rgba(212,175,55,.3);
+}
+.ps-av-fam{background:rgba(196,149,42,.15);color:#C4952A}
+.ps-av-paulo{background:rgba(196,100,80,.12);color:#C47050}
+.ps-av-cinthia{background:rgba(160,120,140,.12);color:#C09090}
+.ps-card-name{
+  font-family:var(--font-display);
+  font-size:13px;letter-spacing:.1em;
+  color:#FAF4EE;text-transform:uppercase;
+}
+.ps-card-desc{font-size:11px;color:rgba(255,255,255,.35);line-height:1.5}
+.ps-card-badge{
+  font-size:10px;padding:3px 10px;border-radius:20px;
+  font-family:var(--font-display);letter-spacing:.08em;
+}
+.ps-badge-fam{background:rgba(196,149,42,.15);color:rgba(212,175,55,.8);border:1px solid rgba(212,175,55,.2)}
+.ps-badge-ind{background:rgba(255,255,255,.06);color:rgba(255,255,255,.3);border:1px solid rgba(255,255,255,.1)}
+.ps-ornament{
+  font-family:var(--font-display);color:rgba(212,175,55,.3);
+  font-size:11px;letter-spacing:.2em;margin-top:40px;
+}
+
+/* ── SIDEBAR PERFIL INDICATOR ── */
+.active-profile-bar{
+  padding:10px 14px 8px;
+  border-bottom:1px solid rgba(196,149,42,.12);
+  display:flex;align-items:center;gap:9px;cursor:pointer;
+}
+.active-profile-bar:hover{background:rgba(255,255,255,.04)}
+.apb-avatar{
+  width:26px;height:26px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;font-size:12px;
+  border:1px solid rgba(212,175,55,.25);flex-shrink:0;
+}
+.apb-info{flex:1;min-width:0}
+.apb-name{font-family:var(--font-display);font-size:10px;letter-spacing:.08em;
+  color:rgba(255,255,255,.7);text-transform:uppercase}
+.apb-sub{font-size:10px;color:rgba(255,255,255,.3);margin-top:1px}
+.apb-change{font-size:10px;color:rgba(212,175,55,.5);flex-shrink:0}
+
+/* Seção familiar exclusiva */
+.nav-sec-fam{color:rgba(212,175,55,.4) !important}
+
+
+.proj-badge{font-size:9px;padding:1px 6px;border-radius:8px;background:rgba(196,149,42,.1);color:rgba(196,149,42,.8);font-family:var(--font-display);letter-spacing:.05em;margin-left:6px;vertical-align:middle}
+.proj-badge.live{background:rgba(74,124,89,.12);color:var(--success)}
+
+/* ── PROJEÇÃO badge ── */
+.proj-badge{font-size:9px;padding:1px 6px;border-radius:8px;background:rgba(196,149,42,.1);color:rgba(196,149,42,.8);font-family:var(--font-display);letter-spacing:.05em;display:block;margin-top:3px}
+.proj-badge.live{background:rgba(74,124,89,.12);color:var(--success)}
+.update-bar{display:flex;align-items:center;gap:10px;padding:7px 20px;background:rgba(196,149,42,.05);border-bottom:1px solid rgba(196,149,42,.12);font-size:12px;color:var(--muted)}
+.update-bar b{color:var(--text);font-family:var(--font-elegant)}
+.upd-btn{font-size:11px;padding:3px 12px;border:1px solid rgba(196,149,42,.25);border-radius:10px;background:none;color:rgba(196,149,42,.8);cursor:pointer;font-family:var(--font-display);letter-spacing:.05em}
+.upd-btn:hover{background:rgba(196,149,42,.1)}
+.upd-dot{width:6px;height:6px;border-radius:50%;background:var(--success);animation:pulse 2s infinite;flex-shrink:0}
+.upd-dot.off{background:var(--muted);animation:none}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+</style>
+</head>
+<body>
+<div id="profile-screen">
+  <div class="ps-vesta">✦ Vesta ✦</div>
+  <div class="ps-title">Guardiã do Patrimônio</div>
+  <div class="ps-subtitle">Selecione o perfil de acesso</div>
+
+  <div class="ps-profiles">
+    <!-- Familiar -->
+    <div class="ps-card" onclick="selectProfile('familiar')">
+      <div class="ps-avatar ps-av-fam" style="font-size:20px">🏛</div>
+      <div>
+        <div class="ps-card-name">Familiar</div>
+        <div class="ps-card-desc" style="margin:6px 0 10px">Visão consolidada<br>das duas carteiras<br>e todas as ferramentas</div>
+        <div class="ps-card-badge ps-badge-fam">Acesso total</div>
+      </div>
+    </div>
+
+    <!-- Cinthia -->
+    <div class="ps-card" onclick="selectProfile('cinthia')">
+      <div class="ps-avatar ps-av-cinthia">C</div>
+      <div>
+        <div class="ps-card-name">Cinthia</div>
+        <div class="ps-card-desc" style="margin:6px 0 10px">Carteira XP 6414212<br>visão individual<br>&nbsp;</div>
+        <div class="ps-card-badge ps-badge-ind">Individual</div>
+      </div>
+    </div>
+
+    <!-- Paulo -->
+    <div class="ps-card" onclick="selectProfile('paulo')">
+      <div class="ps-avatar ps-av-paulo">P</div>
+      <div>
+        <div class="ps-card-name">Paulo</div>
+        <div class="ps-card-desc" style="margin:6px 0 10px">Carteira XP 5296823<br>visão individual<br>&nbsp;</div>
+        <div class="ps-card-badge ps-badge-ind">Individual</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ps-ornament">Família Furtado · 2026</div>
+</div>
+
+<div class="app" style="display:none" id="main-app">
+
+<!-- ══════════════════ SIDEBAR ══════════════════ -->
+<nav class="sidebar">
+  <div class="logo">
+    <div class="logo-icon" style="font-size:18px">✦</div>
+    <div>
+      <div class="logo-name">Vesta</div>
+      <div class="logo-sub">Gestão patrimonial familiar</div>
+    </div>
+  </div>
+
+
+  <div class="active-profile-bar" onclick="voltarPerfis()" title="Trocar perfil">
+    <div class="apb-avatar" id="apb-av" style="background:rgba(196,149,42,.15);color:#C4952A;font-size:14px">🏛</div>
+    <div class="apb-info">
+      <div class="apb-name" id="apb-name">Familiar</div>
+      <div class="apb-sub" id="apb-sub">Todas as carteiras</div>
+    </div>
+    <div class="apb-change">↩</div>
+  </div>
+  <div class="nav">
+    <div class="nav-item" id="nav-start" onclick="voltarPerfis()" style="color:rgba(212,175,55,.7)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12h18"/><path d="M3 12l6-6"/><path d="M3 12l6 6"/></svg>
+      Tela inicial / perfis
+    </div>
+    <div class="nav-sec nav-sec-fam" id="nav-sec-familiar" style="display:none">Família</div>
+    <div class="nav-item" id="nav-consolidado" style="display:none" onclick="goPage('consolidado',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/><circle cx="12" cy="7" r="1" fill="currentColor"/></svg>
+      Consolidado Familiar
+    </div>
+    <div class="nav-item" id="nav-switch-paulo" style="display:none" onclick="switchUserNav('paulo')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+      Ver carteira — Paulo
+    </div>
+    <div class="nav-item" id="nav-switch-cinthia" style="display:none" onclick="switchUserNav('cinthia')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+      Ver carteira — Cinthia
+    </div>
+    <div class="nav-sec">Principal</div>
+    <div class="nav-item on" id="nav-home" onclick="goPage('home',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Visão geral
+    </div>
+    <div class="nav-item" id="nav-posicao" onclick="goPage('posicao',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Posição atual
+    </div>
+    <div class="nav-item" id="nav-alertas" onclick="goPage('alertas',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+      Alertas
+      <span style="margin-left:auto;background:var(--danger);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px">2</span>
+    </div>
+
+    <div class="nav-sec">Plano</div>
+    <div class="nav-item" id="nav-equiv" onclick="goPage('equiv',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      Equivalência de taxas
+    </div>
+    <div class="nav-item" id="nav-validador" onclick="goPage('validador',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3M3 16v3a2 2 0 002 2h3m8 0h3a2 2 0 002-2v-3"/></svg>
+      Validador de troca
+    </div>
+    <div class="nav-item" id="nav-breakeven" onclick="goPage('breakeven',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+      Breakeven
+    </div>
+    <div class="nav-item" id="nav-regras" onclick="goPage('regras',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      Regras — não mexer
+    </div>
+    <div class="nav-item" onclick="goPage('upload',this)" id="nav-upload">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Importar arquivos XP
+    </div>
+    <div class="nav-item" id="nav-drivers" onclick="goPage('drivers',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+      Influenciadores
+    </div>
+    <div class="nav-item" id="nav-aporte" onclick="goPage('aporte',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Acelerar breakeven
+    </div>
+  </div>
+
+  <div class="sidebar-foot">
+    <div class="nav-item" style="color:rgba(255,255,255,.35);font-size:12px">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:15px;height:15px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      Ref. 02/07/2026 · CDI 14,75%
+    </div>
+  </div>
+</nav>
+
+<!-- ══════════════════ MAIN ══════════════════ -->
+<div class="main">
+  <div class="topbar">
+    <div>
+      <div class="topbar-title">Vesta <span style="color:var(--accent);font-family:var(--font-display);font-size:13px;letter-spacing:.05em">✦</span> Centro de Decisão Financeira</div>
+      <div class="topbar-sub">Visão familiar · Cinthia como gestora</div>
+    </div>
+    <div class="badge-alert">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      2 alertas ativos
+    </div>
+  </div>
+
+  <div class="update-bar" id="update-bar">
+  <div class="upd-dot off" id="upd-dot"></div>
+  <span>CDI <b id="upd-cdi">14,75%</b></span>
+  <span>·</span>
+  <span>IPCA <b id="upd-ipca">5,50%</b></span>
+  <span>·</span>
+  <span id="upd-pat">Patrimônio projetado <b id="upd-val">—</b></span>
+  <span style="margin-left:auto;font-size:10px" id="upd-ts"></span>
+  <button class="upd-btn" onclick="updLive()">↻ atualizar</button>
+</div>
+<div class="content">
+
+  <!-- ─── HOME ─── -->
+  <div id="page-home" class="page on">
+    <div class="ph"><h1>Bom dia, Cinthia</h1><p>Acompanhe e cuide da saúde financeira da família.</p></div>
+
+    <div class="kpi-row">
+      <div class="kpi">
+        <div class="kpi-l">Patrimônio total</div>
+        <div class="kpi-v">R$ 648.476</div>
+        <div class="kpi-s">posição 02/07/2026</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-l">Renda fixa</div>
+        <div class="kpi-v blue">R$ 532.076</div>
+        <div class="kpi-s">82.1% da carteira</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-l">Renda variável</div>
+        <div class="kpi-v">R$ 116.399</div>
+        <div class="kpi-s">17.9% da carteira</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-l">Breakeven do plano</div>
+        <div class="kpi-v blue">mai/2028</div>
+        <div class="kpi-s">22 meses · +R$ 692/mês</div>
+      </div>
+    </div>
+
+    <div class="g32">
+      <!-- donut -->
+      <div class="card">
+        <div class="card-hdr">Alocação atual <span>por estratégia</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:center">
+          <div class="donut-wrap">
+            <canvas id="donut" role="img" aria-label="Alocação: 20% LCA, 34% Inflação, 13% Prefixado, 16% Outros RF, 17% Renda Variável"></canvas>
+            <div class="donut-ctr">
+              <div class="donut-val">R$ 648k</div>
+              <div class="donut-lbl">total</div>
+            </div>
+          </div>
+          <div>
+            <div class="legend" style="flex-direction:column;gap:6px">
+              <div class="leg"><div class="leg-sq" style="background:#C47E3A"></div>LCA pós-fix. isento — R$142k</div>
+              <div class="leg"><div class="leg-sq" style="background:#4A7C59"></div>Inflação IPCA+ — R$245k</div>
+              <div class="leg"><div class="leg-sq" style="background:#8B7355"></div>Prefixado isento — R$95k</div>
+              <div class="leg"><div class="leg-sq" style="background:#f59e0b"></div>XPAG11 agro — R$61k</div>
+              <div class="leg"><div class="leg-sq" style="background:#A89880"></div>Renda variável — R$116k</div>
+            </div>
+            <div style="margin-top:14px;font-size:12px;padding:10px 12px;background:var(--success-bg);border-radius:8px;color:var(--success);line-height:1.5">
+              <strong>83,6% em RF</strong><br>
+              Meta: manter até mai/2028 sem mexer nos intocáveis
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- resumo -->
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="card" style="flex:1">
+          <div class="card-hdr">Resumo do plano</div>
+          <div class="aitem">
+            <div class="dot dw"></div>
+            <div><div class="aitem-name">Reestruturação jun/26</div><div class="aitem-det">Custo R$14.698 · ganho +R$692/mês · recupera mai/2028</div></div>
+          </div>
+          <div class="aitem">
+            <div class="dot dg"></div>
+            <div><div class="aitem-name">Taxa média subiu de 11,81% → 14,86%</div><div class="aitem-det">+3,05%/ano · R$285/mês vem das debêntures novas</div></div>
+          </div>
+          <div class="aitem">
+            <div class="dot dg"></div>
+            <div><div class="aitem-name">4 blocos intocáveis</div><div class="aitem-det">J&F · Jalles · LCAs · NTN-B 2050 — não tocar antes de mai/2028</div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-hdr">Progresso do breakeven</div>
+          <div class="prog"><div class="prog-hdr"><span>hoje (~1 mês)</span><span class="blue">5%</span></div><div class="prog-bar"><div class="prog-fill" style="width:5%"></div></div></div>
+          <div class="prog"><div class="prog-hdr"><span>dez/2026 (6 m)</span><span>28%</span></div><div class="prog-bar"><div class="prog-fill" style="width:28%"></div></div></div>
+          <div class="prog"><div class="prog-hdr"><span>jun/2027 (12 m)</span><span>57%</span></div><div class="prog-bar"><div class="prog-fill" style="width:57%"></div></div></div>
+          <div class="prog"><div class="prog-hdr"><span>mai/2028 — meta ✓</span><span class="good" style="font-weight:600">100%</span></div><div class="prog-bar"><div class="prog-fill" style="width:100%;background:var(--success)"></div></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="g2">
+      <!-- alertas recentes -->
+      <div class="card">
+        <div class="card-hdr">Alertas recentes</div>
+        <div class="aitem">
+          <div class="dot dr"></div>
+          <div><div class="aitem-name">NTN-B AGO/2026 — vence em 45 dias</div><div class="aitem-det">R$96.511 liberam em 15/08. Decidir destino AGORA para não ficar parado em conta.</div></div>
+        </div>
+        <div class="aitem">
+          <div class="dot dw"></div>
+          <div><div class="aitem-name">LCD BRDE — confirmar taxa na XP</div><div class="aitem-det">R$57.618 investidos em 29/06 não apareceram na posição. Checar.</div></div>
+        </div>
+        <div class="aitem">
+          <div class="dot dw"></div>
+          <div><div class="aitem-name">BPAC11 — -37,27% sobre preço médio</div><div class="aitem-det">Revisar tese de investimento ou definir stop loss.</div></div>
+        </div>
+        <div class="aitem">
+          <div class="dot dg"></div>
+          <div><div class="aitem-name">Come-cotas XPAG11 em nov/2026</div><div class="aitem-det">Verificar se ainda compensa vs LCA direta antes de novembro.</div></div>
+        </div>
+      </div>
+
+      <!-- próximos vencimentos -->
+      <div class="card">
+        <div class="card-hdr">Próximos vencimentos</div>
+        <div class="vitem">
+          <div class="vitem-icon" style="background:var(--danger-bg)">🔴</div>
+          <div style="flex:1"><div class="vitem-name">NTN-B AGO/2026</div><div class="vitem-det">R$96.511 · 15/08/2026 · 45 dias</div></div>
+          <span class="sb sb-r">urgente</span>
+        </div>
+        <div class="vitem">
+          <div class="vitem-icon" style="background:rgba(79,142,247,.1)">🔒</div>
+          <div style="flex:1"><div class="vitem-name">DEB J&F FEV/2028</div><div class="vitem-det">R$94.830 · 21/02/2028 · 15,15% isento</div></div>
+          <span class="sb sb-a">intocável</span>
+        </div>
+        <div class="vitem">
+          <div class="vitem-icon" style="background:rgba(79,142,247,.1)">🔒</div>
+          <div style="flex:1"><div class="vitem-name">LCA ORIGINAL DEZ/2028</div><div class="vitem-det">R$26.700 · 18/12/2028 · 92,5% CDI</div></div>
+          <span class="sb sb-a">intocável</span>
+        </div>
+        <div class="vitem">
+          <div class="vitem-icon" style="background:rgba(79,142,247,.1)">🔒</div>
+          <div style="flex:1"><div class="vitem-name">LCAs SICOOB 2030 (×4)</div><div class="vitem-det">R$105.474 · mar–mai/2030 · 92% CDI</div></div>
+          <span class="sb sb-a">intocável</span>
+        </div>
+        <div class="vitem">
+          <div class="vitem-icon" style="background:var(--success-bg)">📅</div>
+          <div style="flex:1"><div class="vitem-name">DEB JALLES DEZ/2031</div><div class="vitem-det">R$70.642 · 15/12/2031 · IPCA+8,5%</div></div>
+          <span class="sb sb-a">intocável</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── POSIÇÃO ATUAL ─── -->
+  <div id="page-posicao" class="page">
+    <div class="ph"><h1>Posição atual</h1><p>Todos os ativos com taxas, equivalência em CDI e status.</p></div>
+
+    <div style="background:var(--warning-bg);border:1px solid var(--warning);border-radius:var(--radius);padding:12px 16px;margin-bottom:12px;font-size:13px">
+  <strong style="color:var(--warning)">⚠️ LCD BRDE FEV/2036 (92,5% CDI)</strong> — Este ativo está na conta da <strong>Cinthia</strong>, não na do Paulo.
+  Taxa flutuante por 10 anos: quando a Selic cair, o rendimento cai junto. Não está incluído nos totais acima.
+</div><div class="card" style="margin-bottom:14px">
+      <div class="card-hdr">Renda fixa <span id="rf-count">14 ativos · R$594.636</span></div>
+      <div class="filter-row">
+        <button class="fbtn on" onclick="filterRF('todos',this)">Todos</button>
+        <button class="fbtn" onclick="filterRF('intocavel',this)">🔒 Intocáveis</button>
+        <button class="fbtn" onclick="filterRF('urgente',this)">🔴 Urgentes</button>
+        <button class="fbtn" onclick="filterRF('monitorar',this)">👁 Monitorar</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th>Ativo</th>
+              <th class="r">Valor</th>
+              <th class="r">Taxa líq./ano</th>
+              <th class="r">% CDI equiv.</th>
+              <th>Vencimento</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="rf-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-hdr">Renda variável <span>7 posições · R$116.399</span></div>
+      <div style="overflow-x:auto">
+        <table class="tbl">
+          <thead><tr><th>Ativo</th><th class="r">Valor atual</th><th class="r">PM / referência</th><th class="r">Rentabilidade</th><th>Classe</th></tr></thead>
+          <tbody>
+            <tr><td><strong>PSSA3</strong></td><td class="r">R$ 28.995</td><td class="r">R$26,95 · 544 ações</td><td class="r good">+97,75%</td><td><span class="sb sb-g">ação</span></td></tr>
+            <tr><td><strong>ITSA4</strong></td><td class="r">R$ 21.149</td><td class="r">R$8,87 · 1.576 ações</td><td class="r good">+51,28%</td><td><span class="sb sb-g">ação</span></td></tr>
+            <tr><td><strong>BPAC11</strong></td><td class="r">R$ 18.632</td><td class="r">R$86,85 · 342 ações</td><td class="r bad">-37,27% ⚠️</td><td><span class="sb sb-r">ação</span></td></tr>
+            <tr><td><strong>TGRE11</strong></td><td class="r">R$ 44.155</td><td class="r">Aplicado R$50.000</td><td class="r bad">-11,69% capital</td><td><span class="sb sb-w">FII</span></td></tr>
+            <tr><td><strong>LFTB11</strong></td><td class="r">R$ 20.301</td><td class="r">165 cotas</td><td class="r good">+CDI</td><td><span class="sb sb-a">ETF</span></td></tr>
+            <tr><td><strong>GOLD11</strong></td><td class="r">R$ 3.976</td><td class="r">178 cotas</td><td class="r good">+ouro</td><td><span class="sb sb-a">ETF</span></td></tr>
+            <tr><td><strong>Outros ações</strong></td><td class="r">R$ 9.392</td><td class="r">ITUB4 + outros</td><td class="r" style="color:var(--muted)">variado</td><td><span class="sb sb-n">ação</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── ALERTAS ─── -->
+  <div id="page-alertas" class="page">
+    <div class="ph"><h1>Alertas</h1><p>Itens que exigem atenção ou decisão.</p></div>
+
+    <div class="alert-full r">
+      <div class="alert-full-hdr"><span class="sb sb-r">URGENTE</span><div class="alert-full-ttl">NTN-B AGO/2026 — vence em 45 dias</div></div>
+      <div class="alert-full-body">R$96.511 liberam em 15/08/2026. Maior vencimento próximo da carteira. Deixar em conta corrente é perder CDI todo dia.</div>
+      <div class="alert-full-act"><strong>Opções:</strong> IPCA+ longo (se taxa &gt; 8,0%/ano), LCA nova 92%+ CDI isenta, debênture incentivada nova com risco ≤ 20.</div>
+    </div>
+
+    <div class="alert-full w">
+      <div class="alert-full-hdr"><span class="sb sb-w">VERIFICAR</span><div class="alert-full-ttl">LCD BRDE FEV/2036 — não apareceu na posição detalhada</div></div>
+      <div class="alert-full-body">R$106.833 investidos em 2 tranches (25 e 26/06/2026). O arquivo PosicaoDetalhada_02-07.xlsx não trouxe esse ativo. Pode ser lag de liquidação (D+2).</div>
+      <div class="alert-full-act"><strong>Ação:</strong> acessar a XP e confirmar se aparece em "Posição" e qual é a taxa exata contratada.</div>
+    </div>
+
+    <div class="alert-full w">
+      <div class="alert-full-hdr"><span class="sb sb-w">MONITORAR</span><div class="alert-full-ttl">BPAC11 — -37,27% sobre preço médio</div></div>
+      <div class="alert-full-body">Preço médio R$86,85 · Posição atual R$18.632 (342 ações). Ação financeira com alto beta, sofreu com ciclo de alta de juros.</div>
+      <div class="alert-full-act"><strong>Decisão:</strong> Definir um nível de stop loss ou prazo para revisão da tese. Não deixar indefinido.</div>
+    </div>
+
+    <div class="alert-full w">
+      <div class="alert-full-hdr"><span class="sb sb-w">NOV/2026</span><div class="alert-full-ttl">Come-cotas XPAG11 — verificar antes de novembro</div></div>
+      <div class="alert-full-body">XPAG11 (XP Crédito Agro) tem come-cotas em maio e novembro. R$61.373 em posição. O come-cotas corrói o rendimento líquido de fundo isento de LCI/LCA agro.</div>
+      <div class="alert-full-act"><strong>Calcular:</strong> rentabilidade líquida real do fundo vs LCA 92% CDI direta. Se diferença &lt; 1%, vender quando der oportunidade.</div>
+    </div>
+
+    <div class="alert-full g">
+      <div class="alert-full-hdr"><span class="sb sb-g">OK</span><div class="alert-full-ttl">Debêntures J&F e Jalles — no plano, nada a fazer</div></div>
+      <div class="alert-full-body">J&F: 15,15% isento · Fitch AAA · vence fev/2028. Jalles: IPCA+8,5% isento · vence dez/2031. Ambas rendendo conforme esperado.</div>
+      <div class="alert-full-act"><strong>Ação:</strong> nenhuma. Manter até vencimento (ou até aparecer ágio relevante no mercado secundário).</div>
+    </div>
+  </div>
+
+  <!-- ─── BREAKEVEN ─── -->
+  <div id="page-breakeven" class="page">
+    <div class="ph"><h1>Plano de breakeven</h1><p>Quando a reestruturação de junho/2026 se paga completamente.</p></div>
+
+    <div class="kpi-row">
+      <div class="kpi"><div class="kpi-l">Custo total</div><div class="kpi-v bad">R$ 14.698</div><div class="kpi-s">deságio R$13.648 + IR R$1.049</div></div>
+      <div class="kpi"><div class="kpi-l">Ganho mensal</div><div class="kpi-v good">+R$ 692</div><div class="kpi-s">+R$285 debs + R$407 fundos→RF</div></div>
+      <div class="kpi"><div class="kpi-l">Breakeven combinado</div><div class="kpi-v blue">mai/2028</div><div class="kpi-s">22 meses · mês 22 desde jul/26</div></div>
+      <div class="kpi"><div class="kpi-l">Ganho anual vitalício</div><div class="kpi-v good">+R$ 8.309</div><div class="kpi-s">depois do breakeven todo ano</div></div>
+    </div>
+
+    <div class="g32">
+      <div class="card">
+        <div class="card-hdr">Linha A (ficou) vs Linha B (reestruturou) <span>valores acumulados nas debêntures</span></div>
+        <div class="chart-c" style="height:240px"><canvas id="chart-be" role="img" aria-label="Linhas A e B cruzam em novembro 2030 — a partir daí linha B supera permanentemente"></canvas></div>
+        <div style="display:flex;gap:18px;margin-top:10px;font-size:12px;color:var(--muted)">
+          <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:18px;height:2px;background:#dc2626"></span>Linha A — taxas antigas (média 11,81%)</span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:18px;height:2px;background:#4f8ef7"></span>Linha B — reestruturado (média 14,86%)</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-hdr">Recuperação mês a mês</div>
+        <div id="be-progs"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-hdr">De onde vem o ganho de +R$692/mês</div>
+      <table class="tbl">
+        <thead><tr><th>Fonte</th><th class="r">Capital</th><th class="r">Ganho de taxa</th><th class="r">Ganho/mês</th></tr></thead>
+        <tbody>
+          <tr><td>Debêntures novas vs antigas (J&F + Jalles vs Itapoá + Localiza)</td><td class="r">R$112.124</td><td class="r">+3,05%/ano</td><td class="r good"><strong>+R$ 285/mês</strong></td></tr>
+          <tr><td>Fundos liquidados → novos ativos RF (LCAs + LCD BRDE)</td><td class="r">R$267.000</td><td class="r">+1,83%/ano</td><td class="r good"><strong>+R$ 407/mês</strong></td></tr>
+          <tr style="background:#f8f9ff"><td><strong>Total combinado</strong></td><td class="r"><strong>R$379.124</strong></td><td class="r">—</td><td class="r good" style="font-size:15px"><strong>+R$ 692/mês</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ─── REGRAS ─── -->
+  <div id="page-regras" class="page">
+    <div class="ph"><h1>Regras — não mexer</h1><p>Ativos bloqueados até o breakeven de mai/2028 e regras de decisão.</p></div>
+
+    <div class="g2" style="margin-bottom:14px">
+      <div>
+        <div class="card" style="margin-bottom:12px;border-top:3px solid var(--danger)">
+          <div class="card-hdr" style="color:var(--danger)">🔒 Não mexer de jeito nenhum</div>
+          <div class="vitem">
+            <div class="vitem-icon" style="background:rgba(79,142,247,.1)">💼</div>
+            <div><div class="vitem-name">DEB J&F FEV/2028 — R$94.830</div><div class="vitem-det">15,15% isento · Fitch AAA · Risco 10 · Sair só se taxa merc. cair abaixo de 14%</div></div>
+          </div>
+          <div class="vitem">
+            <div class="vitem-icon" style="background:rgba(79,142,247,.1)">💼</div>
+            <div><div class="vitem-name">DEB JALLES DEZ/2031 — R$70.642</div><div class="vitem-det">IPCA+8,5% isento · Risco 16 · Sair se taxa merc. cair abaixo de IPCA+8,5% (ágio)</div></div>
+          </div>
+          <div class="vitem">
+            <div class="vitem-icon" style="background:var(--success-bg)">🏦</div>
+            <div><div class="vitem-name">LCAs SICOOB + ORIGINAL — R$141.602</div><div class="vitem-det">92–94% CDI isentas · 6 posições · Sem mercado secundário — só saem no vencimento</div></div>
+          </div>
+          <div class="vitem">
+            <div class="vitem-icon" style="background:var(--warning-bg)">📊</div>
+            <div><div class="vitem-name">NTN-B 2050 — R$51k merc / R$76k curva</div><div class="vitem-det">IPCA+4,45–4,65% · Duration 18 anos · Sair só quando taxa real cair abaixo de IPCA+5,5%</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card" style="margin-bottom:12px">
+          <div class="card-hdr">Regra de ouro — antes de qualquer decisão</div>
+          <div class="aitem">
+            <div class="dot" style="background:var(--accent)"></div>
+            <div><div class="aitem-name">1. Qual a taxa líquida?</div><div class="aitem-det">Isento = bruta. Tributado = bruta × 0,85. Compare com LCA 92% CDI = 13,57% (o piso mínimo aceitável).</div></div>
+          </div>
+          <div class="aitem">
+            <div class="dot" style="background:var(--accent)"></div>
+            <div><div class="aitem-name">2. Qual o risco do emissor?</div><div class="aitem-det">Risco &gt; 20 exige prêmio de taxa. Risco &gt; 30 = só com taxa muito acima do mercado.</div></div>
+          </div>
+          <div class="aitem">
+            <div class="dot" style="background:var(--accent)"></div>
+            <div><div class="aitem-name">3. Tem come-cotas?</div><div class="aitem-det">Fundo DI tributado sempre perde para LCA no longo prazo. Come-cotas 2× ao ano = 15% dos ganhos.</div></div>
+          </div>
+          <div class="aitem">
+            <div class="dot" style="background:var(--accent)"></div>
+            <div><div class="aitem-name">4. Qual o breakeven da troca?</div><div class="aitem-det">&gt; 24 meses → reconsiderar. &lt; 12 meses → provavelmente vale. Use o simulador para calcular.</div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-hdr">Protocolo mensal (15 min)</div>
+          <div class="aitem"><div class="dot dg"></div><div><div class="aitem-name">1. Baixar arquivos da XP</div><div class="aitem-det">PosicaoDetalhada_DD-MM.xlsx + Extrato_MES.xlsx → salvar na pasta Cinthia ou paulo, conforme a conta</div></div></div>
+          <div class="aitem"><div class="dot dg"></div><div><div class="aitem-name">2. Abrir conversa com Claude</div><div class="aitem-det">Dizer "atualização mensal" → Claude lê Drive, busca taxas, atualiza planilha</div></div></div>
+          <div class="aitem"><div class="dot dg"></div><div><div class="aitem-name">3. Checar alertas</div><div class="aitem-det">Qualquer vermelho neste painel → rodar no simulador antes de qualquer decisão</div></div></div>
+          <div class="aitem"><div class="dot dg"></div><div><div class="aitem-name">4. Vencimentos próximos</div><div class="aitem-det">Decidir destino 60–90 dias antes. Nunca deixar cair em conta corrente.</div></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ─── IMPORTAR ─── -->
+  <div id="page-upload" class="page">
+    <div class="ph"><h1>Importar arquivos da XP</h1><p>Arraste os arquivos ou clique para selecionar. Os dados são lidos direto no navegador — nada é enviado para a internet.</p></div>
+
+    <div class="info-box">
+      <strong>Quais arquivos baixar na XP?</strong><br>
+      Acesse <strong>xpi.com.br → Carteira → Exportar</strong> e baixe os dois arquivos abaixo. Salve na pasta da conta correta no Drive: Cinthia ou paulo.
+    </div>
+
+    <div class="upload-grid">
+      <!-- Posição Detalhada -->
+      <div class="drop-zone" id="dz-pos" ondragover="dzOver(event,'pos')" ondragleave="dzLeave('pos')" ondrop="dzDrop(event,'pos')">
+        <input class="dz-input" type="file" accept=".xlsx,.xls,.csv" onchange="fileSelected(this,'pos')">
+        <div class="dz-icon" id="icon-pos">📊</div>
+        <div class="dz-title">Posição Detalhada</div>
+        <div class="dz-sub">
+          Arquivo com todos os ativos, valores e taxas<br>
+          <span class="dz-badge">PosicaoDetalhada_DD-MM.xlsx</span>
+        </div>
+        <div style="font-size:12px;color:var(--muted)">Arraste aqui ou clique para selecionar</div>
+        <div class="dz-status" id="st-pos"></div>
+      </div>
+
+      <!-- Extrato -->
+      <div class="drop-zone" id="dz-ext" ondragover="dzOver(event,'ext')" ondragleave="dzLeave('ext')" ondrop="dzDrop(event,'ext')">
+        <input class="dz-input" type="file" accept=".xlsx,.xls,.csv" onchange="fileSelected(this,'ext')">
+        <div class="dz-icon" id="icon-ext">📋</div>
+        <div class="dz-title">Extrato de Movimentações</div>
+        <div class="dz-sub">
+          Entradas e saídas do período<br>
+          <span class="dz-badge">Extrato_CONTA_MES.xlsx</span>
+        </div>
+        <div style="font-size:12px;color:var(--muted)">Arraste aqui ou clique para selecionar</div>
+        <div class="dz-status" id="st-ext"></div>
+      </div>
+    </div>
+
+    <!-- Como baixar na XP -->
+    <div class="preview-card" style="margin-bottom:16px">
+      <div class="preview-hdr">Como baixar na XP Investimentos</div>
+      <div class="step-row"><div class="step-n">1</div><div>Acesse <strong>xpi.com.br</strong> e entre na sua conta</div></div>
+      <div class="step-row"><div class="step-n">2</div><div>Vá em <strong>Carteira → Posição Detalhada</strong></div></div>
+      <div class="step-row"><div class="step-n">3</div><div>Clique em <strong>Exportar → Excel (.xlsx)</strong> — salve como <span class="tag-xp">PosicaoDetalhada_DD-MM.xlsx</span></div></div>
+      <div class="step-row"><div class="step-n">4</div><div>Vá em <strong>Extrato → selecione o mês</strong> → <strong>Exportar Excel</strong> — salve como <span class="tag-xp">Extrato_MES.xlsx</span></div></div>
+      <div class="step-row"><div class="step-n">5</div><div>Salve os dois na pasta <strong id="upload-folder-name">Cinthia</strong> do Google Drive (conforme a conta selecionada) e arraste aqui</div></div>
+    </div>
+
+    <!-- Preview posição -->
+    <div id="preview-pos" style="display:none" class="preview-card">
+      <div class="preview-hdr">
+        <span>Posição lida — <span id="pos-count">0</span> ativos encontrados</span>
+        <span id="pos-total" style="color:var(--accent);font-weight:500"></span>
+      </div>
+      <div style="overflow-x:auto;max-height:280px;overflow-y:auto">
+        <table class="preview-tbl">
+          <thead><tr><th>Ativo / Produto</th><th>Valor</th><th>Taxa / Rentab.</th><th>Vencimento</th></tr></thead>
+          <tbody id="pos-preview-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Preview extrato -->
+    <div id="preview-ext" style="display:none" class="preview-card">
+      <div class="preview-hdr">
+        <span>Extrato lido — <span id="ext-count">0</span> lançamentos</span>
+        <span id="ext-total" style="color:var(--success);font-weight:500"></span>
+      </div>
+      <div style="overflow-x:auto;max-height:220px;overflow-y:auto">
+        <table class="preview-tbl">
+          <thead><tr><th>Data</th><th>Descrição</th><th style="text-align:right">Valor</th></tr></thead>
+          <tbody id="ext-preview-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <button class="apply-btn" id="apply-btn" disabled onclick="applyData()">Aplicar dados ao dashboard</button>
+    <div id="apply-msg" style="font-size:13px;color:var(--muted);margin-top:8px;text-align:center"></div>
+  </div>
+
+  <!-- ─── ACELERAR BREAKEVEN ─── -->
+  <div id="page-aporte" class="page">
+    <div class="ph">
+      <h1>Acelerar o breakeven com novo aporte</h1>
+      <p>Simule quanto antes de mai/2028 você recupera o custo da reestruturação colocando dinheiro novo.</p>
+    </div>
+
+    <!-- KPIs base -->
+    <div class="kpi-row" style="margin-bottom:14px">
+      <div class="kpi"><div class="kpi-l">Custo a recuperar</div><div class="kpi-v bad">R$ 14.698</div><div class="kpi-s">deságio + IR jun/26</div></div>
+      <div class="kpi"><div class="kpi-l">Ganho atual/mês</div><div class="kpi-v good">+R$ 692</div><div class="kpi-s">sem novo aporte</div></div>
+      <div class="kpi"><div class="kpi-l">Breakeven base</div><div class="kpi-v" style="color:var(--warning)">mai/2028</div><div class="kpi-s">22 meses</div></div>
+      <div class="kpi"><div class="kpi-l">Breakeven com aporte</div><div class="kpi-v blue" id="ap-kpi-be">—</div><div class="kpi-s" id="ap-kpi-sub">configure abaixo</div></div>
+    </div>
+
+    <div class="aporte-grid">
+      <!-- esquerda: controles -->
+      <div>
+        <div class="card" style="margin-bottom:12px">
+          <div class="card-hdr">Valor do aporte</div>
+          <div class="range-row">
+            <input type="range" id="ap-sl" min="10000" max="500000" step="5000" value="100000" oninput="syncAp()">
+            <div class="range-val" id="ap-lbl">R$ 100.000</div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);padding:0 2px">
+            <span>R$ 10k</span><span>R$ 250k</span><span>R$ 500k</span>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:12px">
+          <div class="card-hdr">Mix de alocação <span style="font-size:11px;color:var(--muted)">ou personalize abaixo</span></div>
+          <div class="mix-grid">
+            <div class="mix-btn on" onclick="loadMix('sugerido',this)">
+              <div class="mix-btn-title">Sugestão Claude</div>
+              <div class="mix-btn-det">25% LCA + 50% Deb IPCA+8,5% + 25% Pré 15%</div>
+            </div>
+            <div class="mix-btn" onclick="loadMix('conservador',this)">
+              <div class="mix-btn-title">Conservador</div>
+              <div class="mix-btn-det">100% LCA 92% CDI isento</div>
+            </div>
+            <div class="mix-btn" onclick="loadMix('agressivo',this)">
+              <div class="mix-btn-title">Agressivo</div>
+              <div class="mix-btn-det">50% Deb IPCA+9% + 50% Pré 15,15%</div>
+            </div>
+            <div class="mix-btn" onclick="loadMix('custom',this)">
+              <div class="mix-btn-title">Personalizado</div>
+              <div class="mix-btn-det">Edite os ativos na tabela abaixo</div>
+            </div>
+          </div>
+
+          <div class="alloc-hdr">
+            <span>ativo</span><span>valor R$</span><span>taxa bruta %</span><span>taxa líq.</span><span></span>
+          </div>
+          <div id="ap-allocs"></div>
+          <button class="add-row-btn" onclick="addApAlloc()">+ adicionar ativo</button>
+
+          <div id="ap-warn" style="display:none;font-size:12px;padding:7px 10px;border-radius:7px;margin-top:8px;background:var(--warning-bg);color:var(--warning)"></div>
+        </div>
+      </div>
+
+      <!-- direita: resultado -->
+      <div>
+        <div class="be-compare">
+          <div class="be-box">
+            <div class="be-box-lbl">Sem aporte</div>
+            <div class="be-box-val" style="color:var(--warning)">mai/2028</div>
+            <div class="be-box-sub">mês 22 · +R$ 692/mês</div>
+          </div>
+          <div class="be-box new">
+            <div class="be-box-lbl">Com aporte</div>
+            <div class="be-box-val blue" id="ap-be-val">—</div>
+            <div class="be-box-sub" id="ap-be-sub">—</div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:12px">
+          <div class="card-hdr">Composição do ganho mensal</div>
+          <div class="ganho-rows" id="ap-ganho-rows">
+            <div class="ganho-row"><span>Portfolio atual (já ativo)</span><span class="good">+R$ 692/mês</span></div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:12px">
+          <div class="card-hdr">Progresso com e sem aporte</div>
+          <div id="ap-progs"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-hdr">Linha do tempo — recuperação</div>
+          <div style="position:relative;height:190px">
+            <canvas id="chart-aporte" role="img" aria-label="Gráfico comparando recuperação com e sem novo aporte"></canvas>
+          </div>
+          <div style="display:flex;gap:16px;margin-top:8px;font-size:12px;color:var(--muted)">
+            <span style="display:flex;align-items:center;gap:4px"><span style="display:inline-block;width:16px;height:2px;background:#B84545"></span>sem aporte</span>
+            <span style="display:flex;align-items:center;gap:4px"><span style="display:inline-block;width:16px;height:2px;background:#C47E3A"></span>com aporte</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── EQUIVALÊNCIA DE TAXAS ─── -->
+  <div id="page-equiv" class="page">
+    <div class="ph"><h1>Equivalência de taxas</h1><p>Compare qualquer ativo em bases iguais. Tudo convertido para % CDI equivalente.</p></div>
+
+    <div class="eq-grid">
+      <div>
+        <div class="card" style="margin-bottom:12px">
+          <div class="card-hdr">Parâmetros do mercado</div>
+          <div class="sl-row">
+            <div class="sl-lbl"><span>CDI anual</span><strong id="lbl-cdi2">14,75%</strong></div>
+            <input type="range" id="sl-cdi2" min="8" max="18" step="0.25" value="14.75" oninput="updEquiv2()">
+          </div>
+          <div class="sl-row">
+            <div class="sl-lbl"><span>IPCA projetado</span><strong id="lbl-ipca2">5,50%</strong></div>
+            <input type="range" id="sl-ipca2" min="3" max="9" step="0.25" value="5.5" oninput="updEquiv2()">
+          </div>
+          <div class="fld">
+            <label>IR alíquota</label>
+            <select id="sel-ir2" class="ir-sel" onchange="updEquiv2()">
+              <option value="0.225">22,5% (até 180 dias)</option>
+              <option value="0.20">20% (181–360 dias)</option>
+              <option value="0.175">17,5% (361–720 dias)</option>
+              <option value="0.15" selected>15% (acima de 720 dias)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-hdr">Seus ativos — taxa líquida e % CDI</div>
+          <div id="eq-ativos2"></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card" style="margin-bottom:12px">
+          <div class="card-hdr">IPCA+ isento → % CDI tributado</div>
+          <div id="eq-ipca2"></div>
+        </div>
+        <div class="card">
+          <div class="card-hdr">Prefixado isento → % CDI tributado</div>
+          <div id="eq-pre2"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── VALIDADOR DE TROCA ─── -->
+  <div id="page-validador" class="page">
+    <div class="ph"><h1>Validador de troca</h1><p>Vale a pena trocar ativo A por B? Calcule o breakeven de qualquer substituição.</p></div>
+
+    <div class="preset-row">
+      <button class="pbtn" onclick="loadPreset('fundo')">Fundo DI → LCA</button>
+      <button class="pbtn" onclick="loadPreset('western')">Western Asset → LCA</button>
+      <button class="pbtn" onclick="loadPreset('ntb50')">NTN-B 2050 → Deb nova</button>
+      <button class="pbtn" onclick="loadPreset('deb')">Deb antiga → Jalles</button>
+      <button class="pbtn" onclick="loadPreset('fii')">TGRE11 → LCA</button>
+    </div>
+
+    <div class="val-grid">
+      <div class="side-card a">
+        <div class="side-title a">Ativo atual — A</div>
+        <div class="fld"><label>Nome</label><input type="text" id="va-nome" value="Fundo DI XP"></div>
+        <div class="fld-row">
+          <div class="fld"><label>Valor mercado (R$)</label><input type="number" id="va-val" value="100000" oninput="updVal()"></div>
+          <div class="fld"><label>Custo de saída (R$)</label><input type="number" id="va-custo" value="0" oninput="updVal()"></div>
+        </div>
+        <div class="fld-row">
+          <div class="fld"><label>Taxa bruta (%/ano)</label><input type="number" id="va-taxa" value="14.75" step="0.1" oninput="updVal()"></div>
+          <label class="iso-toggle" id="va-iso-lbl" onclick="togIsoV('a');updVal()">
+            <input type="checkbox" id="va-iso" style="display:none">
+            <span id="va-iso-txt">tributado</span>
+          </label>
+        </div>
+        <div class="fld"><label>IR (%)</label>
+          <select id="va-ir" class="ir-sel" onchange="updVal()">
+            <option value="0.225">22,5%</option><option value="0.20">20%</option>
+            <option value="0.175">17,5%</option><option value="0.15" selected>15%</option>
+          </select>
+        </div>
+        <div class="fld"><label>Dividendo / rendimento anual (R$)</label><input type="number" id="va-div" value="0" oninput="updVal()"></div>
+        <div class="fld"><label>Variação de valor esperada (%/ano — ações/FII)</label><input type="number" id="va-apre" value="0" step="0.1" oninput="updVal()"></div>
+        <div class="tip-txt" id="va-tip"></div>
+      </div>
+
+      <div class="side-card b">
+        <div class="side-title b">Alternativa — B</div>
+        <div class="fld"><label>Nome</label><input type="text" id="vb-nome" value="LCA 92% CDI"></div>
+        <div class="fld"><label>Capital disponível (mercado A − custo)</label><input type="number" id="vb-val" value="100000" oninput="updVal()"></div>
+        <div class="fld-row">
+          <div class="fld"><label>Taxa bruta (%/ano)</label><input type="number" id="vb-taxa" value="13.57" step="0.1" oninput="updVal()"></div>
+          <label class="iso-toggle on" id="vb-iso-lbl" onclick="togIsoV('b');updVal()">
+            <input type="checkbox" id="vb-iso" checked style="display:none">
+            <span id="vb-iso-txt">isento</span>
+          </label>
+        </div>
+        <div class="fld"><label>IR (%)</label>
+          <select id="vb-ir" class="ir-sel" onchange="updVal()">
+            <option value="0.225">22,5%</option><option value="0.20">20%</option>
+            <option value="0.175">17,5%</option><option value="0.15" selected>15%</option>
+          </select>
+        </div>
+        <div class="tip-txt" id="vb-tip"></div>
+      </div>
+    </div>
+
+    <div id="val-verdict" class="verdict"></div>
+
+    <div class="card" style="margin-bottom:12px">
+      <div class="card-hdr">Comparação ao longo do tempo</div>
+      <div style="overflow-x:auto">
+        <table class="cmp-tbl">
+          <thead><tr><th>Período</th><th id="th-va">Ativo A</th><th id="th-vb">Ativo B</th><th>Vantagem B</th><th>Decisão</th></tr></thead>
+          <tbody id="val-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-hdr">Evolução patrimonial comparada</div>
+      <div style="position:relative;height:210px"><canvas id="chart-val" role="img" aria-label="Gráfico comparando evolução do ativo A versus B ao longo do tempo"></canvas></div>
+      <div style="display:flex;gap:16px;margin-top:8px;font-size:12px;color:var(--muted)">
+        <span style="display:flex;align-items:center;gap:4px"><span style="display:inline-block;width:16px;height:2px;background:#B84545"></span>Ativo A (atual)</span>
+        <span style="display:flex;align-items:center;gap:4px"><span style="display:inline-block;width:16px;height:2px;background:#C47E3A"></span>Alternativa B</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── INFLUENCIADORES ─── -->
+  <div id="page-drivers" class="page">
+    <div class="ph">
+      <h1>Influenciadores</h1>
+      <p>O que move o rendimento e o preço de cada ativo. Mude o cenário e veja o impacto em tempo real.</p>
+    </div>
+
+    <!-- Cenário simulado -->
+    <div class="scenario-card">
+      <div class="card-hdr">Cenário de mercado — arraste para simular</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+        <div>
+          <div class="scenario-row">
+            <label>Selic / CDI anual</label>
+            <input type="range" id="sc-cdi" min="8" max="18" step="0.25" value="14.75" oninput="updDrivers()">
+            <span class="scenario-val" id="sc-cdi-v">14,75%</span>
+          </div>
+          <div class="scenario-row">
+            <label>IPCA anual</label>
+            <input type="range" id="sc-ipca" min="2" max="10" step="0.25" value="5.5" oninput="updDrivers()">
+            <span class="scenario-val" id="sc-ipca-v">5,50%</span>
+          </div>
+          <div class="scenario-row">
+            <label>Taxa real (juro real)</label>
+            <input type="range" id="sc-real" min="2" max="12" step="0.25" value="9.25" oninput="updDrivers()">
+            <span class="scenario-val" id="sc-real-v">9,25%</span>
+          </div>
+        </div>
+        <div>
+          <div class="scenario-row">
+            <label>Taxa prefixada mercado</label>
+            <input type="range" id="sc-pre" min="8" max="18" step="0.25" value="14.5" oninput="updDrivers()">
+            <span class="scenario-val" id="sc-pre-v">14,50%</span>
+          </div>
+          <div class="scenario-row">
+            <label>USD / BRL</label>
+            <input type="range" id="sc-usd" min="4" max="7" step="0.05" value="5.75" oninput="updDrivers()">
+            <span class="scenario-val" id="sc-usd-v">R$ 5,75</span>
+          </div>
+          <div class="scenario-row">
+            <label>Ibovespa (pontos k)</label>
+            <input type="range" id="sc-ibov" min="80" max="160" step="1" value="127" oninput="updDrivers()">
+            <span class="scenario-val" id="sc-ibov-v">127k</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pulse cards -->
+    <div class="mkt-pulse" id="mkt-pulse">
+      <!-- preenchido por JS -->
+    </div>
+
+    <!-- Filtros -->
+    <div class="drv-filter">
+      <button class="fbtn on" onclick="filterDrv('todos',this)">Todos</button>
+      <button class="fbtn" onclick="filterDrv('rf',this)">Renda Fixa</button>
+      <button class="fbtn" onclick="filterDrv('rv',this)">Renda Variável</button>
+      <button class="fbtn" onclick="filterDrv('bad',this)">Prejudicados</button>
+      <button class="fbtn" onclick="filterDrv('ok',this)">Favorecidos</button>
+    </div>
+
+    <!-- Cabeçalho da tabela -->
+    <div style="display:grid;grid-template-columns:220px 1fr 1fr 130px;gap:0;padding:0 16px 8px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">
+      <span>Ativo</span><span>Rendimento depende de</span><span>Preço depende de</span><span style="text-align:right">Cenário atual</span>
+    </div>
+
+    <div class="drv-assets" id="drv-list"></div>
+  </div>
+
+  <!-- ─── CONSOLIDADO FAMILIAR ─── -->
+  <div id="page-consolidado" class="page">
+    <div class="ph">
+      <h1>Patrimônio Familiar</h1>
+      <p>Visão consolidada das carteiras de Paulo e Cinthia · Família Furtado</p>
+    </div>
+
+    <!-- KPIs família -->
+    <div class="kpi-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:20px">
+      <div class="kpi" style="border-top:2px solid var(--accent)">
+        <div class="kpi-l">Patrimônio total família</div>
+        <div class="kpi-v" style="color:var(--accent)">R$ 1.084k</div>
+        <div class="kpi-s">Paulo R$648k + Cinthia R$436k</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-l">Renda fixa consolidada</div>
+        <div class="kpi-v">R$ 968k</div>
+        <div class="kpi-s">89,3% do patrimônio familiar</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-l">Renda variável</div>
+        <div class="kpi-v">R$ 116k</div>
+        <div class="kpi-s">10,7% · somente Paulo</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-l">Próximo evento crítico</div>
+        <div class="kpi-v" style="color:var(--danger)">ago/2026</div>
+        <div class="kpi-s">NTN-B Paulo · R$96.511</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+      <!-- Paulo -->
+      <div id="card-paulo-consolidado" class="card" style="border-top:2px solid #C47050;order:2">
+        <div class="card-hdr">
+          Carteira Paulo
+          <span style="font-size:11px;padding:2px 8px;border-radius:10px;background:rgba(196,112,80,.1);color:#C47050">XP 5296823</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">
+          <div style="text-align:center;padding:10px;background:var(--bg);border-radius:8px">
+            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-family:var(--font-display);margin-bottom:4px">Total</div>
+            <div style="font-size:17px;font-family:var(--font-elegant)">R$ 648k</div>
+          </div>
+          <div style="text-align:center;padding:10px;background:var(--bg);border-radius:8px">
+            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-family:var(--font-display);margin-bottom:4px">RF</div>
+            <div style="font-size:17px;font-family:var(--font-elegant)">R$ 532k</div>
+          </div>
+          <div style="text-align:center;padding:10px;background:var(--bg);border-radius:8px">
+            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-family:var(--font-display);margin-bottom:4px">RV</div>
+            <div style="font-size:17px;font-family:var(--font-elegant)">R$ 116k</div>
+          </div>
+        </div>
+        <div class="aitem"><div class="dot dw"></div><div><div class="aitem-name">Breakeven reestruturação: mai/2028</div><div class="aitem-det">+R$692/mês · custo R$14.698 a recuperar</div></div></div>
+        <div class="aitem"><div class="dot dr"></div><div><div class="aitem-name">NTN-B vence em 45 dias — R$96.511</div><div class="aitem-det">Decidir reinvestimento com urgência</div></div></div>
+        <div class="aitem" style="border:none"><div class="dot dg"></div><div><div class="aitem-name">4 ativos intocáveis até mai/2028</div><div class="aitem-det">J&F · Jalles · LCAs · NTN-B 2050</div></div></div>
+        <button onclick="switchUserNav('paulo')" style="width:100%;margin-top:10px;padding:8px;background:rgba(196,112,80,.08);border:1px solid rgba(196,112,80,.2);border-radius:8px;cursor:pointer;font-size:12px;color:#C47050;font-family:var(--font-display);letter-spacing:.06em">Ver carteira completa →</button>
+      </div>
+
+      <!-- Cinthia -->
+      <div id="card-cinthia-consolidado" class="card" style="border-top:2px solid #C09090;order:1">
+        <div class="card-hdr">
+          Carteira Cinthia
+          <span style="font-size:11px;padding:2px 8px;border-radius:10px;background:rgba(192,144,144,.1);color:#C09090">XP 6414212</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">
+          <div style="text-align:center;padding:10px;background:var(--bg);border-radius:8px">
+            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-family:var(--font-display);margin-bottom:4px">Total</div>
+            <div style="font-size:17px;font-family:var(--font-elegant)">R$ 436k</div>
+          </div>
+          <div style="text-align:center;padding:10px;background:var(--bg);border-radius:8px">
+            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-family:var(--font-display);margin-bottom:4px">RF</div>
+            <div style="font-size:17px;font-family:var(--font-elegant)">R$ 436k</div>
+          </div>
+          <div style="text-align:center;padding:10px;background:var(--bg);border-radius:8px">
+            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-family:var(--font-display);margin-bottom:4px">RV</div>
+            <div style="font-size:17px;font-family:var(--font-elegant);color:var(--muted)">—</div>
+          </div>
+        </div>
+        <div class="aitem"><div class="dot dw"></div><div><div class="aitem-name">LCI XP vence mai/2027 — R$222k</div><div class="aitem-det">Planejar reinvestimento já — 89% CDI, 10 meses</div></div></div>
+        <div class="aitem"><div class="dot dr"></div><div><div class="aitem-name">LCD BRDE 2036 — taxa flutuante 10 anos</div><div class="aitem-det">R$106.833 a 92,5% CDI trancados — risco de queda da Selic</div></div></div>
+        <div class="aitem" style="border:none"><div class="dot dw"></div><div><div class="aitem-name">LCA Bocom BBM — confirmar taxa</div><div class="aitem-det">R$86.186 · out/2030 · % CDI a verificar</div></div></div>
+        <button onclick="switchUserNav('cinthia')" style="width:100%;margin-top:10px;padding:8px;background:rgba(192,144,144,.08);border:1px solid rgba(192,144,144,.2);border-radius:8px;cursor:pointer;font-size:12px;color:#C09090;font-family:var(--font-display);letter-spacing:.06em">Ver carteira completa →</button>
+      </div>
+    </div>
+
+    <!-- Alertas críticos da família -->
+    <div class="card">
+      <div class="card-hdr">Alertas críticos — família toda</div>
+      <div class="aitem">
+        <div class="dot dr"></div>
+        <div><div class="aitem-name">[Paulo] NTN-B AGO/2026 — R$96.511 vence em 45 dias</div><div class="aitem-det">Decidir destino antes de 15/08. IPCA+ longo, LCA nova ou debênture.</div></div>
+      </div>
+      <div class="aitem">
+        <div class="dot dr"></div>
+        <div><div class="aitem-name">[Cinthia] LCD BRDE FEV/2036 — taxa flutuante por 10 anos</div><div class="aitem-det">R$106.833 trancados. Compensar com LCI (mai/2027) em ativo prefixado ou IPCA+.</div></div>
+      </div>
+      <div class="aitem">
+        <div class="dot dw"></div>
+        <div><div class="aitem-name">[Cinthia] LCI XP MAI/2027 — planejar reinvestimento</div><div class="aitem-det">R$222k a 89% CDI. Em 10 meses libera — travar IPCA+8%+ ou pré 14%+.</div></div>
+      </div>
+      <div class="aitem" style="border:none">
+        <div class="dot dw"></div>
+        <div><div class="aitem-name">[Paulo] BPAC11 — -37,27%</div><div class="aitem-det">Definir stop loss ou revisão de tese.</div></div>
+      </div>
+    </div>
+  </div>
+  </div><!-- /content -->
+</div><!-- /main -->
+</div><!-- /main-app --></div><!-- /app -->
+
+<script>
+/* ── POSIÇÕES RF ── */
+const RF=[
+  {n:'NTN-B AGO/2026 (IPCA+9,45%)',   v:96511,  t:15.47, cdi:120.7, venc:'15/08/2026', s:'urgente'},
+  {n:'DEB J&F FEV/2028 (15,15%)',      v:94830,  t:15.15, cdi:118.4, venc:'21/02/2028', s:'intocavel'},
+  {n:'DEB JALLES DEZ/2031 (IPCA+8,5%)',v:70642,  t:14.47, cdi:113.0, venc:'15/12/2031', s:'intocavel'},
+  {n:'XPAG11 XP Crédito Agro',         v:61373,  t:null,  cdi:null,  venc:'—',          s:'monitorar'},
+  {n:'NTN-B 2050 (IPCA+4,45%)',        v:53341,  t:8.55,  cdi:66.8,  venc:'15/08/2050', s:'monitorar'},
+  {n:'LCA SICOOB MAR/2030 (92% CDI)',  v:37749,  t:13.57, cdi:106.1, venc:'21/03/2030', s:'intocavel'},
+  {n:'LCA SICOOB ABR/2030 (92% CDI)',  v:28389,  t:13.57, cdi:106.1, venc:'04/04/2030', s:'intocavel'},
+  {n:'LCA ORIGINAL DEZ/2028 (92,5%)',  v:26700,  t:13.61, cdi:106.5, venc:'18/12/2028', s:'intocavel'},
+  {n:'LCA SICOOB MAI/2030 (92% CDI)',  v:22491,  t:13.57, cdi:106.1, venc:'10/05/2030', s:'intocavel'},
+  {n:'NTN-B 2050 (IPCA+4,65%)',        v:23088,  t:8.74,  cdi:68.3,  venc:'15/08/2050', s:'monitorar'},
+  {n:'LCA SICOOB ABR/2030 B (92%)',    v:16842,  t:13.57, cdi:106.1, venc:'15/04/2030', s:'intocavel'},
+  {n:'LCA ORIGINAL MAR/2030 (94%)',    v:10418,  t:13.87, cdi:108.4, venc:'06/03/2030', s:'intocavel'},
+];
+
+const SL={intocavel:'sb-a',urgente:'sb-r',monitorar:'sb-w'};
+const ST={intocavel:'intocável',urgente:'urgente',monitorar:'monitorar'};
+
+function renderRF(f){
+  const list=f==='todos'?RF:RF.filter(r=>r.s===f);
+  document.getElementById('rf-count').textContent=`${list.length} ativos · ${fmtR(list.reduce((s,r)=>s+r.v,0))}`;
+  document.getElementById('rf-body').innerHTML=list.map(r=>`
+    <tr>
+      <td><strong>${r.n}</strong></td>
+      <td class="r">${fmtR(r.v)}</td>
+      <td class="r">${r.t?r.t.toFixed(2)+'%':'—'}</td>
+      <td class="r">${r.cdi?r.cdi.toFixed(1)+'% CDI':'—'}</td>
+      <td>${r.venc}</td>
+      <td><span class="sb ${SL[r.s]}">${ST[r.s]}</span></td>
+    </tr>`).join('');
+}
+renderRF('todos');
+
+function filterRF(f,btn){
+  document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  renderRF(f);
+}
+
+/* ── NAVEGAÇÃO ── */
+function goPage(id,el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('on'));
+  document.getElementById('page-'+id).classList.add('on');
+  el.classList.add('on');
+  if(id==='alertas')setTimeout(()=>renderAlertasPage(currentProfile==='familiar'?'familiar':currentUser),20);
+  if(id==='breakeven')setTimeout(buildBE,60);
+  if(id==='aporte')setTimeout(initAporte,60);
+  if(id==='equiv')setTimeout(updEquiv2,60);
+  setTimeout(initProjecao, 100);
+  if(id==='drivers')setTimeout(initDrivers,60);
+  if(id==='validador')setTimeout(updVal,60);
+}
+
+function fmtR(v){return'R$ '+Math.round(v).toLocaleString('pt-BR');}
+
+/* ── DONUT ── */
+window._donutChart = /*CHART_REMOVED*/ ({
+  type:'doughnut',
+  data:{datasets:[{
+    data:[142,245,95,113,116],
+    backgroundColor:['#C47E3A','#4A7C59','#8B7355','#B8892A','#A89880'],
+    borderWidth:3,borderColor:'#fff',hoverOffset:5
+  }]},
+  options:{
+    responsive:true,maintainAspectRatio:false,cutout:'70%',
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' R$ '+Math.round(c.parsed).toLocaleString('pt-BR')+'k'}}}
+  }
+});
+
+window._donutChart.update = function(){
+  try{
+    const ds = this.data && this.data.datasets && this.data.datasets[0];
+    const total = (typeof USERS !== 'undefined' && USERS[currentUser]) ? USERS[currentUser].total : 648476;
+    svgDonut('donut', ds.data, ds.backgroundColor, total);
+  }catch(e){ console.warn('donut render failed', e); }
+};
+document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>window._donutChart.update(),50));
+
+/* ── BREAKEVEN PROGRESS ── */
+const CUSTO=14698,GANHO=692;
+let ph='';
+[1,3,6,9,12,18,22].forEach(m=>{
+  const a=GANHO*m,p=Math.min(100,Math.round(a/CUSTO*100)),ok=p>=100;
+  const d=new Date(2026,6+m,1).toLocaleDateString('pt-BR',{month:'short',year:'2-digit'});
+  ph+=`<div class="prog"><div class="prog-hdr"><span>${d} (m${m})</span><span style="color:${ok?'var(--success)':'var(--text)'};font-weight:${ok?'600':'400'}">${p}%${ok?' ✓':''}</span></div><div class="prog-bar"><div class="prog-fill" style="width:${p}%;background:${ok?'var(--success)':'var(--accent)'}"></div></div></div>`;
+});
+document.getElementById('be-progs').innerHTML=ph;
+
+/* ── BREAKEVEN CHART ── */
+function buildBE(){
+try{
+  const tA=0.1181,tB=0.1486,cA=125772,cB=112124;
+  const la=[],dA=[],dB=[];
+  for(let m=0;m<=78;m+=4){
+    const dt=new Date(2026,6+m,1);
+    la.push(m===0?'jul/26':dt.toLocaleDateString('pt-BR',{month:'short',year:'2-digit'}));
+    dA.push(Math.round(cA*(1+tA)**(m/12)));
+    dB.push(Math.round(cB*(1+tB)**(m/12)));
+  }
+  const ctx=document.getElementById('chart-be').getContext('2d');
+  svgLine('chart-be',[{data:dA,color:'#B84545'},{data:dB,color:'#C4952A',fill:'rgba(196,149,42,0.07)'}],la,{});
+}catch(e){console.warn('buildBE chart failed',e);}
+}
+
+/* ════════════════════════════════════════════
+   UPLOAD & PARSE — arquivos XP Investimentos
+════════════════════════════════════════════ */
+let parsedPos = null;
+let parsedExt = null;
+
+function dzOver(e, id) { e.preventDefault(); document.getElementById('dz-'+id).classList.add('over'); }
+function dzLeave(id) { document.getElementById('dz-'+id).classList.remove('over'); }
+function dzDrop(e, id) {
+  e.preventDefault();
+  dzLeave(id);
+  const file = e.dataTransfer.files[0];
+  if (file) processFile(file, id);
+}
+function fileSelected(input, id) {
+  if (input.files[0]) processFile(input.files[0], id);
+}
+
+function processFile(file, id) {
+  const st = document.getElementById('st-'+id);
+  const icon = document.getElementById('icon-'+id);
+  st.textContent = 'Lendo…';
+  st.style.color = 'var(--accent)';
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, { type: 'array', cellDates: true });
+      if (id === 'pos') {
+        parsedPos = parsePosition(wb, file.name);
+        showPosPreview(parsedPos);
+        document.getElementById('dz-pos').classList.add('done');
+        icon.textContent = '✅';
+        st.textContent = parsedPos.rows.length + ' ativos encontrados';
+        st.style.color = 'var(--success)';
+      } else {
+        parsedExt = parseExtrato(wb, file.name);
+        showExtPreview(parsedExt);
+        document.getElementById('dz-ext').classList.add('done');
+        icon.textContent = '✅';
+        st.textContent = parsedExt.rows.length + ' lançamentos';
+        st.style.color = 'var(--success)';
+      }
+      checkApplyReady();
+    } catch(err) {
+      st.textContent = 'Erro ao ler arquivo: ' + err.message;
+      st.style.color = 'var(--danger)';
+      console.error(err);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+/* ─── Parser: Posição Detalhada XP ─── */
+function parsePosition(wb, filename) {
+  const rows = [];
+  let total = 0;
+
+  wb.SheetNames.forEach(function(sheetName) {
+    const ws = wb.Sheets[sheetName];
+    const data = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+    // Procura linha de header com "produto" ou "ativo" ou "nome"
+    let headerRow = -1;
+    let colNome = -1, colValor = -1, colTaxa = -1, colVenc = -1;
+
+    for (let i = 0; i < Math.min(data.length, 20); i++) {
+      const row = data[i].map(function(c) { return String(c).toLowerCase().trim(); });
+      // Tenta encontrar coluna de nome do produto
+      const nIdx = row.findIndex(function(c) {
+        return c.includes('produto') || c.includes('ativo') || c.includes('nome') || c.includes('título') || c.includes('titulo');
+      });
+      if (nIdx >= 0) {
+        headerRow = i;
+        colNome = nIdx;
+        // Procura coluna de valor
+        colValor = row.findIndex(function(c) {
+          return c.includes('valor') && (c.includes('atual') || c.includes('bruto') || c.includes('mercado') || c.includes('posição') || c.includes('posicao'));
+        });
+        if (colValor < 0) colValor = row.findIndex(function(c) { return c.includes('valor'); });
+        // Taxa / rentabilidade
+        colTaxa = row.findIndex(function(c) {
+          return c.includes('taxa') || c.includes('rentab') || c.includes('indexador');
+        });
+        // Vencimento
+        colVenc = row.findIndex(function(c) {
+          return c.includes('vencimento') || c.includes('vencto') || c.includes('data venc');
+        });
+        break;
+      }
+    }
+
+    if (headerRow < 0) {
+      // Fallback: varre linhas com valores numéricos grandes (> 100)
+      for (let i = 0; i < data.length; i++) {
+        const row = data[i];
+        const nome = String(row[0] || row[1] || '').trim();
+        if (!nome || nome.length < 3) continue;
+        // Procura primeiro número > 100 na linha
+        let val = null;
+        for (let j = 1; j < row.length; j++) {
+          const v = parseFloat(String(row[j]).replace(',','.'));
+          if (!isNaN(v) && v > 100) { val = v; break; }
+        }
+        if (val && nome && !nome.toLowerCase().includes('total') && !nome.toLowerCase().includes('header')) {
+          rows.push({ nome: nome, valor: val, taxa: '', venc: '' });
+          total += val;
+        }
+      }
+      return { rows: rows, total: total, filename: filename, sheet: 'fallback' };
+    }
+
+    // Extrai linhas de dados após o header
+    for (let i = headerRow + 1; i < data.length; i++) {
+      const row = data[i];
+      const nome = String(row[colNome] || '').trim();
+      if (!nome || nome.length < 2) continue;
+      const nomeLow = nome.toLowerCase();
+      if (nomeLow.includes('total') || nomeLow.includes('subtotal') || nomeLow === '') continue;
+
+      let val = 0;
+      if (colValor >= 0) {
+        const raw = String(row[colValor] || '').replace(/[R$\s]/g,'').replace('.','').replace(',','.');
+        val = parseFloat(raw) || 0;
+      }
+      if (val < 0.01 && val !== 0) continue; // skip zeros
+
+      let taxa = '';
+      if (colTaxa >= 0) taxa = String(row[colTaxa] || '').trim();
+
+      let venc = '';
+      if (colVenc >= 0) {
+        const v = row[colVenc];
+        if (v instanceof Date) venc = v.toLocaleDateString('pt-BR');
+        else venc = String(v || '').trim();
+      }
+
+      if (nome && (val > 0 || taxa)) {
+        rows.push({ nome: nome, valor: val, taxa: taxa, venc: venc });
+        total += val;
+      }
+    }
+  });
+
+  return { rows: rows, total: total, filename: filename };
+}
+
+/* ─── Parser: Extrato XP ─── */
+function parseExtrato(wb, filename) {
+  const rows = [];
+  let totalEnt = 0, totalSai = 0;
+
+  wb.SheetNames.forEach(function(sheetName) {
+    const ws = wb.Sheets[sheetName];
+    const data = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', cellDates: true });
+
+    let headerRow = -1;
+    let colData = -1, colDesc = -1, colValor = -1;
+
+    for (let i = 0; i < Math.min(data.length, 20); i++) {
+      const row = data[i].map(function(c) { return String(c).toLowerCase().trim(); });
+      const dIdx = row.findIndex(function(c) { return c.includes('data') || c.includes('dt.'); });
+      const vIdx = row.findIndex(function(c) {
+        return (c.includes('valor') || c.includes('quantia') || c.includes('montante')) && !c.includes('saldo');
+      });
+      if (dIdx >= 0 && vIdx >= 0) {
+        headerRow = i; colData = dIdx; colValor = vIdx;
+        colDesc = row.findIndex(function(c) {
+          return c.includes('descri') || c.includes('histórico') || c.includes('lançamento') || c.includes('lancamento') || c.includes('operação') || c.includes('operacao');
+        });
+        if (colDesc < 0) colDesc = (colData === 0) ? 1 : 0;
+        break;
+      }
+    }
+
+    if (headerRow < 0) return;
+
+    for (let i = headerRow + 1; i < data.length; i++) {
+      const row = data[i];
+      let dt = row[colData];
+      if (dt instanceof Date) dt = dt.toLocaleDateString('pt-BR');
+      else dt = String(dt || '').trim();
+      if (!dt || dt.length < 3) continue;
+
+      const desc = String(row[colDesc] || '').trim();
+      const rawV = String(row[colValor] || '').replace(/[R$\s]/g,'').replace('.','').replace(',','.');
+      const val = parseFloat(rawV) || 0;
+
+      if (dt && (desc || val)) {
+        rows.push({ data: dt, desc: desc, valor: val });
+        if (val > 0) totalEnt += val; else totalSai += val;
+      }
+    }
+  });
+
+  return { rows: rows, totalEnt: totalEnt, totalSai: totalSai, filename: filename };
+}
+
+/* ─── Previews ─── */
+function showPosPreview(p) {
+  document.getElementById('preview-pos').style.display = 'block';
+  document.getElementById('pos-count').textContent = p.rows.length;
+  document.getElementById('pos-total').textContent = 'Total: ' + fmtR(p.total);
+  const body = document.getElementById('pos-preview-body');
+  body.innerHTML = p.rows.map(function(r) {
+    return '<tr><td><strong>' + esc(r.nome) + '</strong></td><td>' +
+      (r.valor ? fmtR(r.valor) : '—') + '</td><td>' +
+      esc(r.taxa || '—') + '</td><td>' + esc(r.venc || '—') + '</td></tr>';
+  }).join('');
+}
+
+function showExtPreview(p) {
+  document.getElementById('preview-ext').style.display = 'block';
+  document.getElementById('ext-count').textContent = p.rows.length;
+  document.getElementById('ext-total').textContent =
+    'Entradas: ' + fmtR(p.totalEnt) + ' · Saídas: ' + fmtR(Math.abs(p.totalSai));
+  const body = document.getElementById('ext-preview-body');
+  body.innerHTML = p.rows.slice(0, 50).map(function(r) {
+    const col = r.valor > 0 ? 'var(--success)' : r.valor < 0 ? 'var(--danger)' : 'var(--muted)';
+    return '<tr><td>' + esc(r.data) + '</td><td>' + esc(r.desc) + '</td>' +
+      '<td style="text-align:right;color:' + col + ';font-weight:500">' +
+      (r.valor !== 0 ? fmtR(r.valor) : '—') + '</td></tr>';
+  }).join('');
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function checkApplyReady() {
+  const btn = document.getElementById('apply-btn');
+  btn.disabled = !parsedPos;
+  if (parsedPos) btn.textContent = parsedExt
+    ? 'Aplicar posição + extrato ao dashboard'
+    : 'Aplicar posição ao dashboard (extrato não carregado)';
+}
+
+/* ─── Aplica os dados no dashboard ─── */
+function applyData() {
+  if (!parsedPos || parsedPos.rows.length === 0) return;
+
+  // Atualiza a tabela de RF com os dados lidos
+  const body = document.getElementById('rf-body');
+  if (body && parsedPos.rows.length > 0) {
+    // Tenta identificar ativos de RF vs RV pelo nome
+    const rfRows = parsedPos.rows.filter(function(r) {
+      const n = r.nome.toLowerCase();
+      return n.includes('lca') || n.includes('lci') || n.includes('cdb') || n.includes('ntb') ||
+             n.includes('ntn') || n.includes('deb') || n.includes('lcd') || n.includes('cri') ||
+             n.includes('cra') || n.includes('tesouro') || n.includes('fundo') || n.includes('crédito') ||
+             n.includes('credito') || n.includes('brde') || n.includes('jalles') || n.includes('j&f') ||
+             n.includes('litoral') || n.includes('xpag') || r.taxa.length > 0;
+    });
+
+    if (rfRows.length > 0) {
+      body.innerHTML = rfRows.map(function(r) {
+        return '<tr><td><strong>' + esc(r.nome) + '</strong></td>' +
+          '<td class="r">' + fmtR(r.valor) + '</td>' +
+          '<td class="r">' + esc(r.taxa || '—') + '</td>' +
+          '<td class="r">—</td>' +
+          '<td>' + esc(r.venc || '—') + '</td>' +
+          '<td><span class="sb sb-n">importado</span></td></tr>';
+      }).join('');
+      document.getElementById('rf-count').textContent =
+        rfRows.length + ' ativos · ' + fmtR(rfRows.reduce(function(s,r){return s+r.valor;},0));
+    }
+  }
+
+  // Atualiza KPIs
+  const totalNovo = parsedPos.total;
+  if (totalNovo > 1000) {
+    const kpiEls = document.querySelectorAll('.kpi-v');
+    if (kpiEls[0]) kpiEls[0].textContent = fmtR(totalNovo);
+    // Atualiza subtítulo com data do arquivo
+    const sub = document.querySelector('.topbar-sub');
+    if (sub) sub.textContent = 'Paulo H. S. Furtado · XP · Arquivo: ' + parsedPos.filename;
+  }
+
+  // Navega para posição
+  goPage('posicao', document.querySelector('.nav-item[onclick*="posicao"]'));
+
+  document.getElementById('apply-msg').textContent =
+    '✅ ' + parsedPos.rows.length + ' ativos importados' +
+    (parsedExt ? ' · ' + parsedExt.rows.length + ' lançamentos do extrato' : '') +
+    '. Revise a aba Posição atual.';
+  document.getElementById('apply-msg').style.color = 'var(--success)';
+}
+
+
+/* ════════════════════════════════════
+   ACELERAR BREAKEVEN — Novo aporte
+════════════════════════════════════ */
+const CUSTO_AP = 14698;
+const BASE_MES = 692;
+const IR_DEF = 0.15;
+
+let apAllocs = [
+  { nome:'LCA 92% CDI isenta',   val:25000, bruta:13.57, iso:true },
+  { nome:'Deb IPCA+8,5% isenta', val:50000, bruta:14.47, iso:true },
+  { nome:'Prefixado 15% isento', val:25000, bruta:15.00, iso:true },
+];
+let apChart = null; let chartVal = null; let beChart2 = null;
+
+function liqAp(a){ return a.iso ? a.bruta/100 : (a.bruta/100)*(1-IR_DEF); }
+
+function syncAp(){
+  const v = +document.getElementById('ap-sl').value;
+  document.getElementById('ap-lbl').textContent = 'R$ ' + Math.round(v).toLocaleString('pt-BR');
+  redistributeByRatio(v);
+  renderApAllocs();
+  updAporte();
+}
+
+function redistributeByRatio(total){
+  const sum = apAllocs.reduce((s,a)=>s+a.val,0);
+  if(sum <= 0){ const eq = total/apAllocs.length; apAllocs.forEach(a=>a.val=Math.round(eq)); return; }
+  apAllocs.forEach(a=>{ a.val = Math.round(a.val/sum*total); });
+}
+
+function renderApAllocs(){
+  const el = document.getElementById('ap-allocs');
+  el.innerHTML = '';
+  apAllocs.forEach((a,i)=>{
+    const liq = liqAp(a);
+    const col = liq>=0.1357 ? 'var(--success)' : liq>=0.12 ? 'var(--warning)' : 'var(--danger)';
+    const bg  = liq>=0.1357 ? 'var(--success-bg)' : liq>=0.12 ? 'var(--warning-bg)' : 'var(--danger-bg)';
+    const row = document.createElement('div');
+    row.className = 'alloc-row';
+    row.innerHTML =
+      '<input type="text" value="'+esc(a.nome)+'" oninput="apAllocs['+i+'].nome=this.value">'+
+      '<input type="number" value="'+Math.round(a.val)+'" step="1000" oninput="apAllocs['+i+'].val=+this.value;syncSlider();updAporte()">'+
+      '<input type="number" value="'+a.bruta.toFixed(2)+'" step="0.1" oninput="apAllocs['+i+'].bruta=+this.value;renderApAllocs();updAporte()">'+
+      '<div class="liq-pill" style="color:'+col+';background:'+bg+'">'+( liq*100).toFixed(2)+'%</div>'+
+      '<button class="rm-x" onclick="apAllocs.splice('+i+',1);renderApAllocs();updAporte()">×</button>';
+    el.appendChild(row);
+  });
+  syncSlider();
+  checkApWarn();
+}
+
+function syncSlider(){
+  const t = apAllocs.reduce((s,a)=>s+a.val,0);
+  document.getElementById('ap-sl').value = t;
+  document.getElementById('ap-lbl').textContent = 'R$ ' + Math.round(t).toLocaleString('pt-BR');
+}
+
+function checkApWarn(){
+  const total = +document.getElementById('ap-sl').value;
+  const alloc = apAllocs.reduce((s,a)=>s+a.val,0);
+  const warn  = document.getElementById('ap-warn');
+  const diff  = total - alloc;
+  if(Math.abs(diff) > 500){
+    warn.style.display = 'block';
+    warn.textContent = diff>0
+      ? fmtR(diff)+' do aporte não alocados — ajuste os valores acima'
+      : 'Alocações excedem o aporte em '+fmtR(-diff);
+  } else {
+    warn.style.display = 'none';
+  }
+}
+
+function addApAlloc(){
+  apAllocs.push({ nome:'Novo ativo', val:10000, bruta:13.57, iso:true });
+  renderApAllocs();
+  updAporte();
+}
+
+const MIXES = {
+  sugerido:   [
+    { nome:'LCA 92% CDI isenta',    pct:.25, bruta:13.57, iso:true },
+    { nome:'Deb IPCA+8,5% isenta',  pct:.50, bruta:14.47, iso:true },
+    { nome:'Prefixado 15% isento',  pct:.25, bruta:15.00, iso:true },
+  ],
+  conservador:[
+    { nome:'LCA 92% CDI isenta',    pct:1.0, bruta:13.57, iso:true },
+  ],
+  agressivo:  [
+    { nome:'Deb IPCA+9,0% isenta',  pct:.50, bruta:14.93, iso:true },
+    { nome:'Prefixado 15,15% isento',pct:.50,bruta:15.15, iso:true },
+  ],
+  custom:     null,
+};
+
+function loadMix(id, btn){
+  document.querySelectorAll('.mix-btn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  const mix = MIXES[id];
+  if(!mix) return; // custom — user edits manually
+  const total = +document.getElementById('ap-sl').value;
+  apAllocs = mix.map(m=>({ nome:m.nome, val:Math.round(total*m.pct), bruta:m.bruta, iso:m.iso }));
+  renderApAllocs();
+  updAporte();
+}
+
+function updAporte(){
+  const gNovo = apAllocs.reduce((s,a)=>s+(a.val*liqAp(a)/12), 0);
+  const gTotal = BASE_MES + gNovo;
+  const beMes  = Math.ceil(CUSTO_AP / gTotal);
+  const acel   = 22 - beMes;
+
+  // KPI
+  const beDate = new Date(2026, 6 + beMes, 1);
+  const beStr  = beDate.toLocaleDateString('pt-BR',{month:'short',year:'numeric'});
+  document.getElementById('ap-kpi-be').textContent  = beStr;
+  document.getElementById('ap-kpi-sub').textContent =
+    acel>0 ? (acel+' meses mais cedo') : acel===0 ? 'mesmo prazo' : 'prazo maior';
+  document.getElementById('ap-kpi-be').className = 'kpi-v ' + (acel>0?'good':acel<0?'bad':'blue');
+
+  // Compare box
+  document.getElementById('ap-be-val').textContent = beStr + ' (m'+beMes+')';
+  document.getElementById('ap-be-sub').textContent =
+    acel>0 ? acel+' meses antes · +'+fmtR(gTotal)+'/mês' : '+'+fmtR(gTotal)+'/mês';
+
+  // Ganho rows
+  let gh = '<div class="ganho-row"><span>Portfolio atual (já ativo)</span><span class="good">+R$ 692/mês</span></div>';
+  apAllocs.forEach(a=>{
+    const gm = a.val*liqAp(a)/12;
+    gh += '<div class="ganho-row"><span>'+esc(a.nome)+'</span><span class="good">+'+fmtR(gm)+'/mês</span></div>';
+  });
+  gh += '<div class="ganho-row" style="border-top:1px solid var(--border);margin-top:4px;padding-top:8px">'+
+        '<span><strong>Total</strong></span><span class="good" style="font-size:15px"><strong>+'+fmtR(gTotal)+'/mês</strong></span></div>';
+  document.getElementById('ap-ganho-rows').innerHTML = gh;
+
+  // Progress bars
+  const milestones = [...new Set([3,6,9,12,beMes])].sort((a,b)=>a-b).filter(m=>m<=beMes+1);
+  let ph = '';
+  milestones.forEach(m=>{
+    const aS = Math.min(100, Math.round(BASE_MES*m/CUSTO_AP*100));
+    const aN = Math.min(100, Math.round(gTotal*m/CUSTO_AP*100));
+    const ok = aN>=100;
+    const dStr = new Date(2026,6+m,1).toLocaleDateString('pt-BR',{month:'short',year:'2-digit'});
+    ph += '<div class="prog" style="margin-bottom:10px">'+
+      '<div class="prog-hdr"><span>'+dStr+' (m'+m+')</span>'+
+      '<span style="color:var(--muted);font-size:11px">sem: '+aS+'% &nbsp;|&nbsp; </span>'+
+      '<span style="color:'+(ok?'var(--success)':'var(--accent)');
+    ph += ';font-weight:'+(ok?'600':'400')+'">com: '+aN+'%'+(ok?' ✓':'')+'</span></div>'+
+      '<div class="prog-bar"><div class="prog-fill" style="width:'+aN+'%;background:'+(ok?'var(--success)':'var(--accent)')+'"></div></div></div>';
+  });
+  document.getElementById('ap-progs').innerHTML = ph;
+
+  // Chart
+  const maxM = Math.min(beMes + 6, 28);
+  const la=[], dS=[], dN=[];
+  for(let m=0;m<=maxM;m++){
+    la.push(m===0?'hoje':new Date(2026,6+m,1).toLocaleDateString('pt-BR',{month:'short',year:'2-digit'}));
+    dS.push(Math.max(0, Math.round(CUSTO_AP - BASE_MES*m)));
+    dN.push(Math.max(0, Math.round(CUSTO_AP - gTotal*m)));
+  }
+  if(apChart){ apChart.data.labels=la; apChart.data.datasets[0].data=dS; apChart.data.datasets[1].data=dN; apChart.update(); return; }
+  const ctx = document.getElementById('chart-aporte').getContext('2d');
+  svgLine('chart-aporte',[{data:dS,color:'#B84545'},{data:dN,color:'#C4952A',fill:'rgba(196,149,42,0.07)'}],la,{});
+}
+
+// Init ao abrir a página
+function initAporte(){
+  const total = +document.getElementById('ap-sl').value;
+  apAllocs = MIXES.sugerido.map(m=>({ nome:m.nome, val:Math.round(total*m.pct), bruta:m.bruta, iso:m.iso }));
+  renderApAllocs();
+  updAporte();
+}
+
+
+/* ════════════════════════════════
+   EQUIVALÊNCIA DE TAXAS
+════════════════════════════════ */
+function updEquiv2(){
+  const cdi  = +document.getElementById('sl-cdi2').value/100;
+  const ipca = +document.getElementById('sl-ipca2').value/100;
+  const ir   = +document.getElementById('sel-ir2').value;
+  document.getElementById('lbl-cdi2').textContent  = (cdi*100).toFixed(2)+'%';
+  document.getElementById('lbl-ipca2').textContent = (ipca*100).toFixed(2)+'%';
+
+  // Tabela IPCA+
+  const spreads = [4,5,5.86,6,6.45,7,8,8.5,9,9.45,10];
+  const marks   = {5.86:'← Lit. Sul',6.45:'← Itapoá',8.5:'← Jalles',9.45:'← NTN-B Paulo'};
+  let h1 = '';
+  spreads.forEach(s=>{
+    const bruto = (1+ipca)*(1+s/100)-1;
+    const pct   = bruto/(1-ir)/cdi;
+    const col   = pct>=1.10?'var(--success)':pct>=0.92?'var(--warning)':'var(--danger)';
+    const mk    = marks[s]?('<span style="font-size:10px;color:var(--muted)"> '+marks[s]+'</span>'):'';
+    h1 += '<div class="eq-ref"><span>IPCA+'+s+'%'+mk+'</span>'+
+          '<div><div class="eq-val" style="color:'+col+'">'+(pct*100).toFixed(1)+'% CDI</div>'+
+          '<div class="eq-mark">'+(bruto*100).toFixed(2)+'% bruto</div></div></div>';
+  });
+  document.getElementById('eq-ipca2').innerHTML = h1;
+
+  // Tabela prefixado
+  const pres = [12,13,14,14.5,15,15.15,16];
+  let h2 = '';
+  pres.forEach(t=>{
+    const pct = t/100/(1-ir)/cdi;
+    const col = pct>=1.10?'var(--success)':pct>=0.92?'var(--warning)':'var(--danger)';
+    const mk  = t===15.15?'<span style="font-size:10px;color:var(--muted)"> ← J&F</span>':'';
+    h2 += '<div class="eq-ref"><span>'+t+'% prefixado isento'+mk+'</span>'+
+          '<div class="eq-val" style="color:'+col+'">'+(pct*100).toFixed(1)+'% CDI</div></div>';
+  });
+  document.getElementById('eq-pre2').innerHTML = h2;
+
+  // Seus ativos
+  const ativos = [
+    {n:'LCAs 92% CDI isentas',     t:cdi*0.92,  iso:true},
+    {n:'LCA ORIGINAL 94% CDI',     t:cdi*0.94,  iso:true},
+    {n:'DEB J&F 15,15% isento',    t:0.1515,    iso:true},
+    {n:'DEB Jalles IPCA+8,5%',     t:(1+ipca)*(1+0.085)-1, iso:true},
+    {n:'NTN-B 2026 IPCA+9,45%',   t:(1+ipca)*(1+0.0945)-1,iso:false},
+    {n:'NTN-B 2050 IPCA+4,45%',   t:(1+ipca)*(1+0.0445)-1,iso:false},
+    {n:'NTN-B 2050 IPCA+4,65%',   t:(1+ipca)*(1+0.0465)-1,iso:false},
+  ];
+  let h3 = '';
+  ativos.forEach(a=>{
+    const liq = a.iso ? a.t : a.t*(1-ir);
+    const pct = a.iso ? a.t/(1-ir)/cdi : a.t/cdi;
+    const col = pct>=1.10?'var(--success)':pct>=0.92?'var(--warning)':'var(--danger)';
+    const badge = a.iso
+      ? '<span class="sb sb-g" style="font-size:10px">isento</span>'
+      : '<span class="sb sb-w" style="font-size:10px">IR</span>';
+    h3 += '<div class="eq-ref">'+badge+
+          '<span style="flex:1;padding:0 8px">'+a.n+'</span>'+
+          '<div><div class="eq-val" style="color:'+col+'">'+(liq*100).toFixed(2)+'% líq = '+(pct*100).toFixed(1)+'% CDI</div></div></div>';
+  });
+  document.getElementById('eq-ativos2').innerHTML = h3;
+}
+updEquiv2();
+
+/* ════════════════════════════════
+   VALIDADOR DE TROCA
+════════════════════════════════ */
+function togIsoV(id){
+  const cb  = document.getElementById('v'+id+'-iso');
+  const lbl = document.getElementById('v'+id+'-iso-lbl');
+  const txt = document.getElementById('v'+id+'-iso-txt');
+  const on  = !cb.checked;
+  cb.checked = on;
+  lbl.className = 'iso-toggle'+(on?' on':'');
+  txt.textContent = on ? 'isento' : 'tributado';
+}
+
+function getLiqV(taxa,iso,ir){ return iso ? taxa/100 : (taxa/100)*(1-ir); }
+
+function updVal(){
+  const av   = +document.getElementById('va-val').value||0;
+  const ac   = +document.getElementById('va-custo').value||0;
+  const at   = +document.getElementById('va-taxa').value||0;
+  const ai   = document.getElementById('va-iso').checked;
+  const air  = +document.getElementById('va-ir').value;
+  const adiv = +document.getElementById('va-div').value||0;
+  const aap  = +document.getElementById('va-apre').value||0;
+  const an   = document.getElementById('va-nome').value;
+
+  const bv   = av - ac;
+  document.getElementById('vb-val').value = Math.round(bv);
+  const bt   = +document.getElementById('vb-taxa').value||0;
+  const bi   = document.getElementById('vb-iso').checked;
+  const bir  = +document.getElementById('vb-ir').value;
+  const bn   = document.getElementById('vb-nome').value;
+
+  const arl  = getLiqV(at,ai,air);
+  const adl  = adiv/av;
+  const aapl = aap/100;
+  const atl  = arl+adl+aapl;
+  const brl  = getLiqV(bt,bi,bir);
+
+  document.getElementById('va-tip').textContent =
+    'Taxa líquida: '+(arl*100).toFixed(2)+'% rend.'+(adiv?' + '+(adl*100).toFixed(1)+'% div.':'')+(aap?' + '+aap.toFixed(1)+'% apre.':'')+' = '+(atl*100).toFixed(2)+'% total/ano';
+  document.getElementById('vb-tip').textContent =
+    'Taxa líquida: '+(brl*100).toFixed(2)+'%/ano sobre R$'+Math.round(bv).toLocaleString('pt-BR');
+
+  document.getElementById('th-va').textContent = an;
+  document.getElementById('th-vb').textContent = bn;
+
+  const per = [{l:'6 meses',t:.5},{l:'1 ano',t:1},{l:'2 anos',t:2},{l:'3 anos',t:3},{l:'5 anos',t:5},{l:'10 anos',t:10}];
+  const la=[],da=[],db=[];
+  let tb = '';
+  per.forEach(({l,t})=>{
+    const aT = av*((1+aapl)**t) + av*((1+arl)**t-1) + adiv*t;
+    const bT = bv*((1+brl)**t);
+    const bw = bT > aT;
+    tb += '<tr class="'+(bw?'win':'')+'"><td>'+l+'</td>'+
+      '<td>'+fmtR(aT)+'</td>'+
+      '<td style="color:'+(bw?'var(--success)':'inherit')+'">'+fmtR(bT)+'</td>'+
+      '<td style="color:'+(bw?'var(--success)':'var(--danger)')+'">'+
+        (bT>=aT?'+':'-')+fmtR(Math.abs(bT-aT))+'</td>'+
+      '<td><span class="sb '+(bw?'sb-g':'sb-r')+'">'+(bw?'B ganha':'A ganha')+'</span></td></tr>';
+    la.push(l); da.push(Math.round(aT)); db.push(Math.round(bT));
+  });
+  document.getElementById('val-body').innerHTML = tb;
+
+  // Verdict
+  const a1=av*(1+atl),b1=bv*(1+brl);
+  const bw1=b1>a1, bw5=bv*((1+brl)**5)>av*((1+atl)**5);
+  const verd = document.getElementById('val-verdict');
+  if(bw1&&bw5){
+    verd.className='verdict v-green';
+    verd.innerHTML='<div class="verdict-title" style="color:var(--success)">Vale a pena trocar para '+esc(bn)+'</div>'+
+      '<div class="verdict-sub" style="color:var(--success)">B ganha já no 1º ano. A: '+(atl*100).toFixed(2)+'% vs B: '+(brl*100).toFixed(2)+'%/ano</div>';
+  } else if(!bw1&&!bw5){
+    verd.className='verdict v-red';
+    verd.innerHTML='<div class="verdict-title" style="color:var(--danger)">Não vale a pena trocar agora</div>'+
+      '<div class="verdict-sub" style="color:var(--danger)">A: '+(atl*100).toFixed(2)+'% vs B: '+(brl*100).toFixed(2)+'%/ano</div>';
+  } else {
+    verd.className='verdict v-warn';
+    verd.innerHTML='<div class="verdict-title" style="color:var(--warning)">Depende do prazo</div>'+
+      '<div class="verdict-sub" style="color:var(--warning)">B supera A em alguns anos. Avalie o custo e o horizonte.</div>';
+  }
+
+  // Chart
+  try{
+    if(chartVal && chartVal.data){
+      chartVal.data.labels=la; chartVal.data.datasets[0].data=da; chartVal.data.datasets[1].data=db; chartVal.update();
+    } else {
+      svgLine('chart-val',[{data:da,color:'#B84545'},{data:db,color:'#C4952A',fill:'rgba(196,149,42,0.07)'}],la,{});
+    }
+  }catch(e){ console.warn('chart-val failed', e); }
+}
+
+const PRESETS = {
+  fundo:   {an:'Fundo DI (100% CDI tributado)',av:105654,ac:608, at:14.75,ai:false,air:'0.15',adiv:0,aap:0, bn:'LCA 92% CDI isenta',    bt:13.57,bi:true,bir:'0.15'},
+  western: {an:'Western Asset Total Credit',  av:402651,ac:4698,at:14.75,ai:false,air:'0.15',adiv:0,aap:0, bn:'LCA 92% CDI isenta',    bt:13.57,bi:true,bir:'0.15'},
+  ntb50:   {an:'NTN-B 2050 IPCA+4,45%',      av:35524, ac:0,   at:10.19,ai:false,air:'0.15',adiv:0,aap:0, bn:'Deb IPCA+8,5% isenta',  bt:14.47,bi:true,bir:'0.15'},
+  deb:     {an:'Deb Litoral Sul IPCA+5,86%',  av:18428, ac:2311,at:11.68,ai:true, air:'0.15',adiv:0,aap:0, bn:'DEB Jalles IPCA+8,5%',  bt:14.47,bi:true,bir:'0.15'},
+  fii:     {an:'TGRE11 FII',                  av:44155, ac:0,   at:0,    ai:true, air:'0.15',adiv:4800,aap:-2,bn:'LCA 92% CDI isenta', bt:13.57,bi:true,bir:'0.15'},
+};
+
+function loadPreset(id){
+  const p = PRESETS[id]; if(!p) return;
+  document.getElementById('va-nome').value = p.an;
+  document.getElementById('va-val').value  = p.av;
+  document.getElementById('va-custo').value= p.ac;
+  document.getElementById('va-taxa').value = p.at;
+  document.getElementById('va-ir').value   = p.air;
+  document.getElementById('va-div').value  = p.adiv;
+  document.getElementById('va-apre').value = p.aap;
+  document.getElementById('vb-nome').value = p.bn;
+  document.getElementById('vb-taxa').value = p.bt;
+  document.getElementById('vb-ir').value   = p.bir;
+
+  // set iso A
+  document.getElementById('va-iso').checked = p.ai;
+  document.getElementById('va-iso-lbl').className = 'iso-toggle'+(p.ai?' on':'');
+  document.getElementById('va-iso-txt').textContent = p.ai?'isento':'tributado';
+  // set iso B
+  document.getElementById('vb-iso').checked = p.bi;
+  document.getElementById('vb-iso-lbl').className = 'iso-toggle'+(p.bi?' on':'');
+  document.getElementById('vb-iso-txt').textContent = p.bi?'isento':'tributado';
+
+  if(chartVal){ chartVal.destroy(); chartVal=null; }
+  updVal();
+}
+updVal();
+
+
+/* ════════════════════════════════════
+   INFLUENCIADORES / DRIVERS
+════════════════════════════════════ */
+
+// Definição de cada ativo: o que move rendimento vs preço, tags, status
+const ASSETS = [
+  // RENDA FIXA PÓS-FIXADO
+  { id:'lca-sicoob', nome:'LCAs SICOOB (×4) 92% CDI', val:'R$ 105.474', classe:'rf',
+    rend_label:'CDI × 92%',
+    rend_tags:['tag-selic'],
+    rend_drivers:['Selic'],
+    rend_txt:'Rendimento = CDI × 92%. Selic sobe → rende mais. Selic cai → rende menos. Simples.',
+    preco_label:'Sem mercado sec.',
+    preco_tags:['tag-selic'],
+    preco_drivers:[],
+    preco_txt:'Não tem mercado secundário — só resgata no vencimento. Preço não oscila.',
+    status_fn: sc => {
+      const liq = sc.cdi * 0.92;
+      if(liq > 0.135) return {txt:'Favorecido', cls:'db-ok', insight:'CDI alto → rende bem. Atenção: quando Selic cair, o rendimento cai junto.', ins_cls:'ok'};
+      return {txt:'Atenção', cls:'db-warn', insight:'CDI em queda reduz o rendimento proporcionalmente.', ins_cls:'warn'};
+    },
+    detail:'Indexador: CDI. Isento de IR. Duration próxima de zero — não sofre variação de preço. O risco é de reinvestimento: quando vencer, a taxa nova pode ser menor.'
+  },
+  { id:'lca-orig', nome:'LCA ORIGINAL (94% CDI + 92,5%)', val:'R$ 37.118', classe:'rf',
+    rend_label:'CDI × 92–94%',
+    rend_tags:['tag-selic'],
+    rend_drivers:['Selic'],
+    rend_txt:'Igual às LCAs SICOOB — rendimento proporcional ao CDI, isento de IR.',
+    preco_label:'Sem mercado sec.',
+    preco_tags:[],
+    preco_drivers:[],
+    preco_txt:'Sem mercado secundário. Preço não oscila.',
+    status_fn: sc => ({txt:'Favorecido', cls:'db-ok', insight:'CDI × 94% isento = patamar excelente enquanto Selic estiver alta.', ins_cls:'ok'}),
+    detail:'A LCA ORIGINAL DEZ/2028 rende 92,5% CDI e a MAR/2030 rende 94% CDI. Ambas isentas. Sem risco de mercado, risco de crédito baixo (banco médio).'
+  },
+  // NTN-B
+  { id:'ntb2026', nome:'NTN-B AGO/2026 (IPCA+9,45%)', val:'R$ 96.511', classe:'rf',
+    rend_label:'IPCA + 9,45% fixo',
+    rend_tags:['tag-ipca','tag-spread'],
+    rend_drivers:['IPCA','Taxa real'],
+    rend_txt:'Rendimento = IPCA do período + 9,45% fixo. IPCA alto → rende mais em reais.',
+    preco_label:'Vence em 45 dias',
+    preco_tags:['tag-ipca'],
+    preco_drivers:['Taxa real'],
+    preco_txt:'Vence em 15/08/2026. Com prazo tão curto, a variação de preço é mínima. Risco quase zero de deságio.',
+    status_fn: sc => ({txt:'Vencendo', cls:'db-warn', insight:'R$96.511 liberam em 45 dias. Decidir destino AGORA. Taxa de compra foi excelente (IPCA+9,45%).', ins_cls:'warn'}),
+    detail:'Vencimento: 15/08/2026. Risco de mercado residual muito baixo — prazo curto. Prioridade: definir reinvestimento antes de vencer.'
+  },
+  { id:'ntb2050a', nome:'NTN-B 2050 (IPCA+4,45%)', val:'R$ 35.524 mercado / R$ 53.341 curva', classe:'rf',
+    rend_label:'IPCA + 4,45% fixo',
+    rend_tags:['tag-ipca','tag-spread'],
+    rend_drivers:['IPCA','Taxa real'],
+    rend_txt:'Rende IPCA + spread fixo de 4,45%. Paga cupons semestrais de ~2,225%. IPCA alto é bom para o rendimento em reais.',
+    preco_label:'Taxa real IPCA+ vigente',
+    preco_tags:['tag-ipca','tag-selic'],
+    preco_drivers:['Taxa real','Selic'],
+    preco_txt:'Preço de mercado depende da taxa real exigida pelo mercado. Taxa real hoje ~9,25% → deságio enorme. Duration ~18 anos: cada 1% de variação na taxa = ~18% de variação no preço.',
+    status_fn: sc => {
+      const juroReal = sc.real;
+      if(juroReal > 6) return {txt:'Deságio alto', cls:'db-bad',
+        insight:`Taxa real atual ${juroReal.toFixed(2)}% >> compra 4,45%. Deságio estimado de 30-35%. Não vender agora. Aguardar Selic cair.`, ins_cls:'bad'};
+      if(juroReal > 5) return {txt:'Deságio moderado', cls:'db-warn', insight:'Taxa real elevada. Manter.', ins_cls:'warn'};
+      return {txt:'Próximo do par', cls:'db-ok', insight:'Taxa real próxima da compra. Pode avaliar venda com ágio.', ins_cls:'ok'};
+    },
+    detail:'NUNCA sair com deságio. Duration ~18 anos amplifica qualquer movimento de taxa. Estratégia: aguardar queda da Selic (esperada 2027-2028) → NTN-B 2050 valoriza 30-40% com taxa real caindo de 9% para 6%. Ponto de saída ideal: taxa IPCA+ de mercado abaixo de 5,5%.'
+  },
+  { id:'ntb2050b', nome:'NTN-B 2050 (IPCA+4,65%)', val:'~R$ 15.405 mercado / R$ 23.088 curva', classe:'rf',
+    rend_label:'IPCA + 4,65% fixo',
+    rend_tags:['tag-ipca','tag-spread'],
+    rend_drivers:['IPCA','Taxa real'],
+    rend_txt:'Mesmo mecanismo que a outra NTN-B 2050. Spread ligeiramente maior (4,65%).',
+    preco_label:'Taxa real IPCA+ vigente',
+    preco_tags:['tag-ipca','tag-selic'],
+    preco_drivers:['Taxa real','Selic'],
+    preco_txt:'Duration ~18 anos. Cada 1% de variação da taxa real = ~18% de variação no preço. Hoje em forte deságio.',
+    status_fn: sc => {
+      const juroReal = sc.real;
+      if(juroReal > 6) return {txt:'Deságio alto', cls:'db-bad', insight:`Taxa real ${juroReal.toFixed(2)}% causa deságio de ~30%. Manter até Selic cair.`, ins_cls:'bad'};
+      return {txt:'Monitorar', cls:'db-warn', insight:'Manter.', ins_cls:'warn'};
+    },
+    detail:'Mesma estratégia da outra NTN-B 2050. Comprada em out/2021 quando Selic estava a 6%. Agora sofre deságio com Selic a 14,75%.'
+  },
+  // PREFIXADO
+  { id:'jf', nome:'DEB J&F FEV/2028 (15,15%)', val:'R$ 94.830', classe:'rf',
+    rend_label:'15,15% fixo ao ano',
+    rend_tags:['tag-pre'],
+    rend_drivers:['Nada — fixo'],
+    rend_txt:'Rendimento travado em 15,15%/ano isento, independente do CDI ou IPCA. Não sobe, não desce.',
+    preco_label:'Taxa prefixada de mercado',
+    preco_tags:['tag-pre','tag-selic'],
+    preco_drivers:['Taxa prefixada','Selic'],
+    preco_txt:'Se a taxa prefixada de mercado cair (Selic caindo), o preço dessa deb SOBE — você ganha ágio. Se Selic subir além de 15,15%, há deságio. Hoje o preço está praticamente no par.',
+    status_fn: sc => {
+      const mercPre = sc.pre;
+      if(mercPre < 14.0) return {txt:'Com ágio', cls:'db-ok', insight:`Taxa de mercado ${mercPre.toFixed(2)}% < 15,15% da sua deb → ela vale mais que o par. Oportunidade de venda.`, ins_cls:'ok'};
+      if(mercPre <= 15.5) return {txt:'Próximo do par', cls:'db-ok', insight:'Taxa de mercado similar à sua. Rendendo conforme contratado.', ins_cls:'ok'};
+      return {txt:'Leve deságio', cls:'db-warn', insight:'Taxa de mercado acima da sua. Pequeno deságio — mas manter até fev/2028.', ins_cls:'warn'};
+    },
+    detail:'INTOCÁVEL até fev/2028. Risco Fitch AAA, risco de crédito 10. Prefixado em ambiente de queda da Selic = ótimo ativo. Quando Selic cair para ~12%, essa deb vai valer mais que R$100k no mercado. Pode sair com ágio antes do vencimento se quiser.'
+  },
+  // IPCA+ debs
+  { id:'jalles', nome:'DEB JALLES DEZ/2031 (IPCA+8,5%)', val:'R$ 70.642', classe:'rf',
+    rend_label:'IPCA + 8,5% fixo',
+    rend_tags:['tag-ipca','tag-spread'],
+    rend_drivers:['IPCA','Taxa real'],
+    rend_txt:'Rendimento = IPCA do período + spread fixo de 8,5%, isento de IR. IPCA alto → mais reais de rendimento.',
+    preco_label:'Taxa IPCA+ de mercado',
+    preco_tags:['tag-ipca','tag-selic'],
+    preco_drivers:['Taxa real','Selic'],
+    preco_txt:'Taxa de mercado hoje ~IPCA+9%. Como sua taxa de compra foi IPCA+8,5%, há leve deságio. Se a taxa de mercado cair abaixo de 8,5%, você tem ágio.',
+    status_fn: sc => {
+      const juroReal = sc.real;
+      if(juroReal < 8.0) return {txt:'Com ágio', cls:'db-ok', insight:`Taxa real ${juroReal.toFixed(2)}% < 8,5% compra → ágio. Pode avaliar venda.`, ins_cls:'ok'};
+      if(juroReal < 9.5) return {txt:'Próximo do par', cls:'db-neu', insight:'Leve deságio a mercado. Manter intocável.', ins_cls:'ok'};
+      return {txt:'Leve deságio', cls:'db-warn', insight:`Taxa real ${juroReal.toFixed(2)}% > 8,5% compra → deságio. Manter e aguardar.`, ins_cls:'warn'};
+    },
+    detail:'INTOCÁVEL. Deságio atual pequeno — taxa mercado ~IPCA+9% vs compra IPCA+8,5%. Estratégia: manter até taxa real cair abaixo de 8,5% (ágio) ou até dez/2031.'
+  },
+  // OUTROS RF
+  { id:'xpag', nome:'XPAG11 — XP Crédito Agro', val:'R$ 61.373', classe:'rf',
+    rend_label:'CDI + spread crédito agro',
+    rend_tags:['tag-selic','tag-spread'],
+    rend_drivers:['CDI','Crédito Agro'],
+    rend_txt:'Fundo de LCAs do agronegócio. Rendimento depende do CDI (a base) + spread dos CRAs/LCAs que compõe. Isento de IR para PF.',
+    preco_label:'CDI + qualidade crédito',
+    preco_tags:['tag-selic','tag-spread'],
+    preco_drivers:['CDI'],
+    preco_txt:'Fundo aberto com liquidez. Preço oscila pouco. Come-cotas em maio e novembro — isso corrói o rendimento real.',
+    status_fn: sc => ({txt:'Come-cotas nov', cls:'db-warn',
+      insight:'Verificar antes de novembro: rendimento líquido real vs LCA direta 92% CDI. Come-cotas de 15% 2× ao ano pode tornar a LCA direta mais vantajosa.', ins_cls:'warn'}),
+    detail:'Come-cotas é o principal custo oculto. Em Selic alta, LCA direta 92% CDI isenta pode superar o fundo. Fazer o cálculo antes de nov/2026.'
+  },
+  // RENDA VARIÁVEL
+  { id:'pssa3', nome:'PSSA3 — Porto Seguro', val:'R$ 28.995 (+97,75%)', classe:'rv',
+    rend_label:'Dividendos (resultado seguros)',
+    rend_tags:['tag-bolsa','tag-spread'],
+    rend_drivers:['Resultado Porto Seguro','Selic'],
+    rend_txt:'Dividendos dependem do resultado da operação de seguros. Porto Seguro se beneficia de Selic alta (investe o float em RF). Paga bons dividendos.',
+    preco_label:'Ibovespa + fundamentals',
+    preco_tags:['tag-bolsa','tag-selic'],
+    preco_drivers:['Ibovespa','Selic','Resultado'],
+    preco_txt:'Preço depende do Ibovespa e dos resultados trimestrais. Selic alta é paradoxalmente positiva para seguradora (float rende mais).',
+    status_fn: sc => {
+      if(sc.ibov > 120) return {txt:'Favorecido', cls:'db-ok', insight:`Ibovespa ${sc.ibov}k em alta. PSSA3 subiu 97,75% — portfólio em ganho. Considerar proteção parcial.`, ins_cls:'ok'};
+      return {txt:'Monitorar', cls:'db-neu', insight:'Ibovespa oscilando. Manter posição.', ins_cls:'ok'};
+    },
+    detail:'PM R$26,95 · 544 ações. Maior ganho da carteira (+97,75%). Seguradora beneficia de Selic alta (float). Risco: queda do Ibovespa ou deterioração da sinistralidade.'
+  },
+  { id:'itsa4', nome:'ITSA4 — Itaúsa', val:'R$ 21.149 (+51,28%)', classe:'rv',
+    rend_label:'Dividendos Itaú (spread bancário)',
+    rend_tags:['tag-bolsa','tag-selic','tag-spread'],
+    rend_drivers:['Spread bancário','Inadimplência','Selic'],
+    rend_txt:'Holding do Itaú Unibanco. Dividendos dependem do lucro bancário — spread crédito, inadimplência, volume de operações.',
+    preco_label:'Ibovespa + resultado Itaú',
+    preco_tags:['tag-bolsa','tag-selic'],
+    preco_drivers:['Ibovespa','Selic','Resultado Itaú'],
+    preco_txt:'Banco comercial beneficia de Selic alta (spread maior). Mas Selic alta demais aumenta inadimplência. Preço segue Ibovespa financeiro.',
+    status_fn: sc => ({txt:'Favorecido', cls:'db-ok',
+      insight:'Banco lucrativo em Selic alta. PM R$8,87 → posição com +51% de ganho.', ins_cls:'ok'}),
+    detail:'PM R$8,87 · 1.576 ações. Holding com desconto histórico sobre o Itaú. Boa pagadora de dividendos. Risco: inadimplência em cenário de Selic persistentemente alta.'
+  },
+  { id:'bpac11', nome:'BPAC11 — BTG Pactual', val:'R$ 18.632 (-37,27%)', classe:'rv',
+    rend_label:'BTG resultados (M&A, crédito)',
+    rend_tags:['tag-bolsa','tag-spread'],
+    rend_drivers:['Atividade M&A','Mercado de capitais','Macro'],
+    rend_txt:'Banco de investimento. Receitas dependem de M&A, emissões de dívida, gestão de recursos. Menos sensível a spread bancário, mais a atividade econômica.',
+    preco_label:'Ibovespa + ciclo M&A',
+    preco_tags:['tag-bolsa','tag-selic'],
+    preco_drivers:['Ibovespa','Selic','Ciclo M&A'],
+    preco_txt:'Selic alta reduz atividade de M&A e emissões — impacta diretamente a receita do BTG. Preço sofreu com ciclo de juros altos.',
+    status_fn: sc => {
+      if(sc.cdi > 13) return {txt:'Prejudicado', cls:'db-bad',
+        insight:`Selic ${(sc.cdi*100).toFixed(2)}% inibe M&A e emissões — core business do BTG. PM R$86,85 → posição -37%. Revisar tese.`, ins_cls:'bad'};
+      return {txt:'Melhorando', cls:'db-warn', insight:'Selic em queda favorece BTG. Acompanhar.', ins_cls:'warn'};
+    },
+    detail:'PM R$86,85 · 342 ações. -37,27% sobre PM. BTG é o mais sensível ao ciclo de juros entre os bancos da carteira. Selic caindo → recuperação esperada. Decisão: manter tese ou definir stop loss.'
+  },
+  { id:'itub4', nome:'ITUB4 + outras ações', val:'R$ 12.362', classe:'rv',
+    rend_label:'Dividendos (resultado bancário)',
+    rend_tags:['tag-bolsa','tag-selic'],
+    rend_drivers:['Spread bancário','Selic','Ibovespa'],
+    rend_txt:'Banco comercial. Selic alta → spread maior → mais lucro — até o ponto em que inadimplência cresce.',
+    preco_label:'Ibovespa + macro',
+    preco_tags:['tag-bolsa'],
+    preco_drivers:['Ibovespa','PIB'],
+    preco_txt:'Segue o setor bancário no Ibovespa. Menos volátil que BTG.',
+    status_fn: sc => ({txt:'Estável', cls:'db-neu', insight:'Banco comercial defensivo. Posição pequena.', ins_cls:'ok'}),
+    detail:'Posição pequena. PM R$40,81 · 70 ações. Banco defensivo, boa pagadora de dividendos.'
+  },
+  { id:'tgre11', nome:'TGRE11 — TG Real Estate', val:'R$ 44.155 (aplic. R$ 50k)', classe:'rv',
+    rend_label:'Aluguéis dos imóveis do fundo',
+    rend_tags:['tag-fii','tag-selic'],
+    rend_drivers:['Aluguéis','Vacância','IPCA (reajuste)'],
+    rend_txt:'FII de tijolos. Rendimento mensal = aluguéis recebidos distribuídos. IPCA reajusta contratos → inflação alta é boa para os aluguéis.',
+    preco_label:'Yield implícito de FII no mercado',
+    preco_tags:['tag-fii','tag-selic'],
+    preco_drivers:['Selic','Taxa FII mercado','Vacância'],
+    preco_txt:'Selic alta é inimiga do FII — investidores exigem yield maior, o que deprime o preço. Quando Selic cai, FII valoriza. Hoje há perda de capital de ~12%.',
+    status_fn: sc => {
+      if(sc.cdi > 13) return {txt:'Prejudicado', cls:'db-bad',
+        insight:`Selic ${(sc.cdi*100).toFixed(2)}% mantém yield de FII pressionado. Capital em -12% (R$44k vs R$50k aplicados). Aguardar Selic cair.`, ins_cls:'bad'};
+      return {txt:'Recuperando', cls:'db-warn', insight:'Selic em queda favorece FIIs. Monitorar.', ins_cls:'warn'};
+    },
+    detail:'5.000 cotas · PM R$10/cota (aplic. R$50k) · Preço atual ~R$8,83/cota. Queda de capital de ~12%. FII de tijolo tende a se recuperar com queda da Selic. Verificar vacância e qualidade dos ativos do fundo.'
+  },
+  { id:'lftb11', nome:'LFTB11 — ETF Tesouro Selic', val:'R$ 20.301', classe:'rv',
+    rend_label:'Selic Over diária',
+    rend_tags:['tag-selic'],
+    rend_drivers:['Selic'],
+    rend_txt:'ETF que replica o Tesouro Selic. Rende 100% Selic bruto, sujeito a IR (15% longo prazo). Sem isenção.',
+    preco_label:'Praticamente sem variação',
+    preco_tags:['tag-selic'],
+    preco_drivers:['Selic'],
+    preco_txt:'Duration zero. Preço sobe ~Selic/252 por dia. Sem risco de mercado. Mas tributado — LCA 92% CDI isenta supera.',
+    status_fn: sc => {
+      const liq_lftb = sc.cdi * 0.85; // 100% CDI líquido (IR 15%)
+      const liq_lca  = sc.cdi * 0.92; // 92% CDI isento
+      if(liq_lca > liq_lftb) return {txt:'LCA supera', cls:'db-warn',
+        insight:`LCA 92% CDI isenta = ${(liq_lca*100).toFixed(2)}% líq vs LFTB11 = ${(liq_lftb*100).toFixed(2)}% líq. ETF tributado perde para LCA no longo prazo.`, ins_cls:'warn'};
+      return {txt:'Competitivo', cls:'db-ok', insight:'Taxa próxima do par.', ins_cls:'ok'};
+    },
+    detail:'100% Selic bruto, IR 15% = 85% CDI líquido. LCA 92% CDI isenta = melhor retorno líquido. LFTB11 é útil como reserva de liquidez em momento de espera.'
+  },
+  { id:'gold11', nome:'GOLD11 — ETF Ouro', val:'R$ 3.976', classe:'rv',
+    rend_label:'Preço ouro USD × câmbio',
+    rend_tags:['tag-ouro','tag-cambio'],
+    rend_drivers:['Ouro em USD','USD/BRL'],
+    rend_txt:'Rende variação do ouro em USD convertida para BRL. Não paga dividendos.',
+    preco_label:'Ouro USD + USD/BRL',
+    preco_tags:['tag-ouro','tag-cambio'],
+    preco_drivers:['Ouro USD','USD/BRL','Instabilidade global'],
+    preco_txt:'Ouro sobe com: instabilidade geopolítica, inflação americana alta, dólar fraco, fuga de risco. Dólar forte → ouro tende a cair. BRL desvalorizando → GOLD11 sobe em reais.',
+    status_fn: sc => ({txt:'Hedge cambial', cls:'db-neu',
+      insight:`USD/BRL = R$${sc.usd.toFixed(2)}. Ouro protege contra desvalorização do real e instabilidade global. Posição pequena — seguro de portfólio.`, ins_cls:'ok'}),
+    detail:'Posição pequena (R$3.976). Funciona como seguro de portfólio — descorrelacionado dos outros ativos. Tributado (ganho de capital 15%). Não é para crescer, é para proteger.'
+  },
+];
+
+const TAG_LABELS = {
+  'tag-selic':'CDI/Selic','tag-ipca':'IPCA','tag-pre':'Taxa prefixada',
+  'tag-cambio':'Câmbio','tag-bolsa':'Ibovespa','tag-spread':'Spread/crédito',
+  'tag-fii':'Yield FII','tag-ouro':'Ouro'
+};
+
+let openAssets = new Set();
+
+function getScenario(){
+  return {
+    cdi:  +document.getElementById('sc-cdi').value/100,
+    ipca: +document.getElementById('sc-ipca').value/100,
+    real: +document.getElementById('sc-real').value,
+    pre:  +document.getElementById('sc-pre').value,
+    usd:  +document.getElementById('sc-usd').value,
+    ibov: +document.getElementById('sc-ibov').value,
+  };
+}
+
+function updDrivers(){
+  const sc = getScenario();
+  document.getElementById('sc-cdi-v').textContent  = (sc.cdi*100).toFixed(2)+'%';
+  document.getElementById('sc-ipca-v').textContent  = (sc.ipca*100).toFixed(2)+'%';
+  document.getElementById('sc-real-v').textContent  = sc.real.toFixed(2)+'%';
+  document.getElementById('sc-pre-v').textContent   = sc.pre.toFixed(2)+'%';
+  document.getElementById('sc-usd-v').textContent   = 'R$ '+sc.usd.toFixed(2);
+  document.getElementById('sc-ibov-v').textContent  = sc.ibov+'k';
+
+  // Pulse cards
+  const liqLCA = sc.cdi*0.92;
+  const liqPre = 0.1515;
+  const juroReal = sc.real;
+  document.getElementById('mkt-pulse').innerHTML = [
+    {l:'CDI',        v:(sc.cdi*100).toFixed(2)+'%',   sub:'Selic vigente',              col:'var(--text)'},
+    {l:'IPCA',       v:(sc.ipca*100).toFixed(2)+'%',  sub:'Inflação anualiz.',           col:'var(--text)'},
+    {l:'Juro real',  v:juroReal.toFixed(2)+'%',        sub:'Selic – IPCA',               col:juroReal>7?'var(--danger)':juroReal>5?'var(--warning)':'var(--success)'},
+    {l:'Taxa pré',   v:sc.pre.toFixed(2)+'%',          sub:'Prefixado mercado',           col:'var(--text)'},
+    {l:'USD/BRL',    v:'R$ '+sc.usd.toFixed(2),        sub:'Câmbio dólar',                col:'var(--text)'},
+    {l:'Ibovespa',   v:sc.ibov+'k pts',                sub:'Bolsa brasileira',            col:sc.ibov>120?'var(--success)':sc.ibov>100?'var(--muted)':'var(--danger)'},
+  ].map(p=>`<div class="mkt-card"><div class="mkt-label">${p.l}</div><div class="mkt-val" style="color:${p.col}">${p.v}</div><div class="mkt-dir" style="color:var(--muted)">${p.sub}</div></div>`).join('');
+
+  renderDrv(currentDrvFilter, sc);
+}
+
+let currentDrvFilter = 'todos';
+function filterDrv(f, btn){
+  document.querySelectorAll('.drv-filter .fbtn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  currentDrvFilter = f;
+  updDrivers();
+}
+
+function renderDrv(f, sc){
+  let list = ASSETS;
+  if(f === 'rf')   list = ASSETS.filter(a=>a.classe==='rf');
+  if(f === 'rv')   list = ASSETS.filter(a=>a.classe==='rv');
+  if(f === 'bad')  list = ASSETS.filter(a=>{ const s=a.status_fn(sc); return s.cls==='db-bad'||s.cls==='db-warn'; });
+  if(f === 'ok')   list = ASSETS.filter(a=>{ const s=a.status_fn(sc); return s.cls==='db-ok'||s.cls==='db-neu'; });
+
+  document.getElementById('drv-list').innerHTML = list.map(a=>{
+    const st = a.status_fn(sc);
+    const isOpen = openAssets.has(a.id);
+    const tags = (t) => t.map(cls=>`<span class="drv-tag ${cls}">${TAG_LABELS[cls]||cls}</span>`).join('');
+    return `<div class="drv-card" id="dc-${a.id}">
+      <div class="drv-head" onclick="toggleDrv('${a.id}')">
+        <div>
+          <div class="drv-nome">${a.nome}</div>
+          <div class="drv-val">${a.val}</div>
+        </div>
+        <div>
+          <div class="drv-col-hdr">Rendimento</div>
+          <div class="drv-col-val">${tags(a.rend_tags)} ${a.rend_label}</div>
+        </div>
+        <div>
+          <div class="drv-col-hdr">Preço de mercado</div>
+          <div class="drv-col-val">${tags(a.preco_tags)} ${a.preco_label}</div>
+        </div>
+        <div class="drv-status">
+          <span class="drv-badge ${st.cls}">${st.txt}</span>
+          <span class="drv-arrow${isOpen?' open':''}">▾</span>
+        </div>
+      </div>
+      <div class="drv-body${isOpen?' open':''}">
+        <div class="drv-detail-grid">
+          <div class="drv-detail-box">
+            <div class="drv-detail-title">Como funciona o rendimento</div>
+            <div style="font-size:13px;line-height:1.5">${a.rend_txt}</div>
+          </div>
+          <div class="drv-detail-box">
+            <div class="drv-detail-title">O que move o preço de mercado</div>
+            <div style="font-size:13px;line-height:1.5">${a.preco_txt}</div>
+          </div>
+          <div class="drv-detail-box">
+            <div class="drv-detail-title">Notas e estratégia</div>
+            <div style="font-size:12px;line-height:1.5;color:var(--muted)">${a.detail}</div>
+          </div>
+        </div>
+        <div class="drv-insight ${st.ins_cls}">${st.insight}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleDrv(id){
+  if(openAssets.has(id)) openAssets.delete(id); else openAssets.add(id);
+  updDrivers();
+}
+
+function initDrivers(){ updDrivers(); }
+
+
+/* ════════════════════════════════════
+   MULTI-USUÁRIO — dados por carteira
+════════════════════════════════════ */
+const USERS = {
+  paulo: {
+    nome: 'Paulo Henrique',
+    conta: 'XP 5296823',
+    total: 648476,
+    rf: 532076,
+    rv: 116399,
+    rf_pct: 82.1,
+    rv_pct: 17.9,
+    breakeven: 'mai/2028',
+    ganho_mes: 692,
+    custo: 14698,
+    alertas: 2,
+    topbar_sub: 'Carteira Paulo sob gestão · Conta XP 5296823',
+    saudacao: 'Cinthia, você está gerenciando a carteira do Paulo.',
+    kpi4_label: 'Breakeven do plano',
+    kpi4_val: 'mai/2028',
+    kpi4_sub: '22 meses · +R$ 692/mês',
+    donut_data: [142,244,95,61,116],
+    donut_labels: ['LCA pós-fix.','Inflação','Prefixado','XPAG11 agro','Renda Var.'],
+    donut_colors: ['#C47E3A','#4A7C59','#8B7355','#B8892A','#A89880'],
+    rf_ativos: [
+      {n:'NTN-B AGO/2026 (IPCA+9,45%)',   v:96511,  t:15.47, cdi:120.7, venc:'15/08/2026', s:'urgente'},
+      {n:'DEB J&F FEV/2028 (15,15%)',      v:94830,  t:15.15, cdi:118.4, venc:'21/02/2028', s:'intocavel'},
+      {n:'DEB JALLES DEZ/2031 (IPCA+8,5%)',v:70642,  t:14.47, cdi:113.0, venc:'15/12/2031', s:'intocavel'},
+      {n:'XPAG11 XP Crédito Agro',         v:61373,  t:null,  cdi:null,  venc:'—',          s:'monitorar'},
+      {n:'NTN-B 2050 (IPCA+4,45%)',        v:53341,  t:8.55,  cdi:66.8,  venc:'15/08/2050', s:'monitorar'},
+      {n:'LCA SICOOB MAR/2030 (92% CDI)',  v:37749,  t:13.57, cdi:106.1, venc:'21/03/2030', s:'intocavel'},
+      {n:'LCA SICOOB ABR/2030 (92% CDI)',  v:28389,  t:13.57, cdi:106.1, venc:'04/04/2030', s:'intocavel'},
+      {n:'LCA ORIGINAL DEZ/2028 (92,5%)',  v:26700,  t:13.61, cdi:106.5, venc:'18/12/2028', s:'intocavel'},
+      {n:'LCA SICOOB MAI/2030 (92% CDI)',  v:22491,  t:13.57, cdi:106.1, venc:'10/05/2030', s:'intocavel'},
+      {n:'NTN-B 2050 (IPCA+4,65%)',        v:23088,  t:8.74,  cdi:68.3,  venc:'15/08/2050', s:'monitorar'},
+      {n:'LCA SICOOB ABR/2030 B (92%)',    v:16842,  t:13.57, cdi:106.1, venc:'15/04/2030', s:'intocavel'},
+      {n:'LCA ORIGINAL MAR/2030 (94%)',    v:10418,  t:13.87, cdi:108.4, venc:'06/03/2030', s:'intocavel'},
+    ],
+    alertas_list: [
+      {cor:'r', titulo:'NTN-B AGO/2026 — vence em 45 dias', det:'R$96.511 liberam em 15/08. Decidir destino AGORA.'},
+      {cor:'w', titulo:'LCD BRDE — ativo na conta da Cinthia, não do Paulo', det:'Removido desta carteira.'},
+      {cor:'w', titulo:'BPAC11 — -37,27% sobre preço médio', det:'Revisar tese ou definir stop loss.'},
+      {cor:'g', titulo:'Come-cotas XPAG11 em nov/2026', det:'Verificar se ainda compensa vs LCA direta.'},
+    ],
+    vencimentos: [
+      {icon:'🔴', bg:'var(--danger-bg)', nome:'NTN-B AGO/2026', det:'R$96.511 · 15/08/2026 · 45 dias', badge:'urgente', bc:'sb-r'},
+      {icon:'🔒', bg:'rgba(196,126,58,.1)', nome:'DEB J&F FEV/2028', det:'R$94.830 · 21/02/2028 · 15,15% isento', badge:'intocável', bc:'sb-a'},
+      {icon:'🔒', bg:'rgba(196,126,58,.1)', nome:'LCA ORIGINAL DEZ/2028', det:'R$26.700 · 18/12/2028 · 92,5% CDI', badge:'intocável', bc:'sb-a'},
+      {icon:'🔒', bg:'rgba(196,126,58,.1)', nome:'LCAs SICOOB 2030 (×4)', det:'R$105.474 · mar–mai/2030 · 92% CDI', badge:'intocável', bc:'sb-a'},
+    ],
+    resumo: [
+      {dot:'w', nome:'Reestruturação jun/26', det:'Custo R$14.698 · ganho +R$692/mês · recupera mai/2028'},
+      {dot:'g', nome:'Taxa média subiu 11,81% → 14,86%', det:'+3,05%/ano · R$285/mês das debêntures novas'},
+      {dot:'g', nome:'4 blocos intocáveis', det:'J&F · Jalles · LCAs · NTN-B 2050 — não tocar antes de mai/2028'},
+    ],
+  },
+
+  cinthia: {
+    nome: 'Cinthia',
+    conta: 'XP 6414212',
+    total: 435700,
+    rf: 435700,
+    rv: 0,
+    rf_pct: 100,
+    rv_pct: 0,
+    breakeven: '—',
+    ganho_mes: null,
+    custo: null,
+    alertas: 2,
+    topbar_sub: 'Carteira Cinthia · Conta XP 6414212',
+    saudacao: 'Esta é a sua carteira, Cinthia.',
+    kpi4_label: 'LCI vence em',
+    kpi4_val: 'mai/2027',
+    kpi4_sub: 'R$222k · ~10 meses · oportunidade',
+    donut_data: [222000, 106833, 86186, 20682],
+    donut_labels: ['LCI XP mai/27','LCD BRDE 2036','LCA Bocom 2030','LCAs orig.'],
+    donut_colors: ['#C47E3A','#B84545','#4A7C59','#8B7355'],
+    rf_ativos: [
+      {n:'LCI BANCO XP S.A. MAI/2027',         v:222000, t:13.11, cdi:92.6,  venc:'mai/2027',  s:'urgente',   nota:'89% CDI isento · vence em ~10 meses'},
+      {n:'LCD BRDE FEV/2036 (92,5% CDI)',       v:106833, t:13.64, cdi:106.9, venc:'fev/2036',  s:'monitorar', nota:'⚠️ Taxa flutuante trancada 10 anos'},
+      {n:'LCA BANCO BOCOM BBM OUT/2030',         v:86186,  t:null,  cdi:null,  venc:'out/2030',  s:'monitorar', nota:'Taxa a confirmar · banco menor'},
+      {n:'LCA ORIGINAL ABR/2030',                v:19533,  t:null,  cdi:null,  venc:'abr/2030',  s:'monitorar', nota:'Taxa a confirmar'},
+      {n:'LCD BRDE MAI/2030',                    v:1149,   t:null,  cdi:null,  venc:'mai/2030',  s:'monitorar', nota:'Resíduo'},
+    ],
+    alertas_list: [
+      {cor:'w', titulo:'LCI XP vence em mai/2027 — planejar reinvestimento', det:'R$222k liberam em ~10 meses. Oportunidade de travar taxa boa antes da Selic cair. Estudar IPCA+8%+ ou prefixado 14%+.'},
+      {cor:'r', titulo:'LCD BRDE FEV/2036 — taxa flutuante por 10 anos', det:'R$106.833 a 92,5% CDI trancados até 2036. Quando Selic cair, o rendimento cai junto sem possibilidade de saída. Compensar com LCI (mai/2027) em ativo prefixado ou IPCA+.'},
+      {cor:'w', titulo:'LCA Bocom BBM — confirmar taxa e rating', det:'Banco menor, checar rating e qual o % CDI contratado.'},
+      {cor:'g', titulo:'LCA ORIGINAL ABR/2030 — confirmar taxa', det:'Verificar se é 92% ou 94% CDI.'},
+    ],
+    vencimentos: [
+      {icon:'📅', bg:'var(--warning-bg)', nome:'LCI BANCO XP MAI/2027', det:'R$222.000 · mai/2027 · 89% CDI · planejar já', badge:'próximo', bc:'sb-w'},
+      {icon:'⚠️', bg:'var(--danger-bg)',  nome:'LCD BRDE FEV/2036', det:'R$106.833 · fev/2036 · 92,5% CDI flutuante', badge:'monitorar', bc:'sb-r'},
+      {icon:'📅', bg:'rgba(196,126,58,.08)', nome:'LCA Bocom BBM OUT/2030', det:'R$86.186 · out/2030 · taxa a confirmar', badge:'ok', bc:'sb-n'},
+    ],
+    resumo: [
+      {dot:'w', nome:'LCD BRDE FEV/2036 — risco de longo prazo', det:'R$106k em taxa flutuante até 2036. Quando Selic cair, rende menos sem saída.'},
+      {dot:'g', nome:'LCI XP vence mai/2027 — oportunidade', det:'R$222k livram em ~10 meses. Travar IPCA+8%+ ou prefixado 14%+ compensa o LCD BRDE.'},
+      {dot:'w', nome:'Taxas a confirmar', det:'Bocom BBM e LCA ORIGINAL — confirmar % CDI na XP.'},
+    ],
+  }
+};
+
+let currentUser = 'cinthia';
+
+function switchUser(id) {
+  currentUser = id;
+  // Atualizar botões
+  ['paulo','cinthia'].forEach(u => {
+    const b=document.getElementById('ubtn-'+u); if(b) b.classList.toggle('active', u===id);
+    const c=document.getElementById('uchk-'+u); if(c) c.style.display = u===id ? '' : 'none';
+  });
+  loadUserData(USERS[id]);
+  // Voltar para home
+  goPage('home', document.querySelector('.nav-item.on') || document.querySelectorAll('.nav-item')[0]);
+  // Desmarcar todos e marcar home
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('on'));
+  document.querySelectorAll('.nav-item')[0].classList.add('on');
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+  document.getElementById('page-home').classList.add('on');
+}
+
+function fmtRK(v) {
+  if(v >= 1000000) return 'R$ '+(v/1000000).toFixed(2)+'M';
+  if(v >= 1000)    return 'R$ '+Math.round(v/1000)+'k';
+  return 'R$ '+Math.round(v).toLocaleString('pt-BR');
+}
+
+function loadUserData(u) {
+  const scope = currentUser || 'cinthia';
+  updateContextText(scope);
+  renderAlertasPage(scope);
+
+  const badge = document.querySelector('.badge-alert');
+  if(badge) {
+    const n = u.alertas_list ? u.alertas_list.length : (u.alertas || 0);
+    badge.innerHTML =
+      '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> '+n+' alerta'+(n!==1?'s':'')+' ativo'+(n!==1?'s':'');
+  }
+
+  const ph = document.querySelector('#page-home .ph p');
+  if(ph) ph.textContent = u.saudacao;
+
+  const kpis = document.querySelectorAll('#page-home .kpi-row:first-of-type .kpi');
+  if(kpis[0]) { kpis[0].querySelector('.kpi-l').textContent = scope==='familiar'?'Patrimônio familiar':'Patrimônio total'; kpis[0].querySelector('.kpi-v').textContent = fmtRK(u.total); kpis[0].querySelector('.kpi-s').textContent = 'posição atualizada'; }
+  if(kpis[1]) { kpis[1].querySelector('.kpi-l').textContent = 'Renda fixa'; kpis[1].querySelector('.kpi-v').textContent = fmtRK(u.rf); kpis[1].querySelector('.kpi-s').textContent = u.rf_pct.toFixed(1)+'% da carteira'; }
+  if(kpis[2]) { kpis[2].querySelector('.kpi-l').textContent = 'Renda variável'; kpis[2].querySelector('.kpi-v').textContent = u.rv > 0 ? fmtRK(u.rv) : '—'; kpis[2].querySelector('.kpi-s').textContent = u.rv > 0 ? u.rv_pct.toFixed(1)+'% da carteira' : 'sem renda variável'; }
+  if(kpis[3]) { kpis[3].querySelector('.kpi-l').textContent = u.kpi4_label; kpis[3].querySelector('.kpi-v').textContent = u.kpi4_val; kpis[3].querySelector('.kpi-s').textContent = u.kpi4_sub; }
+
+  if(window._donutChart) {
+    window._donutChart.data.datasets[0].data = u.donut_data;
+    window._donutChart.data.datasets[0].backgroundColor = u.donut_colors;
+    window._donutChart.update();
+  }
+  const donutVal = document.querySelector('.donut-ctr .donut-val');
+  if(donutVal) donutVal.textContent = fmtRK(u.total);
+
+  const legEl = document.querySelector('.legend');
+  if(legEl) {
+    legEl.innerHTML = u.donut_labels.map((l,i)=>
+      '<div class="leg"><div class="leg-sq" style="background:'+u.donut_colors[i]+'"></div>'+l+' — '+fmtRK(u.donut_data[i])+'</div>'
+    ).join('');
+  }
+
+  document.querySelectorAll('#page-home .card').forEach(card => {
+    const hdr = card.querySelector('.card-hdr');
+    const txt = hdr ? hdr.textContent : '';
+    if(txt.includes('Resumo')) {
+      hdr.textContent = scope==='familiar' ? 'Resumo familiar inteligente ✦' : 'Resumo inteligente ✦';
+      card.querySelectorAll('.aitem').forEach(x=>x.remove());
+      (u.resumo||[]).forEach(r => {
+        card.insertAdjacentHTML('beforeend',
+          '<div class="aitem"><div class="dot d'+r.dot+'"></div><div><div class="aitem-name">'+esc(r.nome)+'</div><div class="aitem-det">'+esc(r.det)+'</div></div></div>'
+        );
+      });
+    }
+    if(txt.includes('Alertas recentes')) {
+      hdr.textContent = scope==='familiar' ? 'Alertas recentes — família' : 'Alertas recentes — '+u.nome;
+      card.querySelectorAll('.aitem').forEach(x=>x.remove());
+      (u.alertas_list||[]).slice(0,4).forEach(a => {
+        card.insertAdjacentHTML('beforeend',
+          '<div class="aitem"><div class="dot d'+a.cor+'"></div><div><div class="aitem-name">'+esc(a.titulo)+'</div><div class="aitem-det">'+esc(a.det)+'</div></div></div>'
+        );
+      });
+    }
+    if(txt.includes('Próximos vencimentos')) {
+      hdr.textContent = scope==='familiar' ? 'Próximos vencimentos — família 📅' : 'Próximos vencimentos 📅';
+      card.querySelectorAll('.vitem').forEach(x=>x.remove());
+      (u.vencimentos||[]).forEach(v => {
+        card.insertAdjacentHTML('beforeend',
+          '<div class="vitem"><div class="vitem-icon" style="background:'+v.bg+'">'+v.icon+'</div>'+
+          '<div style="flex:1"><div class="vitem-name">'+esc(v.nome)+'</div><div class="vitem-det">'+esc(v.det)+'</div></div>'+
+          '<span class="sb '+v.bc+'">'+esc(v.badge)+'</span></div>'
+        );
+      });
+    }
+  });
+
+  renderRF_user(u.rf_ativos || []);
+  const rvSection = document.querySelector('#page-posicao .card:last-child');
+  if(rvSection) rvSection.style.display = (u.rv > 0 && scope !== 'cinthia') ? '' : 'none';
+}
+
+function renderRF_user(ativos) {
+  const SL={intocavel:'sb-a',urgente:'sb-r',monitorar:'sb-w'};
+  const ST={intocavel:'intocável',urgente:'urgente',monitorar:'monitorar'};
+  const body = document.getElementById('rf-body');
+  if(!body) return;
+  body.innerHTML = ativos.map(r =>
+    '<tr><td><strong>'+r.n+'</strong>'+(r.nota?'<br><span style="font-size:11px;color:var(--muted)">'+r.nota+'</span>':'')+'</td>'+
+    '<td class="r">R$ '+Math.round(r.v).toLocaleString('pt-BR')+'</td>'+
+    '<td class="r">'+(r.t ? r.t.toFixed(2)+'%' : '—')+'</td>'+
+    '<td class="r">'+(r.cdi ? r.cdi.toFixed(1)+'% CDI' : '—')+'</td>'+
+    '<td>'+r.venc+'</td>'+
+    '<td><span class="sb '+SL[r.s]+'">'+ST[r.s]+'</span></td></tr>'
+  ).join('');
+  document.getElementById('rf-count').textContent =
+    ativos.length+' ativos · R$ '+Math.round(ativos.reduce((s,r)=>s+r.v,0)).toLocaleString('pt-BR');
+}
+
+// Sobrescrever filterRF para usar dados do usuário atual
+const _origFilterRF = typeof filterRF !== 'undefined' ? filterRF : null;
+function filterRF(f, btn) {
+  document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  const u = USERS[currentUser];
+  const list = f==='todos' ? u.rf_ativos : u.rf_ativos.filter(r=>r.s===f);
+  renderRF_user(list);
+}
+
+
+/* ════════════════════════════════════
+   SISTEMA DE PERFIS / PRIVILÉGIOS
+════════════════════════════════════ */
+
+const PROFILES = {
+  familiar: {
+    nome: 'Familiar',
+    sub: 'Todas as carteiras',
+    avBg: 'rgba(196,149,42,.15)',
+    avColor: '#C4952A',
+    avIcon: '🏛',
+    navExtra: ['nav-sec-familiar','nav-consolidado','nav-switch-paulo','nav-switch-cinthia'],
+    defaultPage: 'consolidado',
+    hiddenNav: [],
+    // Familiar vê tudo — sem restrições
+  },
+  paulo: {
+    nome: 'Paulo',
+    sub: 'XP 5296823',
+    avBg: 'rgba(196,112,80,.15)',
+    avColor: '#C47050',
+    avIcon: 'P',
+    navExtra: [],
+    defaultPage: 'home',
+    hiddenNav: ['nav-sec-familiar','nav-consolidado','nav-switch-paulo','nav-switch-cinthia',
+                'nav-equiv','nav-validador','nav-aporte'],
+  },
+  cinthia: {
+    nome: 'Cinthia',
+    sub: 'XP 6414212',
+    avBg: 'rgba(192,144,144,.15)',
+    avColor: '#C09090',
+    avIcon: 'C',
+    navExtra: [],
+    defaultPage: 'home',
+    hiddenNav: ['nav-sec-familiar','nav-consolidado','nav-switch-paulo','nav-switch-cinthia'],
+  },
+};
+
+let currentProfile = null;
+
+
+function alertClass(cor){ return cor==='r'?'r':cor==='w'?'w':'g'; }
+function alertBadge(cor){ return cor==='r'?'URGENTE':cor==='w'?'ATENÇÃO':'OK'; }
+function renderAlertasPage(scope){
+  const page = document.getElementById('page-alertas');
+  if(!page) return;
+  const isFam = scope === 'familiar';
+  const u = USERS[scope || currentUser] || USERS.cinthia;
+  const title = isFam ? 'Alertas familiares' : 'Alertas — ' + u.nome;
+  const subtitle = isFam ? 'Alertas consolidados das carteiras Cinthia e Paulo.' : 'Somente os alertas referentes à carteira selecionada.';
+  const alerts = isFam
+    ? [
+        ...USERS.cinthia.alertas_list.map(a=>({...a, owner:'Cinthia'})),
+        ...USERS.paulo.alertas_list.map(a=>({...a, owner:'Paulo'}))
+      ]
+    : (u.alertas_list||[]).map(a=>({...a, owner:u.nome}));
+
+  page.innerHTML = '<div class="ph"><h1>'+title+'</h1><p>'+subtitle+'</p></div>' +
+    alerts.map(a => '<div class="alert-full '+alertClass(a.cor)+'">'+
+      '<div class="alert-full-hdr"><span class="sb '+(a.cor==='r'?'sb-r':a.cor==='w'?'sb-w':'sb-g')+'">'+alertBadge(a.cor)+'</span>'+
+      '<div class="alert-full-ttl">'+(isFam ? '['+a.owner+'] ' : '')+esc(a.titulo)+'</div></div>'+
+      '<div class="alert-full-body">'+esc(a.det)+'</div>'+
+      '</div>').join('');
+}
+
+function updateContextText(scope){
+  const sub = document.querySelector('.topbar-sub');
+  const logoSub = document.querySelector('.logo-sub');
+  if(scope === 'familiar'){
+    if(sub) sub.textContent = 'Visão familiar consolidada · Cinthia como gestora';
+    if(logoSub) logoSub.textContent = 'Patrimônio familiar consolidado';
+  } else if(scope === 'cinthia'){
+    if(sub) sub.textContent = 'Carteira Cinthia · Conta XP 6414212';
+    if(logoSub) logoSub.textContent = 'Carteira Cinthia';
+  } else if(scope === 'paulo'){
+    if(sub) sub.textContent = 'Carteira Paulo sob gestão · Conta XP 5296823';
+    if(logoSub) logoSub.textContent = 'Carteira Paulo sob gestão';
+  }
+  const folderName = document.getElementById('upload-folder-name');
+  if(folderName){
+    folderName.textContent = scope === 'paulo' ? 'paulo' : scope === 'familiar' ? 'Cinthia ou paulo' : 'Cinthia';
+  }
+}
+
+function renderFamiliarContext(){
+  updateContextText('familiar');
+  renderAlertasPage('familiar');
+  const totalAlerts = (USERS.cinthia.alertas_list.length || 0) + (USERS.paulo.alertas_list.length || 0);
+  const badge = document.querySelector('.badge-alert');
+  if(badge){
+    badge.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> '+totalAlerts+' alertas familiares';
+  }
+}
+function selectProfile(id) {
+  currentProfile = id;
+  const p = PROFILES[id];
+
+  // Esconder tela de seleção, mostrar app
+  document.getElementById('profile-screen').style.display = 'none';
+  document.getElementById('main-app').style.display = 'flex';
+
+  // Atualizar barra de perfil ativo
+  const av = document.getElementById('apb-av');
+  av.textContent = p.avIcon;
+  av.style.background = p.avBg;
+  av.style.color = p.avColor;
+  document.getElementById('apb-name').textContent = p.nome;
+  document.getElementById('apb-sub').textContent = p.sub;
+
+  // Nav: mostrar/ocultar itens por perfil
+  // Primeiro mostrar tudo
+  document.querySelectorAll('.nav-item, .nav-sec').forEach(el => el.style.display = '');
+  // Depois ocultar o que é restrito
+  p.hiddenNav.forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.style.display = 'none';
+  });
+  // E mostrar extras exclusivos do Familiar
+  p.navExtra.forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.style.display = '';
+  });
+
+  // Carregar dados do usuário certo
+  if(id === 'familiar') {
+    currentUser = 'familiar';
+    loadUserData(USERS.familiar);
+    renderFamiliarContext();
+    goToPage('consolidado');
+  } else {
+    switchUser(id);
+    goToPage('home');
+  }
+}
+
+function voltarPerfis() {
+  // Volta para a tela inicial de escolha de perfil, sem popup.
+  document.getElementById('profile-screen').style.display = 'flex';
+  document.getElementById('main-app').style.display = 'none';
+}
+
+function goToPage(id) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('on'));
+  const pg = document.getElementById('page-'+id);
+  if(pg) pg.classList.add('on');
+
+  // Marca o item correto da sidebar quando a navegação vem de funções internas.
+  const navMap = {
+    home:'nav-home',
+    consolidado:'nav-consolidado',
+    posicao:'nav-posicao',
+    alertas:'nav-alertas',
+    equiv:'nav-equiv',
+    validador:'nav-validador',
+    breakeven:'nav-breakeven',
+    regras:'nav-regras',
+    upload:'nav-upload',
+    drivers:'nav-drivers',
+    aporte:'nav-aporte'
+  };
+  const nav = document.getElementById(navMap[id]);
+  if(nav && nav.style.display !== 'none') nav.classList.add('on');
+}
+
+function switchUserNav(userId) {
+  // Muda os dados para o usuário e volta para a página inicial do perfil.
+  switchUser(userId);
+  goToPage('home');
+}
+
+// Ids dos navs para facilitar referência
+document.addEventListener('DOMContentLoaded', () => {
+  // Atribuir IDs aos nav-items que não têm
+  const navItems = document.querySelectorAll('.nav-item');
+  const navIds = ['','nav-posicao','nav-alertas','nav-sec-plano',
+                  'nav-equiv','nav-validador','nav-aporte',
+                  'nav-breakeven','nav-regras','nav-drivers','nav-upload'];
+  // (os IDs importantes já foram definidos inline)
+});
+
+/* ── SVG CHARTS — sem dependências externas ── */
+function svgLine(canvasId, datasets, labels, opts) {
+  const canvas = document.getElementById(canvasId);
+  if(!canvas) return;
+  const parent = canvas.parentElement;
+  const W = parent.offsetWidth || 360, H = parseInt(canvas.style && canvas.style.height) || 200;
+  
+  const allVals = datasets.flatMap(d=>d.data);
+  const minV = Math.min(...allVals) * 0.98;
+  const maxV = Math.max(...allVals) * 1.01;
+  const pad = {l:44,r:12,t:10,b:36};
+  const iW = W-pad.l-pad.r, iH = H-pad.t-pad.b;
+  
+  const px = (i) => pad.l + i/(labels.length-1)*iW;
+  const py = (v) => pad.t + (1-(v-minV)/(maxV-minV))*iH;
+  
+  let svg = `<svg width="${W}" height="${H}" style="width:100%;height:${H}px;display:block">`;
+  
+  // Grid
+  for(let i=0;i<4;i++) {
+    const y = pad.t + i/3*iH;
+    const val = maxV - i/3*(maxV-minV);
+    svg += `<line x1="${pad.l}" y1="${y}" x2="${W-pad.r}" y2="${y}" stroke="rgba(0,0,0,0.06)" stroke-width="1"/>`;
+    svg += `<text x="${pad.l-4}" y="${y+4}" text-anchor="end" font-size="10" fill="#9A8A80">R$${Math.round(val/1000)}k</text>`;
+  }
+  
+  // Labels eixo X (amostra)
+  const step = Math.max(1, Math.floor(labels.length/6));
+  labels.forEach((l,i) => {
+    if(i%step===0 || i===labels.length-1) {
+      svg += `<text x="${px(i)}" y="${H-6}" text-anchor="middle" font-size="9" fill="#9A8A80">${l}</text>`;
+    }
+  });
+  
+  // Linhas dos datasets
+  datasets.forEach(ds => {
+    const pts = ds.data.map((v,i) => `${px(i)},${py(v)}`).join(' ');
+    // Fill
+    const fillPts = `${px(0)},${py(minV)} ` + ds.data.map((v,i)=>`${px(i)},${py(v)}`).join(' ') + ` ${px(labels.length-1)},${py(minV)}`;
+    svg += `<polygon points="${fillPts}" fill="${ds.fill||'rgba(196,149,42,0.06)'}"/>`;
+    svg += `<polyline points="${pts}" fill="none" stroke="${ds.color||'#C4952A'}" stroke-width="2" stroke-linejoin="round"/>`;
+  });
+  
+  svg += '</svg>';
+  parent.innerHTML = svg;
+}
+
+function svgDonut(canvasId, data, colors, total) {
+  const canvas = document.getElementById(canvasId);
+  if(!canvas) return;
+  const parent = canvas.parentElement;
+  const size = Math.min(parent.offsetWidth || 170, 170);
+  const cx=size/2, cy=size/2, r=size*0.38, rInner=size*0.25;
+  
+  const sum = data.reduce((a,b)=>a+b,0);
+  let angle = -Math.PI/2;
+  let paths = '';
+  
+  data.forEach((v,i) => {
+    const slice = (v/sum)*2*Math.PI;
+    const x1=cx+r*Math.cos(angle), y1=cy+r*Math.sin(angle);
+    const x2=cx+r*Math.cos(angle+slice), y2=cy+r*Math.sin(angle+slice);
+    const xi1=cx+rInner*Math.cos(angle), yi1=cy+rInner*Math.sin(angle);
+    const xi2=cx+rInner*Math.cos(angle+slice), yi2=cy+rInner*Math.sin(angle+slice);
+    const large=slice>Math.PI?1:0;
+    paths += `<path d="M${xi1},${yi1} L${x1},${y1} A${r},${r} 0 ${large},1 ${x2},${y2} L${xi2},${yi2} A${rInner},${rInner} 0 ${large},0 ${xi1},${yi1}" fill="${colors[i]}" opacity="0.85"/>`;
+    angle += slice;
+  });
+  
+  let totalStr = total ? 'R$'+Math.round(total/1000)+'k' : '';
+  const svg = `<svg width="${size}" height="${size}" style="display:block;margin:0 auto">
+    ${paths}
+    <text x="${cx}" y="${cy-6}" text-anchor="middle" font-size="14" font-weight="500" fill="#1C1517">${totalStr}</text>
+    <text x="${cx}" y="${cy+10}" text-anchor="middle" font-size="9" fill="#9A8A80">patrimônio</text>
+  </svg>`;
+  parent.innerHTML = svg;
+}
+
+</script>
+</body>
+</html>
