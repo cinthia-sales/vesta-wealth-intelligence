@@ -5,6 +5,8 @@ import { PosicaoPage } from "@/components/vesta/pages/posicao";
 import { BreakevenPage } from "@/components/vesta/pages/breakeven";
 import { EquivPage } from "@/components/vesta/pages/equiv";
 import { ValidadorPage } from "@/components/vesta/pages/validador";
+import { ProjecaoPage } from "@/components/vesta/pages/projecao";
+import { SecundarioPage } from "@/components/vesta/pages/secundario";
 
 import type { ProfileId } from "@/lib/profile-derive";
 
