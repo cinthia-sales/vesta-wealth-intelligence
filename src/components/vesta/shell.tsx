@@ -8,6 +8,10 @@ import { ValidadorPage } from "@/components/vesta/pages/validador";
 import { ProjecaoPage } from "@/components/vesta/pages/projecao";
 import { SecundarioPage } from "@/components/vesta/pages/secundario";
 import { AlertasPage } from "@/components/vesta/pages/alertas";
+import { RegrasPage } from "@/components/vesta/pages/regras";
+import { UploadPage } from "@/components/vesta/pages/upload";
+import { DriversPage } from "@/components/vesta/pages/drivers";
+import { AportePage } from "@/components/vesta/pages/aporte";
 
 import type { ProfileId } from "@/lib/profile-derive";
 
