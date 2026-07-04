@@ -371,7 +371,8 @@ export function VestaShell({
             {page === "validador" && <ValidadorPage />}
             {page === "projecao" && <ProjecaoPage profileId={profileId} />}
             {page === "secundario" && <SecundarioPage />}
-            {!["home", "posicao", "breakeven", "equiv", "validador", "projecao", "secundario"].includes(page) && (
+            {page === "alertas" && <AlertasPage profileId={profileId} />}
+            {!["home", "posicao", "breakeven", "equiv", "validador", "projecao", "secundario", "alertas"].includes(page) && (
               <div className="ph">
                 <h1>Em breve</h1>
                 <p>Este módulo será migrado nas próximas rodadas.</p>
