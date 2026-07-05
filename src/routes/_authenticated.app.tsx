@@ -94,12 +94,15 @@ function VestaApp() {
 
   if (!effectiveProfile) {
     return (
-      <ProfileSelector
-        allowed={allowed}
-        loggedAs={loggedAs}
-        onSelect={setProfile}
-        onLogout={doLogout}
-      />
+      <>
+        {saudacaoOverlay}
+        <ProfileSelector
+          allowed={allowed}
+          loggedAs={loggedAs}
+          onSelect={setProfile}
+          onLogout={doLogout}
+        />
+      </>
     );
   }
 
@@ -109,19 +112,22 @@ function VestaApp() {
   }
 
   return (
-    <VestaShell
-      profileId={effectiveProfile}
-      loggedAs={loggedAs}
-      scopes={scopes}
-      onUpdateScopes={
-        PERSONAE[loggedAs].role === "vesta" ? setScopes : undefined
-      }
-      onChangeProfile={setProfile}
-      onSwitchProfile={() => {
-        if (allowed.length > 1) setProfile(null);
-        else doLogout();
-      }}
-      onLogout={doLogout}
-    />
+    <>
+      {saudacaoOverlay}
+      <VestaShell
+        profileId={effectiveProfile}
+        loggedAs={loggedAs}
+        scopes={scopes}
+        onUpdateScopes={
+          PERSONAE[loggedAs].role === "vesta" ? setScopes : undefined
+        }
+        onChangeProfile={setProfile}
+        onSwitchProfile={() => {
+          if (allowed.length > 1) setProfile(null);
+          else doLogout();
+        }}
+        onLogout={doLogout}
+      />
+    </>
   );
 }
