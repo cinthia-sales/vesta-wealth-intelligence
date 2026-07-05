@@ -264,13 +264,24 @@ export function VestaShell({
   const isFamily = profileId === "familiar";
   const isVesta = loggedAs ? PERSONAE[loggedAs].role === "vesta" : false;
   const canManageDomus = isVesta && profileId !== "paulo";
-  const totalAlertas = getUser(profileId).alertas_list.length;
+  const alertas = getUser(profileId).alertas_list;
+  const alertaCounts = {
+    r: alertas.filter((a) => a.cor === "r").length,
+    w: alertas.filter((a) => a.cor === "w").length,
+    g: alertas.filter((a) => a.cor === "g").length,
+  };
+  const totalAlertas = alertas.length;
   const alertaLabel =
     totalAlertas === 0
-      ? "sem alertas ativos"
+      ? "sem alertas"
       : totalAlertas === 1
-      ? "1 alerta ativo"
-      : `${totalAlertas} alertas ativos`;
+      ? "1 alerta"
+      : `${totalAlertas} alertas`;
+  const alertaBreakdown = [
+    { key: "r", count: alertaCounts.r, color: "var(--danger)", title: "Urgentes" },
+    { key: "w", count: alertaCounts.w, color: "var(--warning)", title: "Atenção" },
+    { key: "g", count: alertaCounts.g, color: "var(--success)", title: "Positivos" },
+  ];
 
   useEffect(() => {
     if (page === "domus" && !canManageDomus) {
@@ -378,15 +389,32 @@ export function VestaShell({
             <span
               style={{
                 marginLeft: "auto",
-                background: "var(--danger)",
-                color: "#fff",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 5,
+                background: "rgba(255,255,255,.08)",
+                color: "rgba(255,255,255,.9)",
                 fontSize: 10,
                 fontWeight: 700,
-                padding: "1px 6px",
+                padding: "2px 6px",
                 borderRadius: 10,
               }}
+              title={`${alertaCounts.r} urgentes · ${alertaCounts.w} atenção · ${alertaCounts.g} positivos`}
             >
-              {totalAlertas}
+              {alertaBreakdown.map((item) => (
+                <span key={item.key} style={{ display: "inline-flex", alignItems: "center", gap: 2 }}>
+                  <span
+                    style={{
+                      width: 7,
+                      height: 7,
+                      borderRadius: "50%",
+                      background: item.color,
+                      display: "inline-block",
+                    }}
+                  />
+                  {item.count}
+                </span>
+              ))}
             </span>,
           )}
 
@@ -444,11 +472,26 @@ export function VestaShell({
             </div>
           </div>
           <div className="badge-alert">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" y1="8" x2="12" y2="12" />
-              <line x1="12" y1="16" x2="12.01" y2="16" />
-            </svg>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+              {alertaBreakdown.map((item) => (
+                <span
+                  key={item.key}
+                  title={`${item.title}: ${item.count}`}
+                  style={{ display: "inline-flex", alignItems: "center", gap: 2 }}
+                >
+                  <span
+                    style={{
+                      width: 7,
+                      height: 7,
+                      borderRadius: "50%",
+                      background: item.color,
+                      display: "inline-block",
+                    }}
+                  />
+                  {item.count}
+                </span>
+              ))}
+            </span>
             {alertaLabel}
           </div>
         </div>
