@@ -260,6 +260,8 @@ export function VestaShell({
   children?: ReactNode;
 }) {
   const [page, setPage] = useState<PageKey>("home");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const goTo = (k: PageKey) => { setPage(k); setSidebarOpen(false); };
   const meta = PROFILE_META[profileId];
   const isFamily = profileId === "familiar";
   const isVesta = loggedAs ? PERSONAE[loggedAs].role === "vesta" : false;
@@ -292,7 +294,7 @@ export function VestaShell({
   const item = (key: PageKey, label: string, extra?: ReactNode) => (
     <div
       className={"nav-item" + (page === key ? " on" : "")}
-      onClick={() => setPage(key)}
+      onClick={() => goTo(key)}
     >
       {NAV_ICONS[key]}
       {label}
@@ -301,8 +303,9 @@ export function VestaShell({
   );
 
   return (
-    <div className="app">
-      <nav className="sidebar">
+    <div className={"app" + (sidebarOpen ? " sidebar-open" : "")}>
+      <div className={"mob-backdrop" + (sidebarOpen ? " open" : "")} onClick={() => setSidebarOpen(false)} />
+      <nav className={"sidebar" + (sidebarOpen ? " open" : "")}>
         <div className="logo">
           <div className="logo-icon" style={{ fontSize: 18 }}>✦</div>
           <div>
@@ -372,7 +375,7 @@ export function VestaShell({
           {isFamily && (
             <>
               <div className="nav-sec nav-sec-fam">Família</div>
-              <div className="nav-item" onClick={() => setPage("home")}>
+              <div className="nav-item" onClick={() => goTo("home")}>
                 {NAV_ICONS.consolidado}
                 Consolidado Familiar
               </div>
@@ -434,7 +437,10 @@ export function VestaShell({
 
       <div className="main">
         <div className="topbar">
-          <div>
+          <button className="mob-menu-btn" aria-label="Abrir menu" onClick={() => setSidebarOpen(true)}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
+          <div style={{ minWidth: 0, flex: 1 }}>
             <div className="topbar-title">
               Vesta{" "}
               <span
