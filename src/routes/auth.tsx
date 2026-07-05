@@ -127,11 +127,11 @@ function AuthPage() {
           </button>
         </form>
 
-        <div className="auth-ornament">
-          {bootstrapMode
-            ? "depois você cria o primeiro Domus na área privada"
-            : "sem autenticador por enquanto — a entrada fica simples"}
-        </div>
+        {bootstrapMode && (
+          <div className="auth-ornament">
+            depois você cria o primeiro Domus na área privada
+          </div>
+        )}
       </div>
     </div>
   );
