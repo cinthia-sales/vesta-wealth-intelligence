@@ -114,7 +114,7 @@ function MfaSetup() {
 
         <form onSubmit={handleVerify} className="auth-form">
           <label>
-            Código de 6 dígitos
+            Código de 6 dígitos do app
             <input
               type="text"
               inputMode="numeric"
@@ -129,12 +129,12 @@ function MfaSetup() {
           </label>
           {error && <div className="auth-error">{error}</div>}
           <button type="submit" disabled={busy || !factorId}>
-            {busy ? "…" : "Confirmar"}
+            {busy ? "…" : "Vincular e entrar"}
           </button>
         </form>
 
         <div className="auth-ornament">
-          esse app vai pedir o código todo login
+          nos próximos logins o app vai te pedir esse código
         </div>
       </div>
     </div>
