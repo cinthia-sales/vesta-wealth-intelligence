@@ -140,8 +140,18 @@ export function DomusPage({
               </span>
               {pedido.status === "pendente" && (
                 <div className="domus-request-actions">
-                  <button onClick={() => statusMutation.mutate({ id: pedido.id, status: "aprovado" })}>aprovar</button>
-                  <button onClick={() => statusMutation.mutate({ id: pedido.id, status: "recusado" })}>recusar</button>
+                  <button
+                    onClick={() => approveMutation.mutate(pedido.id)}
+                    disabled={approveMutation.isPending}
+                  >
+                    {approveMutation.isPending ? "aprovando…" : "aprovar"}
+                  </button>
+                  <button
+                    onClick={() => recusaMutation.mutate(pedido.id)}
+                    disabled={recusaMutation.isPending}
+                  >
+                    recusar
+                  </button>
                 </div>
               )}
             </div>
