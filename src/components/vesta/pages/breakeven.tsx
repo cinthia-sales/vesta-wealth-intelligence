@@ -355,23 +355,71 @@ function BreakevenSimulador({ profileId }: { profileId: ProfileId }) {
 
 export function BreakevenPage({ profileId }: { profileId: ProfileId }) {
   const temGiroReal = profileId === "paulo";
+  const [simular, setSimular] = useState(false);
+
+  if (temGiroReal) {
+    return (
+      <>
+        <div className="ph">
+          <h1>Plano de breakeven</h1>
+          <p>Quando a reestruturação de junho/2026 se paga completamente.</p>
+        </div>
+        <BreakevenConsolidado data={PAULO_DATA} />
+      </>
+    );
+  }
 
   return (
     <>
       <div className="ph">
         <h1>Plano de breakeven</h1>
         <p>
-          {temGiroReal
-            ? "Quando a reestruturação de junho/2026 se paga completamente."
-            : "Simule um giro de compensação e veja em quantos meses o custo é recuperado."}
+          Nenhum movimento foi marcado ainda como <em>giro de breakeven</em> nesta carteira.
         </p>
       </div>
 
-      {temGiroReal ? (
-        <BreakevenConsolidado data={PAULO_DATA} />
-      ) : (
-        <BreakevenSimulador profileId={profileId} />
-      )}
+      <div
+        className="card"
+        style={{
+          padding: "28px 22px",
+          textAlign: "center",
+          marginBottom: 14,
+          borderLeft: "4px solid var(--accent)",
+        }}
+      >
+        <div style={{ fontFamily: "var(--font-display)", fontSize: 18, marginBottom: 8 }}>
+          Acelerador em repouso
+        </div>
+        <p style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.6, maxWidth: 460, margin: "0 auto 16px" }}>
+          O acelerador só aparece quando você marca operações da carteira como
+          <strong> movimentos de breakeven</strong>. Enquanto nenhuma for marcada, esta tela
+          fica em branco — nada da carteira do Paulo aparece aqui.
+        </p>
+        <p style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.6, maxWidth: 460, margin: "0 auto 18px" }}>
+          Quer testar a mecânica sem marcar nada? Abra o simulador — os números são hipotéticos,
+          não afetam a carteira real.
+        </p>
+        <button
+          type="button"
+          onClick={() => setSimular((v) => !v)}
+          style={{
+            fontFamily: "var(--font-display)",
+            fontSize: 12,
+            letterSpacing: ".08em",
+            textTransform: "uppercase",
+            padding: "8px 18px",
+            borderRadius: 999,
+            border: "1px solid var(--accent)",
+            background: simular ? "var(--accent)" : "transparent",
+            color: simular ? "#fff" : "var(--accent)",
+            cursor: "pointer",
+          }}
+        >
+          {simular ? "Fechar simulador" : "Abrir simulador hipotético"}
+        </button>
+      </div>
+
+      {simular && <BreakevenSimulador profileId={profileId} />}
     </>
   );
 }
