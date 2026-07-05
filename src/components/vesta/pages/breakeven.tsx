@@ -57,7 +57,8 @@ const PAULO_DATA = {
       capital: 112124,
       ganhoTaxa: "+3,05%/ano",
       ganhoMes: 285,
-      custoIsolado: 13648, // deságio na venda das antigas
+      custoIsolado: 13648,   // deságio na venda das antigas
+      taxaReinvest: 0.1486,  // taxa contratada das novas debêntures (compõe o ganho)
     },
     {
       nome: "Renda fixa",
@@ -65,12 +66,30 @@ const PAULO_DATA = {
       capital: 267000,
       ganhoTaxa: "+1,83%/ano",
       ganhoMes: 407,
-      custoIsolado: 1050, // IR na liquidação dos fundos
+      custoIsolado: 1050,    // IR na liquidação dos fundos
+      taxaReinvest: 0.1333,  // taxa média das LCAs/LCD (compõe o ganho)
     },
   ],
   linhas: { tA: 0.1181, tB: 0.1486, cA: 125772, cB: 112124 },
   inicio: { ano: 2026, mes: 6 },
 };
+
+// Ganho acumulado com juros compostos (ganho mensal reinvestido na taxa nova)
+// FV(m) = ganhoMes * ((1+r_m)^m - 1) / r_m
+function ganhoAcumulado(ganhoMes: number, taxaAno: number, m: number) {
+  const rm = taxaAno / 12;
+  if (rm <= 0) return ganhoMes * m;
+  return (ganhoMes * (Math.pow(1 + rm, m) - 1)) / rm;
+}
+
+function mesesBreakevenComposto(custo: number, ganhoMes: number, taxaAno: number) {
+  if (ganhoMes <= 0 || custo <= 0) return Infinity;
+  const rm = taxaAno / 12;
+  if (rm <= 0) return custo / ganhoMes;
+  const arg = 1 + (custo * rm) / ganhoMes;
+  if (arg <= 1) return Infinity;
+  return Math.log(arg) / Math.log(1 + rm);
+}
 
 // Mini-gráfico: custo (linha vermelha plana) vs ganho acumulado (linha azul crescente).
 // Cruzam exatamente no mês custo / ganhoMes — bate com o KPI.
