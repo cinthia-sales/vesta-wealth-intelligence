@@ -16,6 +16,7 @@ import { RendimentosPage } from "@/components/vesta/pages/rendimentos";
 import { DomusPage } from "@/components/vesta/pages/domus";
 
 import type { ProfileId } from "@/lib/profile-derive";
+import { getUser } from "@/data/vesta-users";
 import { PERSONAE, type PersonaId, type Scope } from "@/state/session";
 
 /* ============================================================
