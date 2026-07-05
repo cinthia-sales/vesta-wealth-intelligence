@@ -275,6 +275,7 @@ export function VestaShell({
           <div className="nav-sec">Principal</div>
           {item("home", "Visão geral")}
           {item("posicao", "Posição atual")}
+          {item("rendimentos", "Rendimentos recorrentes", <span style={{ marginLeft: "auto", fontSize: 12 }}>💰</span>)}
           {item(
             "alertas",
             "Alertas",
