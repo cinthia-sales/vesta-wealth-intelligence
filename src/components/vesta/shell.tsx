@@ -375,7 +375,7 @@ export function VestaShell({
           {isFamily && (
             <>
               <div className="nav-sec nav-sec-fam">Família</div>
-              <div className="nav-item" onClick={() => setPage("home")}>
+              <div className="nav-item" onClick={() => goTo("home")}>
                 {NAV_ICONS.consolidado}
                 Consolidado Familiar
               </div>
