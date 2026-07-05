@@ -85,7 +85,7 @@ export function ProjecaoPage({ profileId }: { profileId: ProfileId }) {
 
     serie.push({ ano: 2026, total: u.total, rf: u.rf, rv: rvBase });
 
-    let bonusAcum = 0;
+    let bonusAcum = bonusAno === 2026 ? bonus : 0;
     for (let i = 1; i <= 10; i++) {
       const anoAtual = 2026 + i;
       const cdi = curvaCdi[i] ?? curvaCdi[curvaCdi.length - 1];
