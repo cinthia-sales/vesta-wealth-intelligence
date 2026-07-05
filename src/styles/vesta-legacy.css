@@ -652,3 +652,95 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 .domus-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}.domus-pill{border:1px solid var(--border);border-radius:999px;padding:7px 11px;background:#FFFDFC;font-size:12px}.domus-pill span{color:var(--muted);margin-left:6px}
 .domus-requests{display:grid;gap:10px}.domus-request{display:grid;grid-template-columns:1fr auto auto;gap:12px;align-items:center;border:1px solid var(--border);border-radius:10px;padding:12px;background:#FFFDFC}.domus-request p{font-size:12px;color:var(--muted);line-height:1.5;margin-top:5px}.domus-request-actions{display:flex;gap:6px}.domus-request-actions button:last-child{background:transparent;color:var(--danger);border:1px solid rgba(192,57,43,.25)}
 @media (max-width:768px){.public-domus h1{font-size:34px}.public-domus-panel{grid-template-columns:1fr;padding:20px}.domus-admin-form,.domus-request{grid-template-columns:1fr}.domus-request-actions{justify-content:flex-start}}
+
+/* ============================================================
+   Saudação da Deusa — primeiro acesso do novo membro
+   ============================================================ */
+.vesta-saudacao-overlay,
+.domus-approved-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(30, 22, 12, 0.55);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 100;
+  animation: vestaFadeIn 220ms ease;
+}
+.vesta-saudacao-card,
+.domus-approved-card {
+  background: var(--card, #FBF7EF);
+  border: 1px solid var(--border, #E5DFD3);
+  border-radius: 14px;
+  padding: 28px 24px;
+  max-width: 420px;
+  width: 100%;
+  box-shadow: 0 30px 60px -20px rgba(60, 40, 20, 0.35);
+  text-align: center;
+}
+.vesta-saudacao-flame {
+  font-size: 40px;
+  color: var(--ring, #D8B36A);
+  margin-bottom: 6px;
+  animation: vestaFlicker 2.4s ease-in-out infinite;
+}
+.vesta-saudacao-card h2,
+.domus-approved-card h3 {
+  font-family: var(--font-display);
+  font-size: 22px;
+  margin: 6px 0 10px;
+  color: var(--text, #2A1F14);
+}
+.vesta-saudacao-copy {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--muted);
+  margin-bottom: 20px;
+  font-style: italic;
+}
+.vesta-saudacao-card button,
+.domus-approved-card button {
+  background: var(--accent, #B8734A);
+  color: #fff;
+  border: 0;
+  padding: 10px 22px;
+  border-radius: 8px;
+  font-family: var(--font-display);
+  font-size: 14px;
+  letter-spacing: .04em;
+  cursor: pointer;
+}
+.domus-approved-card dl {
+  text-align: left;
+  margin: 14px 0 12px;
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+}
+.domus-approved-card dt {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--muted);
+}
+.domus-approved-card dd {
+  margin: 0 0 8px;
+  font-family: var(--font-display);
+}
+.domus-approved-card code {
+  background: rgba(216,179,106,.20);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 14px;
+  letter-spacing: .05em;
+}
+@keyframes vestaFadeIn {
+  from { opacity: 0; transform: scale(.98); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes vestaFlicker {
+  0%, 100% { opacity: 1; text-shadow: 0 0 12px rgba(216,179,106,.6); }
+  50% { opacity: .82; text-shadow: 0 0 20px rgba(216,179,106,.9); }
+}

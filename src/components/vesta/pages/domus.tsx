@@ -5,7 +5,7 @@ import {
   type Scope,
 } from "@/state/session";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createDomus, getDomusAdmin, updateJoinRequestStatus } from "@/lib/domus.functions";
+import { approveJoinRequest, createDomus, DEFAULT_MEMBER_PASSWORD, getDomusAdmin, updateJoinRequestStatus } from "@/lib/domus.functions";
 import { useState } from "react";
 
 /* ============================================================
@@ -35,9 +35,18 @@ export function DomusPage({
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["domus-admin"] }),
   });
 
-  const statusMutation = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: "aprovado" | "recusado" }) =>
-      updateJoinRequestStatus({ data: { id, status } }),
+  const [aprovado, setAprovado] = useState<{ email: string; senha: string } | null>(null);
+
+  const approveMutation = useMutation({
+    mutationFn: (id: string) => approveJoinRequest({ data: { id } }),
+    onSuccess: (res) => {
+      setAprovado({ email: res.email, senha: res.senha });
+      queryClient.invalidateQueries({ queryKey: ["domus-admin"] });
+    },
+  });
+
+  const recusaMutation = useMutation({
+    mutationFn: (id: string) => updateJoinRequestStatus({ data: { id, status: "recusado" } }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["domus-admin"] }),
   });
 
@@ -131,8 +140,18 @@ export function DomusPage({
               </span>
               {pedido.status === "pendente" && (
                 <div className="domus-request-actions">
-                  <button onClick={() => statusMutation.mutate({ id: pedido.id, status: "aprovado" })}>aprovar</button>
-                  <button onClick={() => statusMutation.mutate({ id: pedido.id, status: "recusado" })}>recusar</button>
+                  <button
+                    onClick={() => approveMutation.mutate(pedido.id)}
+                    disabled={approveMutation.isPending}
+                  >
+                    {approveMutation.isPending ? "aprovando…" : "aprovar"}
+                  </button>
+                  <button
+                    onClick={() => recusaMutation.mutate(pedido.id)}
+                    disabled={recusaMutation.isPending}
+                  >
+                    recusar
+                  </button>
                 </div>
               )}
             </div>
@@ -244,9 +263,37 @@ export function DomusPage({
           lineHeight: 1.6,
         }}
       >
-        💡 Os pedidos já ficam salvos no banco. A criação automática de usuário pode entrar no próximo passo,
-        depois que você decidir se prefere convite por email ou cadastro manual com senha temporária.
+        💡 Ao aprovar um pedido, a Vesta cria o acesso automaticamente com a senha padrão{" "}
+        <strong>{DEFAULT_MEMBER_PASSWORD}</strong>. Repasse essa senha ao novo membro por fora —
+        ele troca depois em "esqueci a senha".
       </div>
+
+      {approveMutation.error && (
+        <div className="auth-error" style={{ marginTop: 10 }}>
+          {(approveMutation.error as Error).message}
+        </div>
+      )}
+
+      {aprovado && (
+        <div className="domus-approved-overlay" onClick={() => setAprovado(null)}>
+          <div className="domus-approved-card" onClick={(e) => e.stopPropagation()}>
+            <p className="public-domus-kicker">Vesta permitiu</p>
+            <h3>Acesso concedido</h3>
+            <p>Passe estes dados ao novo membro:</p>
+            <dl>
+              <dt>Email</dt>
+              <dd>{aprovado.email}</dd>
+              <dt>Senha padrão</dt>
+              <dd><code>{aprovado.senha}</code></dd>
+            </dl>
+            <p style={{ fontSize: 12, color: "var(--muted)" }}>
+              No primeiro login ele será saudado pela Deusa. Depois pode trocar a senha em
+              "esqueci minha senha".
+            </p>
+            <button onClick={() => setAprovado(null)}>Entendido</button>
+          </div>
+        </div>
+      )}
     </>
   );
 }

@@ -22,11 +22,39 @@ function VestaApp() {
   const navigate = useNavigate();
   const [scopes, setScopes] = useState<Record<PersonaId, Scope>>(DEFAULT_SCOPES);
   const [profile, setProfile] = useState<ProfileId | null>(null);
+  const [saudacao, setSaudacao] = useState(false);
 
   const { data: roleData, isLoading } = useQuery({
     queryKey: ["my-role"],
     queryFn: () => getMyRole(),
   });
+
+  useEffect(() => {
+    let ativo = true;
+    (async () => {
+      const { data: userData } = await supabase.auth.getUser();
+      const uid = userData.user?.id;
+      if (!uid) return;
+      const { data: perfil } = await supabase
+        .from("profiles")
+        .select("primeiro_acesso")
+        .eq("id", uid)
+        .maybeSingle();
+      if (ativo && perfil?.primeiro_acesso) setSaudacao(true);
+    })();
+    return () => {
+      ativo = false;
+    };
+  }, []);
+
+  const dispensarSaudacao = async () => {
+    setSaudacao(false);
+    const { data: userData } = await supabase.auth.getUser();
+    const uid = userData.user?.id;
+    if (uid) {
+      await supabase.from("profiles").update({ primeiro_acesso: false }).eq("id", uid);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -49,14 +77,32 @@ function VestaApp() {
     navigate({ to: "/" });
   };
 
+  const saudacaoOverlay = saudacao ? (
+    <div className="vesta-saudacao-overlay" onClick={dispensarSaudacao}>
+      <div className="vesta-saudacao-card" onClick={(e) => e.stopPropagation()}>
+        <div className="vesta-saudacao-flame">✦</div>
+        <p className="public-domus-kicker">Vesta · Domus et Patrimonium</p>
+        <h2>Bem-vindo(a) ao Domus</h2>
+        <p className="vesta-saudacao-copy">
+          A magnânima Deusa Vesta permitiu seu acesso — <em>sob supervisão</em>.
+          Aqui você acompanha o que a Deusa te liberou; o resto continua nas mãos dela.
+        </p>
+        <button onClick={dispensarSaudacao}>Entrar no Domus</button>
+      </div>
+    </div>
+  ) : null;
+
   if (!effectiveProfile) {
     return (
-      <ProfileSelector
-        allowed={allowed}
-        loggedAs={loggedAs}
-        onSelect={setProfile}
-        onLogout={doLogout}
-      />
+      <>
+        {saudacaoOverlay}
+        <ProfileSelector
+          allowed={allowed}
+          loggedAs={loggedAs}
+          onSelect={setProfile}
+          onLogout={doLogout}
+        />
+      </>
     );
   }
 
@@ -66,19 +112,22 @@ function VestaApp() {
   }
 
   return (
-    <VestaShell
-      profileId={effectiveProfile}
-      loggedAs={loggedAs}
-      scopes={scopes}
-      onUpdateScopes={
-        PERSONAE[loggedAs].role === "vesta" ? setScopes : undefined
-      }
-      onChangeProfile={setProfile}
-      onSwitchProfile={() => {
-        if (allowed.length > 1) setProfile(null);
-        else doLogout();
-      }}
-      onLogout={doLogout}
-    />
+    <>
+      {saudacaoOverlay}
+      <VestaShell
+        profileId={effectiveProfile}
+        loggedAs={loggedAs}
+        scopes={scopes}
+        onUpdateScopes={
+          PERSONAE[loggedAs].role === "vesta" ? setScopes : undefined
+        }
+        onChangeProfile={setProfile}
+        onSwitchProfile={() => {
+          if (allowed.length > 1) setProfile(null);
+          else doLogout();
+        }}
+        onLogout={doLogout}
+      />
+    </>
   );
 }
