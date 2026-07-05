@@ -200,7 +200,7 @@ function GraficoCustoGanho({
   );
 }
 
-// Gráfico Balde A vs Balde B — duas curvas compostas cruzando
+// Gráfico Composição A vs Composição B — duas curvas compostas cruzando
 function GraficoBaldes({
   capA, taxaA, capB, taxaB, inicio,
 }: {
@@ -213,17 +213,20 @@ function GraficoBaldes({
       ? Math.log(capA / capB) / Math.log((1 + taxaB) / (1 + taxaA))
       : Infinity;
   const crossMeses = crossAnos * 12;
+  // Horizonte maior para evidenciar a curvatura (>= 2.6x o cruzamento)
   const horizonte = isFinite(crossMeses)
-    ? Math.max(24, Math.min(120, Math.ceil(crossMeses * 1.8)))
+    ? Math.max(48, Math.min(180, Math.ceil((crossMeses * 2.6) / 12) * 12))
     : 60;
 
-  const N = 60;
+  const N = 80;
   const vA = (m: number) => capA * Math.pow(1 + taxaA, m / 12);
   const vB = (m: number) => capB * Math.pow(1 + taxaB, m / 12);
-  const maxV = Math.max(vA(horizonte), vB(horizonte)) * 1.02;
-  const minV = Math.min(capA, capB) * 0.98;
+  const rawMax = Math.max(vA(horizonte), vB(horizonte));
+  const rawMin = Math.min(capA, capB);
+  const pad = (rawMax - rawMin) * 0.12;
+  const { niceMin: minV, niceMax: maxV } = niceScale(rawMin - pad * 0.4, rawMax + pad, 4);
 
-  const W = 600, H = 240, PL = 70, PR = 12, PT = 12, PB = 34;
+  const W = 620, H = 280, PL = 74, PR = 20, PT = 40, PB = 38;
   const xs = (m: number) => PL + (m / horizonte) * (W - PL - PR);
   const ys = (v: number) => PT + (1 - (v - minV) / (maxV - minV)) * (H - PT - PB);
 
@@ -243,8 +246,21 @@ function GraficoBaldes({
       ? new Date(inicio.ano, inicio.mes + Math.round(mCross), 1).toLocaleDateString("pt-BR", { month: "short", year: "2-digit" })
       : "";
 
+  // Callout do cruzamento — fica no topo do gráfico para não sobrepor as curvas
+  const labelText = mCross !== null
+    ? `Cruzamento · m${Math.ceil(mCross)} · ${dataCross} · ${fmtRk(vA(mCross))}`
+    : "";
+  const labelW = 240;
+  const labelH = 22;
+  const labelX = mCross !== null
+    ? Math.min(Math.max(xs(mCross) - labelW / 2, PL + 2), W - PR - labelW - 2)
+    : 0;
+  const labelY = 6;
+  const labelCx = labelX + labelW / 2;
+  const labelCy = labelY + labelH;
+
   return (
-    <div className="chart-c" style={{ height: 260 }}>
+    <div className="chart-c" style={{ height: 300 }}>
       <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "100%" }}>
         <ChartAxes
           minV={minV} maxV={maxV} maxMonth={horizonte}
@@ -258,12 +274,24 @@ function GraficoBaldes({
               x1={xs(mCross)} x2={xs(mCross)} y1={PT} y2={H - PB}
               stroke="var(--accent)" strokeDasharray="3 3" strokeWidth={1}
             />
-            <circle cx={xs(mCross)} cy={yCross} r={4} fill="var(--accent)" />
+            <circle cx={xs(mCross)} cy={yCross} r={4.5} fill="var(--accent)" />
+            {/* conector do ponto até o callout */}
+            <line
+              x1={xs(mCross)} y1={yCross - 5}
+              x2={labelCx} y2={labelCy}
+              stroke="var(--accent)" strokeOpacity=".35" strokeWidth={1}
+            />
+            {/* callout */}
+            <rect
+              x={labelX} y={labelY} width={labelW} height={labelH} rx={4}
+              fill="white" stroke="var(--accent)" strokeOpacity=".55"
+            />
             <text
-              x={xs(mCross) + 6} y={yCross - 8}
-              fontSize={11} fill="var(--accent)" fontWeight={600}
+              x={labelCx} y={labelY + 15}
+              fontSize={11.5} fill="var(--accent)" fontWeight={600}
+              textAnchor="middle"
             >
-              m{Math.ceil(mCross)} · {dataCross} · {fmtRk(vA(mCross))}
+              {labelText}
             </text>
           </>
         )}
@@ -271,6 +299,8 @@ function GraficoBaldes({
     </div>
   );
 }
+
+
 
 function BreakevenConsolidado({ data }: { data: typeof PAULO_DATA }) {
   const { custo, ganho, ativos, inicio, baldes } = data;
