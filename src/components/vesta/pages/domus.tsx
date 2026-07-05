@@ -5,7 +5,7 @@ import {
   type Scope,
 } from "@/state/session";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createDomus, getDomusAdmin, updateJoinRequestStatus } from "@/lib/domus.functions";
+import { approveJoinRequest, createDomus, DEFAULT_MEMBER_PASSWORD, getDomusAdmin, updateJoinRequestStatus } from "@/lib/domus.functions";
 import { useState } from "react";
 
 /* ============================================================
