@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { getUser } from "@/data/vesta-users";
+import { DIVIDEND_TICKERS } from "@/data/dividendos";
 import type { ProfileId } from "@/lib/profile-derive";
 
 type Filter = "todos" | "intocavel" | "urgente" | "monitorar";
@@ -116,9 +117,33 @@ export function PosicaoPage({ profileId }: { profileId: ProfileId }) {
                 </tr>
               </thead>
               <tbody>
-                {rv.map((r) => (
+                {rv.map((r) => {
+                  const ticker = r.n.split(" ")[0].replace(/[^A-Z0-9]/g, "");
+                  const paysDiv = DIVIDEND_TICKERS.has(ticker);
+                  return (
                   <tr key={r.n}>
-                    <td><strong>{r.n}</strong></td>
+                    <td>
+                      <strong>{r.n}</strong>
+                      {paysDiv && (
+                        <span
+                          title="Paga proventos recorrentes"
+                          style={{
+                            marginLeft: 6,
+                            fontSize: 10,
+                            padding: "1px 6px",
+                            borderRadius: 8,
+                            background: "rgba(74,124,89,.15)",
+                            color: "var(--good, #4E7A5C)",
+                            border: "1px solid rgba(74,124,89,.35)",
+                            fontWeight: 600,
+                            letterSpacing: ".03em",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          💰 provento
+                        </span>
+                      )}
+                    </td>
                     <td className="r">{r.v}</td>
                     <td className="r">{r.pm}</td>
                     <td
@@ -129,7 +154,8 @@ export function PosicaoPage({ profileId }: { profileId: ProfileId }) {
                     </td>
                     <td><span className={"sb " + r.sb}>{r.cls}</span></td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

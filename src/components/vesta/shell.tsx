@@ -12,6 +12,7 @@ import { RegrasPage } from "@/components/vesta/pages/regras";
 import { UploadPage } from "@/components/vesta/pages/upload";
 import { DriversPage } from "@/components/vesta/pages/drivers";
 import { AportePage } from "@/components/vesta/pages/aporte";
+import { RendimentosPage } from "@/components/vesta/pages/rendimentos";
 
 import type { ProfileId } from "@/lib/profile-derive";
 
@@ -131,6 +132,12 @@ const NAV_ICONS: Record<string, ReactElement> = {
       <line x1="5" y1="12" x2="19" y2="12" />
     </svg>
   ),
+  rendimentos: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <line x1="12" y1="1" x2="12" y2="23" />
+      <path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" />
+    </svg>
+  ),
   start: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
       <path d="M3 12h18" />
@@ -165,7 +172,8 @@ type PageKey =
   | "regras"
   | "upload"
   | "drivers"
-  | "aporte";
+  | "aporte"
+  | "rendimentos";
 
 const PROFILE_META: Record<ProfileId, { name: string; sub: string; avatarBg: string; avatarColor: string; content: ReactNode }> = {
   familiar: {
@@ -267,6 +275,7 @@ export function VestaShell({
           <div className="nav-sec">Principal</div>
           {item("home", "Visão geral")}
           {item("posicao", "Posição atual")}
+          {item("rendimentos", "Rendimentos recorrentes", <span style={{ marginLeft: "auto", fontSize: 12 }}>💰</span>)}
           {item(
             "alertas",
             "Alertas",
@@ -380,7 +389,8 @@ export function VestaShell({
             {page === "upload" && <UploadPage />}
             {page === "drivers" && <DriversPage />}
             {page === "aporte" && <AportePage />}
-            {!["home", "posicao", "breakeven", "equiv", "validador", "projecao", "secundario", "alertas", "regras", "upload", "drivers", "aporte"].includes(page) && (
+            {page === "rendimentos" && <RendimentosPage profileId={profileId} />}
+            {!["home", "posicao", "breakeven", "equiv", "validador", "projecao", "secundario", "alertas", "regras", "upload", "drivers", "aporte", "rendimentos"].includes(page) && (
               <div className="ph">
                 <h1>Em breve</h1>
                 <p>Este módulo será migrado nas próximas rodadas.</p>
