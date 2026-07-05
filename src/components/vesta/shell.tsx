@@ -328,7 +328,7 @@ export function VestaShell({
               Centro de Decisão Financeira
             </div>
             <div className="topbar-sub" style={{ whiteSpace: "pre-line" }}>
-              {isFamily ? "Visão familiar · Cinthia como gestora" : `Carteira ${meta.name}${profileId === "paulo" ? "\nPost Reformam - 2026" : ""}`}
+              {isFamily ? "Visão familiar · Cinthia como gestora" : `Carteira ${meta.name}${profileId === "paulo" ? "\nPost Reformam . MMXXVI\u00A0" : ""}`}
             </div>
           </div>
           <div className="badge-alert">
