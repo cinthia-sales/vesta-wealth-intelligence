@@ -52,7 +52,7 @@ export const getDomusAdmin = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertVesta(context);
-    const [domusResult, requestsResult] = await Promise.all([
+    const [domusResult, requestsResult, membersResult, vestaResult] = await Promise.all([
       context.supabase
         .from("domus")
         .select("id,nome,slug,descricao,created_at")
@@ -61,12 +61,24 @@ export const getDomusAdmin = createServerFn({ method: "GET" })
         .from("domus_join_requests")
         .select("id,nome,email,mensagem,status,created_at,domus:domus_id(nome)")
         .order("created_at", { ascending: false }),
+      context.supabase
+        .from("domus_members")
+        .select("id,domus_id,profile_id,papel,created_at,domus:domus_id(nome),profile:profile_id(nome,email)")
+        .order("created_at", { ascending: false }),
+      context.supabase
+        .from("profiles")
+        .select("id,nome,email")
+        .eq("id", context.userId)
+        .maybeSingle(),
     ]);
     if (domusResult.error) throw domusResult.error;
     if (requestsResult.error) throw requestsResult.error;
+    if (membersResult.error) throw membersResult.error;
     return {
       domus: domusResult.data ?? [],
       requests: requestsResult.data ?? [],
+      members: membersResult.data ?? [],
+      vesta: vestaResult.data ?? null,
     };
   });
 

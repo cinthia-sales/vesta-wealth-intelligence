@@ -21,9 +21,10 @@ export function DomusPage({
 }) {
   const membros: PersonaId[] = ["cinthia", "paulo"];
   const queryClient = useQueryClient();
-  const [novoNome, setNovoNome] = useState(DOMUS_NAME);
-  const [novoSlug, setNovoSlug] = useState("familia-malta-furtado");
-  const [novaDescricao, setNovaDescricao] = useState("Gestão familiar de patrimônio, permissões e decisões.");
+  const [showCreate, setShowCreate] = useState(false);
+  const [novoNome, setNovoNome] = useState("");
+  const [novoSlug, setNovoSlug] = useState("");
+  const [novaDescricao, setNovaDescricao] = useState("");
 
   const { data: adminData, isLoading } = useQuery({
     queryKey: ["domus-admin"],
@@ -32,7 +33,13 @@ export function DomusPage({
 
   const createMutation = useMutation({
     mutationFn: () => createDomus({ data: { nome: novoNome, slug: novoSlug, descricao: novaDescricao } }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["domus-admin"] }),
+    onSuccess: () => {
+      setNovoNome("");
+      setNovoSlug("");
+      setNovaDescricao("");
+      setShowCreate(false);
+      queryClient.invalidateQueries({ queryKey: ["domus-admin"] });
+    },
   });
 
   const [aprovado, setAprovado] = useState<{ email: string; senha: string } | null>(null);
@@ -68,54 +75,135 @@ export function DomusPage({
     });
   };
 
+  const domusList = adminData?.domus ?? [];
+  const primeiro = domusList[0];
+  const vestaNome = adminData?.vesta?.nome ?? "Cínthia";
+  const domusAtual = primeiro?.nome ?? DOMUS_NAME;
+
   return (
     <>
       <div className="ph">
         <h1>🏛 Gestão do Domus</h1>
+        <p className="domus-supervisao">
+          <strong>Domus {domusAtual}</strong> · sob supervisão da Vesta {vestaNome}
+        </p>
         <p>
-          <strong>{DOMUS_NAME}</strong> · como Vesta, você é soberana sobre quem vê o quê.
-          Cada membro sempre vê a própria carteira; o resto é você quem libera.
+          Como Vesta, você é soberana sobre quem vê o quê. Cada membro sempre vê
+          a própria carteira; o resto é você quem libera.
         </p>
       </div>
 
       <div className="card" style={{ marginBottom: 14 }}>
         <div className="card-hdr">
-          Criar Domus <span>{adminData?.domus?.length ?? 0} cadastrados</span>
+          Domus cadastrados <span>{domusList.length}</span>
         </div>
-        <form
-          className="domus-admin-form"
-          onSubmit={(e) => {
-            e.preventDefault();
-            createMutation.mutate();
-          }}
-        >
-          <label>
-            Nome
-            <input value={novoNome} onChange={(e) => setNovoNome(e.target.value)} required />
-          </label>
-          <label>
-            Identificador
-            <input
-              value={novoSlug}
-              onChange={(e) => setNovoSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"))}
-              required
-            />
-          </label>
-          <label className="wide">
-            Descrição
-            <textarea value={novaDescricao} onChange={(e) => setNovaDescricao(e.target.value)} rows={3} />
-          </label>
-          <button type="submit" disabled={createMutation.isPending}>
-            {createMutation.isPending ? "Criando…" : "Criar Domus"}
-          </button>
-          {createMutation.error && <div className="auth-error wide">{(createMutation.error as Error).message}</div>}
-        </form>
         <div className="domus-list">
           {isLoading && <span>Carregando Domus…</span>}
-          {adminData?.domus?.map((item) => (
+          {!isLoading && domusList.length === 0 && (
+            <span className="aitem-det">Nenhum Domus criado ainda.</span>
+          )}
+          {domusList.map((item) => (
             <div key={item.id} className="domus-pill">
               <strong>{item.nome}</strong>
               <span>/{item.slug}</span>
+            </div>
+          ))}
+        </div>
+        <div style={{ padding: "0 16px 16px" }}>
+          {!showCreate ? (
+            <button
+              type="button"
+              className="domus-ghost-btn"
+              onClick={() => setShowCreate(true)}
+            >
+              + Criar novo Domus
+            </button>
+          ) : (
+            <form
+              className="domus-admin-form"
+              onSubmit={(e) => {
+                e.preventDefault();
+                createMutation.mutate();
+              }}
+            >
+              <label>
+                Nome
+                <input
+                  value={novoNome}
+                  placeholder="Ex.: Família Silva"
+                  onChange={(e) => setNovoNome(e.target.value)}
+                  required
+                />
+              </label>
+              <label>
+                Identificador
+                <input
+                  value={novoSlug}
+                  placeholder="familia-silva"
+                  onChange={(e) => setNovoSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"))}
+                  required
+                />
+              </label>
+              <label className="wide">
+                Descrição
+                <textarea
+                  value={novaDescricao}
+                  placeholder="Um resumo curto do propósito desse Domus."
+                  onChange={(e) => setNovaDescricao(e.target.value)}
+                  rows={3}
+                />
+              </label>
+              <div className="wide" style={{ display: "flex", gap: 8 }}>
+                <button type="submit" disabled={createMutation.isPending}>
+                  {createMutation.isPending ? "Criando…" : "Criar Domus"}
+                </button>
+                <button
+                  type="button"
+                  className="domus-ghost-btn"
+                  onClick={() => {
+                    setShowCreate(false);
+                    setNovoNome("");
+                    setNovoSlug("");
+                    setNovaDescricao("");
+                  }}
+                >
+                  cancelar
+                </button>
+              </div>
+              {createMutation.error && (
+                <div className="auth-error wide">
+                  {(createMutation.error as Error).message}
+                </div>
+              )}
+            </form>
+          )}
+        </div>
+      </div>
+
+      <div className="card" style={{ marginBottom: 14 }}>
+        <div className="card-hdr">
+          Pessoas do Domus <span>{adminData?.members?.length ?? 0} membros</span>
+        </div>
+        <div className="domus-members-list">
+          {isLoading && <div className="aitem-det">Carregando pessoas…</div>}
+          {!isLoading && (adminData?.members?.length ?? 0) === 0 && (
+            <div className="aitem-det">
+              Ninguém aprovado ainda. Quando você aprovar um pedido de entrada,
+              a pessoa aparece aqui.
+            </div>
+          )}
+          {adminData?.members?.map((m: any) => (
+            <div key={m.id} className="domus-member-row">
+              <div className="domus-member-avatar">
+                {(m.profile?.nome ?? m.profile?.email ?? "?").charAt(0).toUpperCase()}
+              </div>
+              <div style={{ flex: 1 }}>
+                <div className="aitem-name">{m.profile?.nome ?? "Sem nome"}</div>
+                <div className="aitem-det">
+                  {m.profile?.email} · {m.domus?.nome ?? "—"}
+                </div>
+              </div>
+              <span className="sb sb-g">{m.papel}</span>
             </div>
           ))}
         </div>
