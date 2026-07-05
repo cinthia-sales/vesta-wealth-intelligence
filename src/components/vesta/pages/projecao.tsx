@@ -11,6 +11,13 @@ function fmtRk(n: number) {
 }
 
 type Cenario = "otimista" | "base" | "pessimista";
+type Freq = "mensal" | "semestral" | "anual";
+
+const FREQS: { id: Freq; label: string; perYear: number; max: number; step: number; sufixo: string }[] = [
+  { id: "mensal", label: "Mensal", perYear: 12, max: 35000, step: 500, sufixo: "mês" },
+  { id: "semestral", label: "Semestral", perYear: 2, max: 210000, step: 1000, sufixo: "sem" },
+  { id: "anual", label: "Anual", perYear: 1, max: 420000, step: 1000, sufixo: "ano" },
+];
 
 // Curvas de CDI anual (%) por ano — 2026 até 2036
 const CURVAS: Record<Cenario, number[]> = {
@@ -47,7 +54,10 @@ function taxaAno(b: Bucket, cdi: number, ipca: number, cdiPct: number, cupomIpca
 export function ProjecaoPage({ profileId }: { profileId: ProfileId }) {
   const u = getUser(profileId);
   const [cenario, setCenario] = useState<Cenario>("base");
+  const [freq, setFreq] = useState<Freq>("mensal");
   const [aporte, setAporte] = useState(0);
+  const freqCfg = FREQS.find((f) => f.id === freq) ?? FREQS[0];
+  const aporteMensalEq = (aporte * freqCfg.perYear) / 12;
 
   const { serie, breakdown } = useMemo(() => {
     // Agrupar RF por bucket com taxa característica
@@ -82,7 +92,7 @@ export function ProjecaoPage({ profileId }: { profileId: ProfileId }) {
       });
       rvVal = rvVal * 1.1; // 10% aa
       const rfTotal = posEvol.reduce((s, p) => s + p.v, 0);
-      const aporteAno = aporte * 12 * i; // aportes acumulados vão pra CDI base
+      const aporteAno = aporteMensalEq * 12 * i; // aportes acumulados vão pra CDI base
       const total = rfTotal + rvVal + aporteAno * Math.pow(1 + (cdi * 0.9) / 100, 0.5);
       serie.push({ ano: 2026 + i, total, rf: rfTotal + aporteAno, rv: rvVal });
     }
@@ -92,7 +102,7 @@ export function ProjecaoPage({ profileId }: { profileId: ProfileId }) {
     posEvol.forEach((p) => { breakdown[p.bucket] += p.v; });
 
     return { serie, breakdown };
-  }, [u, cenario, aporte]);
+  }, [u, cenario, aporteMensalEq]);
 
   const maxV = Math.max(...serie.map((s) => s.total));
   const minV = Math.min(...serie.map((s) => s.total));
@@ -141,7 +151,7 @@ export function ProjecaoPage({ profileId }: { profileId: ProfileId }) {
           <div className="kpi-l">Ganho no período</div>
           <div className="kpi-v good">{fmtR(finalTotal - u.total)}</div>
           <div className="kpi-s">
-            {aporte > 0 ? `+ aportes R$${aporte}/mês` : "sem aporte adicional"}
+            {aporte > 0 ? `+ aportes ${fmtR(aporte)}/${freqCfg.sufixo}` : "sem aporte adicional"}
           </div>
         </div>
       </div>
@@ -155,18 +165,37 @@ export function ProjecaoPage({ profileId }: { profileId: ProfileId }) {
           {cb("base", "Base (curva de mercado)")}
           {cb("pessimista", "Pessimista (CDI despenca)")}
         </div>
+        <div className="filter-row" style={{ marginTop: 8 }}>
+          {FREQS.map((f) => (
+            <button
+              key={f.id}
+              className={"fbtn" + (freq === f.id ? " on" : "")}
+              onClick={() => { setFreq(f.id); setAporte(0); }}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 8, fontSize: 13 }}>
-          <label>Aporte mensal adicional:</label>
+          <label>Aporte adicional ({freqCfg.sufixo}):</label>
           <input
             type="range"
             min={0}
-            max={5000}
-            step={500}
+            max={freqCfg.max}
+            step={freqCfg.step}
             value={aporte}
             onChange={(e) => setAporte(Number(e.target.value))}
             style={{ flex: 1 }}
           />
-          <strong style={{ minWidth: 90, textAlign: "right" }}>R$ {aporte.toLocaleString("pt-BR")}/mês</strong>
+          <strong style={{ minWidth: 112, textAlign: "right" }}>{fmtR(aporte)}/{freqCfg.sufixo}</strong>
+        </div>
+        {freq !== "mensal" && (
+          <div style={{ marginTop: 6, color: "var(--muted)", fontSize: 12, textAlign: "right" }}>
+            Equivalente a {fmtR(aporteMensalEq)}/mês
+          </div>
+        )}
+        <div style={{ marginTop: 4, color: "var(--muted)", fontSize: 12, textAlign: "right" }}>
+          Limite: {fmtR(freqCfg.max)}/{freqCfg.sufixo}
         </div>
       </div>
 
