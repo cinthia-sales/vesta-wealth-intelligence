@@ -13,55 +13,92 @@ import { UploadPage } from "@/components/vesta/pages/upload";
 import { DriversPage } from "@/components/vesta/pages/drivers";
 import { AportePage } from "@/components/vesta/pages/aporte";
 import { RendimentosPage } from "@/components/vesta/pages/rendimentos";
+import { DomusPage } from "@/components/vesta/pages/domus";
 
 import type { ProfileId } from "@/lib/profile-derive";
+import { PERSONAE, type PersonaId, type Scope } from "@/state/session";
 
 /* ============================================================
    ProfileSelector — replica exata de #profile-screen do vesta.html
    ============================================================ */
-export function ProfileSelector({ onSelect }: { onSelect: (id: ProfileId) => void }) {
+export function ProfileSelector({
+  onSelect,
+  allowed,
+  loggedAs,
+  onLogout,
+}: {
+  onSelect: (id: ProfileId) => void;
+  allowed?: ProfileId[];
+  loggedAs?: PersonaId;
+  onLogout?: () => void;
+}) {
+  const canSee = (id: ProfileId) => !allowed || allowed.includes(id);
+
   return (
     <div id="profile-screen">
       <div className="ps-vesta">✦ Vesta ✦</div>
       <div className="ps-title">Guardiã do Patrimônio</div>
-      <div className="ps-subtitle">Selecione o perfil de acesso</div>
-
-      <div className="ps-profiles">
-        <div className="ps-card" onClick={() => onSelect("familiar")}>
-          <div className="ps-avatar ps-av-fam" style={{ fontSize: 20 }}>🏛</div>
-          <div>
-            <div className="ps-card-name">FAMILIAR<br />DOMUS</div>
-            <div className="ps-card-desc" style={{ margin: "6px 0 10px" }}>
-              Visão consolidada<br />das duas carteiras<br />e todas as ferramentas
-            </div>
-            <div className="ps-card-badge ps-badge-fam">Acesso total<br />&nbsp;Vestæ Tantum</div>
-          </div>
-        </div>
-
-        <div className="ps-card" onClick={() => onSelect("cinthia")}>
-          <div className="ps-avatar ps-av-cinthia">C</div>
-          <div>
-            <div className="ps-card-name">CÍNTHIA<br />VESTA</div>
-            <div className="ps-card-desc" style={{ margin: "6px 0 10px" }}>
-              Carteira XP 6414212<br />visão individual<br />&nbsp;
-            </div>
-            <div className="ps-card-badge ps-badge-ind">Individual<br />Infinitus</div>
-          </div>
-        </div>
-
-        <div className="ps-card" onClick={() => onSelect("paulo")}>
-          <div className="ps-avatar ps-av-paulo">P</div>
-          <div>
-            <div className="ps-card-name">PAULO<br />EFFLUXUS</div>
-            <div className="ps-card-desc" style={{ margin: "6px 0 10px" }}>
-              Carteira XP 5296823<br />visão individual<br />&nbsp;
-            </div>
-            <div className="ps-card-badge ps-badge-ind">Individual<br />&nbsp;Restrictus</div>
-          </div>
-        </div>
+      <div className="ps-subtitle">
+        {loggedAs
+          ? `Entrou como ${PERSONAE[loggedAs].name} · selecione a visão`
+          : "Selecione o perfil de acesso"}
       </div>
 
-      <div className="ps-ornament">Família Malta Furtado · 2026</div>
+      <div className="ps-profiles">
+        {canSee("familiar") && (
+          <div className="ps-card" onClick={() => onSelect("familiar")}>
+            <div className="ps-avatar ps-av-fam" style={{ fontSize: 20 }}>🏛</div>
+            <div>
+              <div className="ps-card-name">FAMILIAR<br />DOMUS</div>
+              <div className="ps-card-desc" style={{ margin: "6px 0 10px" }}>
+                Visão consolidada<br />das duas carteiras<br />e todas as ferramentas
+              </div>
+              <div className="ps-card-badge ps-badge-fam">Acesso total<br />&nbsp;Vestæ Tantum</div>
+            </div>
+          </div>
+        )}
+
+        {canSee("cinthia") && (
+          <div className="ps-card" onClick={() => onSelect("cinthia")}>
+            <div className="ps-avatar ps-av-cinthia">C</div>
+            <div>
+              <div className="ps-card-name">CÍNTHIA<br />VESTA</div>
+              <div className="ps-card-desc" style={{ margin: "6px 0 10px" }}>
+                Carteira XP 6414212<br />visão individual<br />&nbsp;
+              </div>
+              <div className="ps-card-badge ps-badge-ind">Individual<br />Infinitus</div>
+            </div>
+          </div>
+        )}
+
+        {canSee("paulo") && (
+          <div className="ps-card" onClick={() => onSelect("paulo")}>
+            <div className="ps-avatar ps-av-paulo">P</div>
+            <div>
+              <div className="ps-card-name">PAULO<br />EFFLUXUS</div>
+              <div className="ps-card-desc" style={{ margin: "6px 0 10px" }}>
+                Carteira XP 5296823<br />visão individual<br />&nbsp;
+              </div>
+              <div className="ps-card-badge ps-badge-ind">Individual<br />&nbsp;Restrictus</div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="ps-ornament">
+        Família Malta Furtado · 2026
+        {onLogout && (
+          <>
+            {" · "}
+            <a
+              onClick={onLogout}
+              style={{ cursor: "pointer", textDecoration: "underline", color: "var(--accent)" }}
+            >
+              sair
+            </a>
+          </>
+        )}
+      </div>
     </div>
   );
 }
@@ -173,7 +210,8 @@ type PageKey =
   | "upload"
   | "drivers"
   | "aporte"
-  | "rendimentos";
+  | "rendimentos"
+  | "domus";
 
 const PROFILE_META: Record<ProfileId, { name: string; sub: string; avatarBg: string; avatarColor: string; content: ReactNode }> = {
   familiar: {
@@ -205,16 +243,23 @@ const PROFILE_META: Record<ProfileId, { name: string; sub: string; avatarBg: str
 export function VestaShell({
   profileId,
   onSwitchProfile,
+  loggedAs,
+  scopes,
+  onUpdateScopes,
   children,
 }: {
   profileId: ProfileId;
   onChangeProfile?: (id: ProfileId) => void;
   onSwitchProfile: () => void;
+  loggedAs?: PersonaId;
+  scopes?: Record<PersonaId, Scope>;
+  onUpdateScopes?: (next: Record<PersonaId, Scope>) => void;
   children?: ReactNode;
 }) {
   const [page, setPage] = useState<PageKey>("home");
   const meta = PROFILE_META[profileId];
   const isFamily = profileId === "familiar";
+  const isVesta = loggedAs ? PERSONAE[loggedAs].role === "vesta" : false;
 
   const item = (key: PageKey, label: string, extra?: ReactNode) => (
     <div
@@ -298,12 +343,23 @@ export function VestaShell({
           {item("equiv", "Equivalência de taxas")}
           {item("validador", "Validador de troca")}
           {item("breakeven", "Breakeven")}
+          {item("aporte", "Acelerar breakeven")}
           {item("projecao", "Projeção patrimônio")}
           {item("secundario", "Saída secundário")}
           {item("regras", "Regras — não mexer")}
           {item("upload", "Importar arquivos XP")}
           {item("drivers", "Influenciadores")}
-          {item("aporte", "Acelerar breakeven")}
+
+          {isVesta && (
+            <>
+              <div className="nav-sec">Domus</div>
+              {item(
+                "domus",
+                "Gerir Domus",
+                <span style={{ marginLeft: "auto", fontSize: 12 }}>🏛</span>,
+              )}
+            </>
+          )}
         </div>
 
         <div className="sidebar-foot" />
@@ -378,7 +434,10 @@ export function VestaShell({
             {page === "drivers" && <DriversPage />}
             {page === "aporte" && <AportePage />}
             {page === "rendimentos" && <RendimentosPage profileId={profileId} />}
-            {!["home", "posicao", "breakeven", "equiv", "validador", "projecao", "secundario", "alertas", "regras", "upload", "drivers", "aporte", "rendimentos"].includes(page) && (
+            {page === "domus" && isVesta && scopes && onUpdateScopes && (
+              <DomusPage scopes={scopes} onUpdateScopes={onUpdateScopes} />
+            )}
+            {!["home", "posicao", "breakeven", "equiv", "validador", "projecao", "secundario", "alertas", "regras", "upload", "drivers", "aporte", "rendimentos", "domus"].includes(page) && (
               <div className="ph">
                 <h1>Em breve</h1>
                 <p>Este módulo será migrado nas próximas rodadas.</p>
