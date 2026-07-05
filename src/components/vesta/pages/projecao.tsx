@@ -226,7 +226,7 @@ export function ProjecaoPage({ profileId }: { profileId: ProfileId }) {
             <label style={{ minWidth: 80 }}>Ano de entrada:</label>
             <input
               type="range"
-              min={2027}
+              min={2026}
               max={2036}
               step={1}
               value={bonusAno}
