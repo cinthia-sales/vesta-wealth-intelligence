@@ -15,8 +15,8 @@ type Freq = "mensal" | "semestral" | "anual";
 
 const FREQS: { id: Freq; label: string; perYear: number; max: number; step: number; sufixo: string }[] = [
   { id: "mensal", label: "Mensal", perYear: 12, max: 35000, step: 500, sufixo: "mês" },
-  { id: "semestral", label: "Semestral", perYear: 2, max: 210000, step: 1000, sufixo: "sem" },
-  { id: "anual", label: "Anual", perYear: 1, max: 420000, step: 1000, sufixo: "ano" },
+  { id: "semestral", label: "Semestral", perYear: 2, max: 300000, step: 5000, sufixo: "sem" },
+  { id: "anual", label: "Anual", perYear: 1, max: 500000, step: 5000, sufixo: "ano" },
 ];
 
 // Curvas de CDI anual (%) por ano — 2026 até 2036
