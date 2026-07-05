@@ -7,16 +7,25 @@ function fmtRK(v: number) {
   return "R$ " + Math.round(v).toLocaleString("pt-BR");
 }
 
+function saudacaoPorHora(): string {
+  const h = new Date().getHours();
+  if (h >= 5 && h < 12) return "Bom dia";
+  if (h >= 12 && h < 18) return "Boa tarde";
+  return "Boa noite";
+}
+
 export function HomePage({ profileId }: { profileId: ProfileId }) {
   const u = getUser(profileId);
   const firstName = u.nome.split(" ")[0];
+  const saud = saudacaoPorHora();
 
   return (
     <>
       <div className="ph">
-        <h1>Bom dia, Cínthia</h1>
+        <h1>{saud}, {firstName}</h1>
         <p>{u.saudacao}</p>
       </div>
+
 
       <div className="kpi-row">
         <div className="kpi">

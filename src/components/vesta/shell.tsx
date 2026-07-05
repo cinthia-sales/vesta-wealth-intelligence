@@ -306,25 +306,8 @@ export function VestaShell({
           {item("aporte", "Acelerar breakeven")}
         </div>
 
-        <div className="sidebar-foot">
-          <div
-            className="nav-item"
-            style={{ color: "rgba(255,255,255,.35)", fontSize: 12 }}
-          >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              style={{ width: 15, height: 15 }}
-            >
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" y1="8" x2="12" y2="12" />
-              <line x1="12" y1="16" x2="12.01" y2="16" />
-            </svg>
-            Ref. 02/07/2026 · CDI 14,75%
-          </div>
-        </div>
+        <div className="sidebar-foot" />
+
       </nav>
 
       <div className="main">
