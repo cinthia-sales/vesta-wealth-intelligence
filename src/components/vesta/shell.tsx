@@ -329,7 +329,7 @@ export function VestaShell({
             </div>
             <div className="topbar-sub" style={{ whiteSpace: "pre-line" }}>
               {isFamily 
-                ? "Visão familiar · Cinthia como gestora" 
+                ? "Visão familiar ·\u00A0\nCinthia VESTA como gestora\nPatrimonium Consolidatum" 
                 : `Carteira ${meta.name}${
                     profileId === "paulo" ? "\nPost Reformam . MMXXVI\u00A0" : 
                     profileId === "cinthia" ? "\nCustos Ignis et Patrimonni" : ""
