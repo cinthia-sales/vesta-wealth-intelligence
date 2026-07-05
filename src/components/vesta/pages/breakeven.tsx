@@ -90,7 +90,7 @@ const PAULO_DATA = {
       ganhoMes: 407,
     },
   ],
-  // Composições interdependentes: A = tudo que saiu, B = tudo que entrou (mesmo dia)
+  // Composição A e Composição B — interdependentes: A = tudo que saiu, B = tudo que entrou (mesmo dia)
   baldes: {
     A: {
       nome: "Composição A — o que foi vendido",
@@ -307,7 +307,7 @@ function BreakevenConsolidado({ data }: { data: typeof PAULO_DATA }) {
   const { custo, ganho, ativos, inicio, baldes } = data;
   const { A, B } = baldes;
 
-  // Breakeven das composições: mês em que VF_B alcança VF_A
+  // Breakeven — mês em que a Composição B alcança a A: mês em que VF_B alcança VF_A
   const crossAnos =
     B.taxaAno > A.taxaAno && A.capital > B.capital
       ? Math.log(A.capital / B.capital) / Math.log((1 + B.taxaAno) / (1 + A.taxaAno))
@@ -332,7 +332,7 @@ function BreakevenConsolidado({ data }: { data: typeof PAULO_DATA }) {
       <div className="kpi-row">
         <div className="kpi"><div className="kpi-l">Custo do rearranjo</div><div className="kpi-v bad">{fmtR(custo)}</div><div className="kpi-s">deságio + IR (Composição A − Composição B hoje)</div></div>
         <div className="kpi"><div className="kpi-l">Ganho mensal</div><div className="kpi-v good">+{fmtR(ganho)}</div><div className="kpi-s">renda corrente adicional</div></div>
-        <div className="kpi"><div className="kpi-l">Breakeven das composições</div><div className="kpi-v blue">{isFinite(mesesBreakeven) ? `${mesesBreakeven} meses` : "—"}</div><div className="kpi-s">{isFinite(mesesBreakeven) ? dataBreakeven : "B não alcança A"}</div></div>
+        <div className="kpi"><div className="kpi-l">Breakeven A → B</div><div className="kpi-v blue">{isFinite(mesesBreakeven) ? `${mesesBreakeven} meses` : "—"}</div><div className="kpi-s">{isFinite(mesesBreakeven) ? dataBreakeven : "B não alcança A"}</div></div>
         <div className="kpi"><div className="kpi-l">Ganho anual vitalício</div><div className="kpi-v good">+{fmtR(ganho * 12)}</div><div className="kpi-s">depois do breakeven</div></div>
       </div>
 
@@ -373,7 +373,7 @@ function BreakevenConsolidado({ data }: { data: typeof PAULO_DATA }) {
 
       <div className="g32" style={{ marginTop: 14 }}>
         <div className="card">
-          <div className="card-hdr">Composições</div>
+          <div className="card-hdr">Composição A e Composição B</div>
           <table className="tbl">
             <thead>
               <tr><th></th><th>Composição</th><th className="r">Capital</th><th className="r">Taxa média</th></tr>
@@ -723,8 +723,8 @@ function SimuladorTrocaBreakeven({
           <span>{jaConfirmado ? "editando breakeven confirmado" : "modo hipotético"}</span>
         </div>
         <div style={{ padding: 16, fontSize: 13, color: "var(--muted)", lineHeight: 1.6 }}>
-          Monte a operação em <strong>duas composições</strong>: o <strong>Grupo A</strong> é de onde
-          o dinheiro sai, o <strong>Grupo B</strong> é para onde ele vai. Cada composição pode ter
+          Monte a <strong>Composição A</strong> (de onde o dinheiro sai) e a
+          <strong>Composição B</strong> (para onde ele vai). Cada uma pode ter
           quantas linhas você precisar. O sistema calcula o <em>ponto de encontro</em> — o prazo
           em que a nova alocação supera a antiga. Quando você confirmar, isto vira um breakeven
           real e passa a ser vigiado.
@@ -1599,7 +1599,7 @@ export function BreakevenPage({ profileId }: { profileId: ProfileId }) {
               }}
             >
               <p style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.6, maxWidth: 480, margin: "0 auto 14px" }}>
-                Nenhum novo giro simulado. Abra o simulador para montar em duas composições
+                Nenhum novo giro simulado. Abra o simulador para montar a Composição A e a Composição B
                 (de onde sai / para onde vai) e, se confirmar, ele passa a ser vigiado ao lado do atual.
               </p>
               <button
@@ -1659,7 +1659,7 @@ export function BreakevenPage({ profileId }: { profileId: ProfileId }) {
             Acelerador em repouso
           </div>
           <p style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.6, maxWidth: 480, margin: "0 auto 16px" }}>
-            Use o simulador para montar a troca em duas composições (de onde sai / para onde vai),
+            Use o simulador para montar a Composição A (sai) e a Composição B (entra) (de onde sai / para onde vai),
             com taxa a mercado, taxa na curva, duration e prazo. Se você <strong>de fato
             realizar</strong> as trocas, confirme — a partir daí este painel passa a exibir o
             breakeven real e o acompanha até se pagar.
@@ -1695,7 +1695,7 @@ export function BreakevenPage({ profileId }: { profileId: ProfileId }) {
         <p>
           {breakevenUsuario
             ? "Ajuste as linhas e reconfirme, ou descarte para começar do zero."
-            : "Monte a troca em duas composições. Nada afeta a carteira até você confirmar."}
+            : "Monte a Composição A (sai) e a Composição B (entra). Nada afeta a carteira até você confirmar."}
         </p>
         <button
           type="button"
