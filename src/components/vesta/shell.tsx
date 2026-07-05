@@ -260,6 +260,8 @@ export function VestaShell({
   children?: ReactNode;
 }) {
   const [page, setPage] = useState<PageKey>("home");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const goTo = (k: PageKey) => { setPage(k); setSidebarOpen(false); };
   const meta = PROFILE_META[profileId];
   const isFamily = profileId === "familiar";
   const isVesta = loggedAs ? PERSONAE[loggedAs].role === "vesta" : false;
