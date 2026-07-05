@@ -13,6 +13,7 @@ import {
   type Scope,
 } from "@/state/session";
 import { getMyRole } from "@/lib/auth.functions";
+import { listDomusPersonae } from "@/lib/domus.functions";
 
 export const Route = createFileRoute("/_authenticated/app")({
   component: VestaApp,
