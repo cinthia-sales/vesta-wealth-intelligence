@@ -2,6 +2,8 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { isBootstrapAvailable } from "@/lib/auth.functions";
+import vestaHeroAsset from "@/assets/vesta-hero.png.asset.json";
+const vestaLineart = vestaHeroAsset.url;
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
@@ -75,7 +77,7 @@ function AuthPage() {
   return (
     <div className="auth-wrap">
       <div className="auth-card">
-        
+        <img src={vestaLineart} alt="" className="auth-lineart" />
         <div className="auth-vesta">Vesta</div>
         <div className="auth-title">
           {bootstrapMode ? "Fundar o Domus" : "Entrar no Domus"}
