@@ -97,6 +97,16 @@ function BreakevenConsolidado({ data }: { data: typeof PAULO_DATA }) {
   const pathA = points.map((p, i) => (i ? "L" : "M") + xs(p.m) + " " + ys(p.a)).join(" ");
   const pathB = points.map((p, i) => (i ? "L" : "M") + xs(p.m) + " " + ys(p.b)).join(" ");
 
+  // Ponto de encontro analítico entre as duas curvas
+  let cruzamento: { m: number; v: number } | null = null;
+  if (linhas.cA > 0 && linhas.cB > 0 && linhas.tA !== linhas.tB) {
+    const mCross = 12 * Math.log(linhas.cA / linhas.cB) / Math.log((1 + linhas.tB) / (1 + linhas.tA));
+    if (isFinite(mCross) && mCross > 0 && mCross <= 78) {
+      const vCross = linhas.cA * Math.pow(1 + linhas.tA, mCross / 12);
+      cruzamento = { m: Math.round(mCross), v: vCross };
+    }
+  }
+
   const capitalTotal = ativos.reduce((s, a) => s + a.capital, 0);
   const mesesBreakeven = Math.ceil(custo / ganho);
 
@@ -117,6 +127,22 @@ function BreakevenConsolidado({ data }: { data: typeof PAULO_DATA }) {
               <ChartAxes minV={minV} maxV={maxV} maxMonth={78} W={W} H={H} PL={PL} PR={PR} PT={PT} PB={PB} xs={xs} ys={ys} />
               <path d={pathA} fill="none" stroke="#dc2626" strokeWidth={2} />
               <path d={pathB} fill="none" stroke="#4f8ef7" strokeWidth={2} />
+              {cruzamento && (
+                <>
+                  <line
+                    x1={xs(cruzamento.m)} x2={xs(cruzamento.m)}
+                    y1={PT} y2={H - PB}
+                    stroke="var(--accent)" strokeDasharray="3 3" strokeWidth={1}
+                  />
+                  <circle cx={xs(cruzamento.m)} cy={ys(cruzamento.v)} r={4} fill="var(--accent)" />
+                  <text
+                    x={xs(cruzamento.m) + 6} y={ys(cruzamento.v) - 8}
+                    fontSize={11} fill="var(--accent)" fontWeight={600}
+                  >
+                    m{cruzamento.m} · {fmtRk(cruzamento.v)}
+                  </text>
+                </>
+              )}
             </svg>
           </div>
           <div style={{ display: "flex", gap: 18, marginTop: 10, fontSize: 12, color: "var(--muted)" }}>
@@ -576,27 +602,25 @@ function SimuladorTrocaBreakeven({
               <ChartAxes minV={minV} maxV={maxV} maxMonth={horizonte} W={W} H={H} PL={PL} PR={PR} PT={PT} PB={PB} xs={xs} ys={ys} />
               <path d={pathA} fill="none" stroke="#dc2626" strokeWidth={2} />
               <path d={pathB} fill="none" stroke="#4f8ef7" strokeWidth={2} />
-              {pontoEncontro && pontoEncontro.meses <= horizonte && (
-                <>
-                  <line
-                    x1={xs(pontoEncontro.meses)}
-                    x2={xs(pontoEncontro.meses)}
-                    y1={PT}
-                    y2={H - PB}
-                    stroke="var(--accent)"
-                    strokeDasharray="3 3"
-                    strokeWidth={1}
-                  />
-                  <text
-                    x={xs(pontoEncontro.meses) + 4}
-                    y={PT + 12}
-                    fontSize={11}
-                    fill="var(--accent)"
-                  >
-                    m{pontoEncontro.meses}
-                  </text>
-                </>
-              )}
+              {pontoEncontro && pontoEncontro.meses <= horizonte && (() => {
+                const vCross = capitalA * Math.pow(1 + taxaCurvaA, pontoEncontro.meses / 12);
+                return (
+                  <>
+                    <line
+                      x1={xs(pontoEncontro.meses)} x2={xs(pontoEncontro.meses)}
+                      y1={PT} y2={H - PB}
+                      stroke="var(--accent)" strokeDasharray="3 3" strokeWidth={1}
+                    />
+                    <circle cx={xs(pontoEncontro.meses)} cy={ys(vCross)} r={4} fill="var(--accent)" />
+                    <text
+                      x={xs(pontoEncontro.meses) + 6} y={ys(vCross) - 8}
+                      fontSize={11} fill="var(--accent)" fontWeight={600}
+                    >
+                      m{pontoEncontro.meses} · {fmtRk(vCross)}
+                    </text>
+                  </>
+                );
+              })()}
             </svg>
           </div>
           <div style={{ display: "flex", gap: 18, marginTop: 10, fontSize: 12, color: "var(--muted)", flexWrap: "wrap" }}>
