@@ -34,7 +34,7 @@ export function ProfileSelector({ onSelect }: { onSelect: (id: ProfileId) => voi
             <div className="ps-card-desc" style={{ margin: "6px 0 10px" }}>
               Visão consolidada<br />das duas carteiras<br />e todas as ferramentas
             </div>
-            <div className="ps-card-badge ps-badge-fam">Acesso total - VESTA</div>
+            <div className="ps-card-badge ps-badge-fam">Acesso total<br />Accessus Vestæ Tantum</div>
           </div>
         </div>
 
