@@ -2,7 +2,8 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { isBootstrapAvailable } from "@/lib/auth.functions";
-import vestaLineart from "@/assets/vesta-lineart.png";
+import vestaHeroAsset from "@/assets/vesta-hero.png.asset.json";
+const vestaLineart = vestaHeroAsset.url;
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
