@@ -401,20 +401,7 @@ export function VestaShell({
               }}
               title={`${alertaCounts.r} urgentes · ${alertaCounts.w} atenção · ${alertaCounts.g} positivos`}
             >
-              {alertaBreakdown.map((item) => (
-                <span key={item.key} style={{ display: "inline-flex", alignItems: "center", gap: 2 }}>
-                  <span
-                    style={{
-                      width: 7,
-                      height: 7,
-                      borderRadius: "50%",
-                      background: item.color,
-                      display: "inline-block",
-                    }}
-                  />
-                  {item.count}
-                </span>
-              ))}
+              {totalAlertas}
             </span>,
           )}
 
