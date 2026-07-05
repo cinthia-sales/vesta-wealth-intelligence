@@ -35,6 +35,8 @@ function VestaApp() {
   });
 
   useEffect(() => {
+    if (!roleData) return;
+    if (roleData.role === "vesta") return; // Vesta nunca é saudada — a Deusa não se cumprimenta
     let ativo = true;
     (async () => {
       const { data: userData } = await supabase.auth.getUser();
@@ -50,7 +52,7 @@ function VestaApp() {
     return () => {
       ativo = false;
     };
-  }, []);
+  }, [roleData]);
 
   const dispensarSaudacao = async () => {
     setSaudacao(false);
