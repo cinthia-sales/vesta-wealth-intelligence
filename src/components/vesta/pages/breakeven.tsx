@@ -89,16 +89,16 @@ const PAULO_DATA = {
       ganhoMes: 407,
     },
   ],
-  // Baldes interdependentes: A = tudo que saiu, B = tudo que entrou (mesmo dia)
+  // Composições interdependentes: A = tudo que saiu, B = tudo que entrou (mesmo dia)
   baldes: {
     A: {
-      nome: "Balde A — o que foi vendido",
+      nome: "Composição A — o que foi vendido",
       composicao: "Debêntures antigas (Itapoá + Localiza) + Fundos liquidados",
       capital: 393822,   // 125.772 (deb antigas) + 268.050 (fundos)
       taxaAno: 0.1160,   // média ponderada das taxas antigas
     },
     B: {
-      nome: "Balde B — o que foi comprado",
+      nome: "Composição B — o que foi comprado",
       composicao: "Debêntures novas (J&F + Jalles) + LCAs + LCD BRDE",
       capital: 379124,   // 112.124 + 267.000 (já líquido do deságio e do IR)
       taxaAno: 0.1378,   // média ponderada das taxas novas
@@ -306,7 +306,7 @@ function BreakevenConsolidado({ data }: { data: typeof PAULO_DATA }) {
   const { custo, ganho, ativos, inicio, baldes } = data;
   const { A, B } = baldes;
 
-  // Breakeven de baldes: mês em que VF_B alcança VF_A
+  // Breakeven das composições: mês em que VF_B alcança VF_A
   const crossAnos =
     B.taxaAno > A.taxaAno && A.capital > B.capital
       ? Math.log(A.capital / B.capital) / Math.log((1 + B.taxaAno) / (1 + A.taxaAno))
@@ -329,9 +329,9 @@ function BreakevenConsolidado({ data }: { data: typeof PAULO_DATA }) {
   return (
     <>
       <div className="kpi-row">
-        <div className="kpi"><div className="kpi-l">Custo do rearranjo</div><div className="kpi-v bad">{fmtR(custo)}</div><div className="kpi-s">deságio + IR (Balde A − Balde B hoje)</div></div>
+        <div className="kpi"><div className="kpi-l">Custo do rearranjo</div><div className="kpi-v bad">{fmtR(custo)}</div><div className="kpi-s">deságio + IR (Composição A − Composição B hoje)</div></div>
         <div className="kpi"><div className="kpi-l">Ganho mensal</div><div className="kpi-v good">+{fmtR(ganho)}</div><div className="kpi-s">renda corrente adicional</div></div>
-        <div className="kpi"><div className="kpi-l">Breakeven dos baldes</div><div className="kpi-v blue">{isFinite(mesesBreakeven) ? `${mesesBreakeven} meses` : "—"}</div><div className="kpi-s">{isFinite(mesesBreakeven) ? dataBreakeven : "B não alcança A"}</div></div>
+        <div className="kpi"><div className="kpi-l">Breakeven das composições</div><div className="kpi-v blue">{isFinite(mesesBreakeven) ? `${mesesBreakeven} meses` : "—"}</div><div className="kpi-s">{isFinite(mesesBreakeven) ? dataBreakeven : "B não alcança A"}</div></div>
         <div className="kpi"><div className="kpi-l">Ganho anual vitalício</div><div className="kpi-v good">+{fmtR(ganho * 12)}</div><div className="kpi-s">depois do breakeven</div></div>
       </div>
 
@@ -340,18 +340,18 @@ function BreakevenConsolidado({ data }: { data: typeof PAULO_DATA }) {
           Como ler o gráfico
         </div>
         <p style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.55, margin: 0 }}>
-          <strong>Balde A</strong> é tudo que foi vendido (deb antigas + fundos) rendendo às taxas antigas —
-          a trajetória que existiria se nada mudasse. <strong>Balde B</strong> é tudo que foi comprado no
+          <strong>Composição A</strong> é tudo que foi vendido (deb antigas + fundos) rendendo às taxas antigas —
+          a trajetória que existiria se nada mudasse. <strong>Composição B</strong> é tudo que foi comprado no
           mesmo dia (deb novas + LCAs/LCD BRDE), já líquido do deságio e do IR, rendendo às taxas novas.
-          Como B começa {fmtR(custo)} abaixo, mas cresce mais rápido, as curvas se cruzam quando o Balde
-          B ultrapassa o A — esse é o breakeven real do rearranjo. As trocas 1-a-1 (essa deb contra
+          Como B começa {fmtR(custo)} abaixo, mas cresce mais rápido, as curvas se cruzam quando a Composição
+          B ultrapassa a A — esse é o breakeven real do rearranjo. As trocas 1-a-1 (essa deb contra
           aquela deb) ficam no simulador de trocas.
         </p>
       </div>
 
       <div className="card">
         <div className="card-hdr">
-          Balde A vs Balde B <span>curvas compostas até se cruzarem</span>
+          Composição A vs Composição B <span>curvas compostas até se cruzarem</span>
         </div>
         <GraficoBaldes
           capA={A.capital} taxaA={A.taxaAno}
@@ -361,21 +361,21 @@ function BreakevenConsolidado({ data }: { data: typeof PAULO_DATA }) {
         <div style={{ display: "flex", gap: 18, marginTop: 10, fontSize: 12, color: "var(--muted)", flexWrap: "wrap" }}>
           <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
             <span style={{ display: "inline-block", width: 18, height: 2, background: "#dc2626" }} />
-            Balde A · {fmtR(A.capital)} @ {(A.taxaAno * 100).toFixed(2)}% a.a.
+            Composição A · {fmtR(A.capital)} @ {(A.taxaAno * 100).toFixed(2)}% a.a.
           </span>
           <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
             <span style={{ display: "inline-block", width: 18, height: 2, background: "#4f8ef7" }} />
-            Balde B · {fmtR(B.capital)} @ {(B.taxaAno * 100).toFixed(2)}% a.a.
+            Composição B · {fmtR(B.capital)} @ {(B.taxaAno * 100).toFixed(2)}% a.a.
           </span>
         </div>
       </div>
 
       <div className="g32" style={{ marginTop: 14 }}>
         <div className="card">
-          <div className="card-hdr">Composição dos baldes</div>
+          <div className="card-hdr">Composições</div>
           <table className="tbl">
             <thead>
-              <tr><th>Balde</th><th>Composição</th><th className="r">Capital</th><th className="r">Taxa média</th></tr>
+              <tr><th></th><th>Composição</th><th className="r">Capital</th><th className="r">Taxa média</th></tr>
             </thead>
             <tbody>
               <tr>
@@ -403,7 +403,7 @@ function BreakevenConsolidado({ data }: { data: typeof PAULO_DATA }) {
           <div className="card-hdr">Marcos ao longo do tempo</div>
           <table className="tbl">
             <thead>
-              <tr><th>Mês</th><th>Data</th><th className="r">Balde A</th><th className="r">Balde B</th><th className="r">B − A</th></tr>
+              <tr><th>Mês</th><th>Data</th><th className="r">Composição A</th><th className="r">Composição B</th><th className="r">B − A</th></tr>
             </thead>
             <tbody>
               {marcos.map((mk) => (
