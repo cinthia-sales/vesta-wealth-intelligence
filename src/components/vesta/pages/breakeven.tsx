@@ -371,28 +371,6 @@ function BreakevenConsolidado({ data }: { data: typeof PAULO_DATA }) {
 
 
 
-
-        <div className="card">
-          <div className="card-hdr">Recuperação mês a mês</div>
-          {progs.map((p) => (
-            <div className="prog" key={p.m}>
-              <div className="prog-hdr">
-                <span>{p.d} (m{p.m})</span>
-                <span style={{ color: p.ok ? "var(--success)" : "var(--text)", fontWeight: p.ok ? 600 : 400 }}>
-                  {p.p}%{p.ok ? " ✓" : ""}
-                </span>
-              </div>
-              <div className="prog-bar">
-                <div
-                  className="prog-fill"
-                  style={{ width: `${p.p}%`, background: p.ok ? "var(--success)" : "var(--accent)" }}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
       <div className="card">
         <div className="card-hdr">De onde vem o ganho de +{fmtR(ganho)}/mês</div>
         <table className="tbl">
