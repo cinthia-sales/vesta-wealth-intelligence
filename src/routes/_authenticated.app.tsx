@@ -35,6 +35,12 @@ function VestaApp() {
     retry: false,
   });
 
+  const { data: extraPersonae } = useQuery({
+    queryKey: ["domus-personae"],
+    queryFn: () => listDomusPersonae(),
+    enabled: !!roleData,
+  });
+
   useEffect(() => {
     if (!roleData) return;
     if (roleData.role === "vesta") return; // Vesta nunca é saudada — a Deusa não se cumprimenta
