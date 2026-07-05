@@ -1,8 +1,9 @@
-import { PROVENTOS } from "@/data/dividendos";
+import { PROVENTOS, type Provento } from "@/data/dividendos";
 import type { ProfileId } from "@/lib/profile-derive";
 
 function fmtR(n: number) {
-  return "R$ " + Math.round(n).toLocaleString("pt-BR");
+  const s = Math.round(Math.abs(n)).toLocaleString("pt-BR");
+  return (n < 0 ? "-R$ " : "R$ ") + s;
 }
 
 const FREQ_BADGE: Record<string, string> = {
@@ -11,6 +12,49 @@ const FREQ_BADGE: Record<string, string> = {
   semestral: "sb-w",
   anual: "sb-n",
 };
+
+// Alternativa segura — LCA 92% CDI isenta (mesmo benchmark usado no Validador)
+const LCA_BENCH = 13.57;
+
+// Ajustes específicos por ticker (come-cotas, apreciação histórica recente ao ano)
+type Ajuste = { come_cotas?: number; aprec_hist?: number; nota_extra?: string };
+const AJUSTES: Record<string, Ajuste> = {
+  XPAG11: { come_cotas: 0.5, aprec_hist: 0, nota_extra: "Come-cotas mai/nov (Fiagro estruturado como FI)" },
+  TGRE11: { come_cotas: 0, aprec_hist: -11.7, nota_extra: "Cota acumula -11,7% desde aplicação" },
+  LFTB11: { come_cotas: 0, aprec_hist: 0, nota_extra: "ETF Tesouro Selic — cota estável por natureza" },
+  BPAC11: { come_cotas: 0, aprec_hist: -37.3, nota_extra: "PM R$86,85 vs mercado R$54,48" },
+  PSSA3: { come_cotas: 0, aprec_hist: 12, nota_extra: "+97,75% sobre PM histórico" },
+  ITSA4: { come_cotas: 0, aprec_hist: 8, nota_extra: "+51,28% sobre PM histórico" },
+};
+
+// Cash-yield efetivo = DY - come-cotas - perda por não reinvestir automaticamente
+// (proventos caem em conta corrente; perda aproximada = metade do DY parado meio ano ao CDI ~14%)
+function raioX(p: Provento) {
+  const aj = AJUSTES[p.ticker] ?? {};
+  const dy = p.dy_pct;
+  const come = aj.come_cotas ?? 0;
+  // Perda por não reinvestimento automático: aprox. (dy/2) × (CDI_liq/2) — meio ano parado em média
+  const perda_reinv = +(dy * 0.04).toFixed(2); // ~4% do DY vira "custo de oportunidade" médio
+  const cash_yield = +(dy - come - perda_reinv).toFixed(2);
+  const aprec = aj.aprec_hist ?? null;
+  // Delta vs LCA considerando SÓ o cash yield (sem apreciação — a apreciação é o "extra" para vencer)
+  const delta_taxa = +(cash_yield - LCA_BENCH).toFixed(2);
+  const delta_rs = Math.round((delta_taxa / 100) * p.valor_posicao);
+  const breakeven_aprec = +(-delta_taxa).toFixed(2); // apreciação necessária pra empatar
+  // Veredito
+  let verdict: "verde" | "amarelo" | "vermelho";
+  if (delta_taxa >= 0) verdict = "verde";
+  else if (breakeven_aprec <= 3 && (aprec === null || aprec > -3)) verdict = "amarelo";
+  else verdict = "vermelho";
+  return { dy, come, perda_reinv, cash_yield, aprec, delta_taxa, delta_rs, breakeven_aprec, verdict, nota_extra: aj.nota_extra };
+}
+
+const VERDICT_COLOR: Record<"verde" | "amarelo" | "vermelho", { bg: string; fg: string; label: string; icon: string }> = {
+  verde: { bg: "rgba(74,124,89,.12)", fg: "#4E7A5C", label: "Cash yield já bate LCA", icon: "🟢" },
+  amarelo: { bg: "rgba(216,179,106,.15)", fg: "#B8734A", label: "Empata só se cota subir", icon: "🟡" },
+  vermelho: { bg: "var(--danger-bg)", fg: "var(--danger)", label: "Não compensa — dividendo não paga a queda", icon: "🔴" },
+};
+
 
 export function RendimentosPage({ profileId }: { profileId: ProfileId }) {
   // Cinthia = só RF isento, sem proventos de RV. Familiar/Paulo = usa PROVENTOS do Paulo.
