@@ -94,22 +94,30 @@ function mesesBreakevenComposto(custo: number, ganhoMes: number, taxaAno: number
 // Mini-gráfico: custo (linha vermelha plana) vs ganho acumulado (linha azul crescente).
 // Cruzam exatamente no mês custo / ganhoMes — bate com o KPI.
 function GraficoCustoGanho({
-  custo, ganhoMes, titulo, sub,
+  custo, ganhoMes, taxaAno, titulo, sub,
 }: {
-  custo: number; ganhoMes: number; titulo: string; sub?: string;
+  custo: number; ganhoMes: number; taxaAno: number; titulo: string; sub?: string;
 }) {
-  const mesesCross = ganhoMes > 0 ? custo / ganhoMes : Infinity;
+  const mesesCross = mesesBreakevenComposto(custo, ganhoMes, taxaAno);
   const horizonte = isFinite(mesesCross)
     ? Math.max(12, Math.min(96, Math.ceil(mesesCross * 1.8)))
     : 60;
-  const maxV = Math.max(custo * 1.15, ganhoMes * horizonte);
+  const ganhoNoHorizonte = ganhoAcumulado(ganhoMes, taxaAno, horizonte);
+  const maxV = Math.max(custo * 1.15, ganhoNoHorizonte);
   const minV = 0;
   const W = 600, H = 200, PL = 60, PR = 12, PT = 10, PB = 34;
   const xs = (m: number) => PL + (m / horizonte) * (W - PL - PR);
   const ys = (v: number) => PT + (1 - (v - minV) / (maxV - minV)) * (H - PT - PB);
   const yCusto = ys(custo);
-  const pathGanho =
-    `M ${xs(0)} ${ys(0)} L ${xs(horizonte)} ${ys(ganhoMes * horizonte)}`;
+
+  // Curva de ganho acumulado composto (amostrada em ~60 pontos)
+  const N = 60;
+  let pathGanho = `M ${xs(0)} ${ys(0)}`;
+  for (let i = 1; i <= N; i++) {
+    const m = (i / N) * horizonte;
+    pathGanho += ` L ${xs(m)} ${ys(ganhoAcumulado(ganhoMes, taxaAno, m))}`;
+  }
+
   const mCross = isFinite(mesesCross) && mesesCross <= horizonte ? mesesCross : null;
   return (
     <div className="card">
@@ -122,12 +130,10 @@ function GraficoCustoGanho({
             minV={minV} maxV={maxV} maxMonth={horizonte}
             W={W} H={H} PL={PL} PR={PR} PT={PT} PB={PB} xs={xs} ys={ys}
           />
-          {/* Custo (linha vermelha horizontal) */}
           <line
             x1={xs(0)} x2={xs(horizonte)} y1={yCusto} y2={yCusto}
             stroke="#dc2626" strokeWidth={2}
           />
-          {/* Ganho acumulado (linha azul crescente) */}
           <path d={pathGanho} fill="none" stroke="#4f8ef7" strokeWidth={2} />
           {mCross !== null && (
             <>
@@ -153,7 +159,7 @@ function GraficoCustoGanho({
         </span>
         <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
           <span style={{ display: "inline-block", width: 18, height: 2, background: "#4f8ef7" }} />
-          Ganho acumulado (+{fmtR(ganhoMes)}/mês)
+          Ganho acumulado composto (+{fmtR(ganhoMes)}/mês @ {(taxaAno * 100).toFixed(2)}% a.a.)
         </span>
       </div>
     </div>
