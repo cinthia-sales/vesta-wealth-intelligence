@@ -16,6 +16,7 @@ import { RendimentosPage } from "@/components/vesta/pages/rendimentos";
 import { DomusPage } from "@/components/vesta/pages/domus";
 
 import type { ProfileId } from "@/lib/profile-derive";
+import { getUser } from "@/data/vesta-users";
 import { PERSONAE, type PersonaId, type Scope } from "@/state/session";
 
 /* ============================================================
@@ -263,6 +264,13 @@ export function VestaShell({
   const isFamily = profileId === "familiar";
   const isVesta = loggedAs ? PERSONAE[loggedAs].role === "vesta" : false;
   const canManageDomus = isVesta && profileId !== "paulo";
+  const alertasAtivos = getUser(profileId).alertas_list.filter((a) => a.cor === "r" || a.cor === "w").length;
+  const alertaLabel =
+    alertasAtivos === 0
+      ? "sem alertas ativos"
+      : alertasAtivos === 1
+      ? "1 alerta ativo"
+      : `${alertasAtivos} alertas ativos`;
 
   useEffect(() => {
     if (page === "domus" && !canManageDomus) {
@@ -441,7 +449,7 @@ export function VestaShell({
               <line x1="12" y1="8" x2="12" y2="12" />
               <line x1="12" y1="16" x2="12.01" y2="16" />
             </svg>
-            2 alertas ativos
+            {alertaLabel}
           </div>
         </div>
 
