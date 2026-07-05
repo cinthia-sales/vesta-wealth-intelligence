@@ -1,4 +1,4 @@
-import { type ReactElement, type ReactNode, useState } from "react";
+import { type ReactElement, type ReactNode, useEffect, useState } from "react";
 
 import { HomePage } from "@/components/vesta/pages/home";
 import { PosicaoPage } from "@/components/vesta/pages/posicao";
@@ -262,6 +262,13 @@ export function VestaShell({
   const meta = PROFILE_META[profileId];
   const isFamily = profileId === "familiar";
   const isVesta = loggedAs ? PERSONAE[loggedAs].role === "vesta" : false;
+  const canManageDomus = isVesta && profileId !== "paulo";
+
+  useEffect(() => {
+    if (page === "domus" && !canManageDomus) {
+      setPage("home");
+    }
+  }, [canManageDomus, page]);
 
   const item = (key: PageKey, label: string, extra?: ReactNode) => (
     <div
@@ -386,7 +393,7 @@ export function VestaShell({
           {item("upload", "Importar arquivos XP")}
           {item("drivers", "Influenciadores")}
 
-          {isVesta && (
+          {canManageDomus && (
             <>
               <div className="nav-sec">Domus</div>
               {item(
@@ -470,7 +477,7 @@ export function VestaShell({
             {page === "drivers" && <DriversPage />}
             {page === "aporte" && <AportePage />}
             {page === "rendimentos" && <RendimentosPage profileId={profileId} />}
-            {page === "domus" && isVesta && scopes && onUpdateScopes && (
+            {page === "domus" && canManageDomus && scopes && onUpdateScopes && (
               <DomusPage scopes={scopes} onUpdateScopes={onUpdateScopes} />
             )}
             {!["home", "posicao", "breakeven", "equiv", "validador", "projecao", "secundario", "alertas", "regras", "upload", "drivers", "aporte", "rendimentos", "domus"].includes(page) && (
