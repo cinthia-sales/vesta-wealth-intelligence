@@ -722,8 +722,8 @@ function SimuladorTrocaBreakeven({
           <span>{jaConfirmado ? "editando breakeven confirmado" : "modo hipotético"}</span>
         </div>
         <div style={{ padding: 16, fontSize: 13, color: "var(--muted)", lineHeight: 1.6 }}>
-          Monte a operação em <strong>dois baldes</strong>: o <strong>Grupo A</strong> é de onde
-          o dinheiro sai, o <strong>Grupo B</strong> é para onde ele vai. Cada balde pode ter
+          Monte a operação em <strong>duas composições</strong>: o <strong>Grupo A</strong> é de onde
+          o dinheiro sai, o <strong>Grupo B</strong> é para onde ele vai. Cada composição pode ter
           quantas linhas você precisar. O sistema calcula o <em>ponto de encontro</em> — o prazo
           em que a nova alocação supera a antiga. Quando você confirmar, isto vira um breakeven
           real e passa a ser vigiado.
@@ -1339,7 +1339,7 @@ export function BreakevenPage({ profileId }: { profileId: ProfileId }) {
               }}
             >
               <p style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.6, maxWidth: 480, margin: "0 auto 14px" }}>
-                Nenhum novo giro simulado. Abra o simulador para montar em dois baldes
+                Nenhum novo giro simulado. Abra o simulador para montar em duas composições
                 (de onde sai / para onde vai) e, se confirmar, ele passa a ser vigiado ao lado do atual.
               </p>
               <button
@@ -1399,7 +1399,7 @@ export function BreakevenPage({ profileId }: { profileId: ProfileId }) {
             Acelerador em repouso
           </div>
           <p style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.6, maxWidth: 480, margin: "0 auto 16px" }}>
-            Use o simulador para montar a troca em dois baldes (de onde sai / para onde vai),
+            Use o simulador para montar a troca em duas composições (de onde sai / para onde vai),
             com taxa a mercado, taxa na curva, duration e prazo. Se você <strong>de fato
             realizar</strong> as trocas, confirme — a partir daí este painel passa a exibir o
             breakeven real e o acompanha até se pagar.
@@ -1435,7 +1435,7 @@ export function BreakevenPage({ profileId }: { profileId: ProfileId }) {
         <p>
           {breakevenUsuario
             ? "Ajuste as linhas e reconfirme, ou descarte para começar do zero."
-            : "Monte a troca em dois baldes. Nada afeta a carteira até você confirmar."}
+            : "Monte a troca em duas composições. Nada afeta a carteira até você confirmar."}
         </p>
         <button
           type="button"
