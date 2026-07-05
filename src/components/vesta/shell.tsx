@@ -303,8 +303,9 @@ export function VestaShell({
   );
 
   return (
-    <div className="app">
-      <nav className="sidebar">
+    <div className={"app" + (sidebarOpen ? " sidebar-open" : "")}>
+      <div className={"mob-backdrop" + (sidebarOpen ? " open" : "")} onClick={() => setSidebarOpen(false)} />
+      <nav className={"sidebar" + (sidebarOpen ? " open" : "")}>
         <div className="logo">
           <div className="logo-icon" style={{ fontSize: 18 }}>✦</div>
           <div>
