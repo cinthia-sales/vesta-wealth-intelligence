@@ -127,6 +127,22 @@ function BreakevenConsolidado({ data }: { data: typeof PAULO_DATA }) {
               <ChartAxes minV={minV} maxV={maxV} maxMonth={78} W={W} H={H} PL={PL} PR={PR} PT={PT} PB={PB} xs={xs} ys={ys} />
               <path d={pathA} fill="none" stroke="#dc2626" strokeWidth={2} />
               <path d={pathB} fill="none" stroke="#4f8ef7" strokeWidth={2} />
+              {cruzamento && (
+                <>
+                  <line
+                    x1={xs(cruzamento.m)} x2={xs(cruzamento.m)}
+                    y1={PT} y2={H - PB}
+                    stroke="var(--accent)" strokeDasharray="3 3" strokeWidth={1}
+                  />
+                  <circle cx={xs(cruzamento.m)} cy={ys(cruzamento.v)} r={4} fill="var(--accent)" />
+                  <text
+                    x={xs(cruzamento.m) + 6} y={ys(cruzamento.v) - 8}
+                    fontSize={11} fill="var(--accent)" fontWeight={600}
+                  >
+                    m{cruzamento.m} · {fmtRk(cruzamento.v)}
+                  </text>
+                </>
+              )}
             </svg>
           </div>
           <div style={{ display: "flex", gap: 18, marginTop: 10, fontSize: 12, color: "var(--muted)" }}>
