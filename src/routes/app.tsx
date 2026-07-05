@@ -14,7 +14,7 @@ import {
 } from "@/state/session";
 import { getMyRole } from "@/lib/auth.functions";
 
-export const Route = createFileRoute("/_authenticated/")({
+export const Route = createFileRoute("/app")({
   component: VestaApp,
 });
 
