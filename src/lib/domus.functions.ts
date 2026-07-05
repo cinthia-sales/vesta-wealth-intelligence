@@ -93,3 +93,75 @@ export const updateJoinRequestStatus = createServerFn({ method: "POST" })
     if (error) throw error;
     return { ok: true };
   });
+
+export const DEFAULT_MEMBER_PASSWORD = "VESTADECIDETUDO";
+
+export const approveJoinRequest = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ context, data }) => {
+    await assertVesta(context);
+
+    const { data: pedido, error: fetchError } = await context.supabase
+      .from("domus_join_requests")
+      .select("id,email,nome,domus_id,status")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (fetchError) throw fetchError;
+    if (!pedido) throw new Error("Pedido não encontrado.");
+    if (pedido.status !== "pendente") {
+      throw new Error("Esse pedido já foi decidido antes.");
+    }
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // Tenta criar o usuário no Auth com a senha padrão.
+    let userId: string | null = null;
+    const { data: created, error: createError } = await supabaseAdmin.auth.admin.createUser({
+      email: pedido.email,
+      password: DEFAULT_MEMBER_PASSWORD,
+      email_confirm: true,
+      user_metadata: { nome: pedido.nome },
+    });
+
+    if (createError) {
+      // Se já existe (email duplicado), tenta recuperar o id via listUsers.
+      const alreadyExists = /already|exists|registered/i.test(createError.message);
+      if (!alreadyExists) throw createError;
+      const { data: list, error: listError } = await supabaseAdmin.auth.admin.listUsers();
+      if (listError) throw listError;
+      const found = list.users.find((u) => u.email?.toLowerCase() === pedido.email.toLowerCase());
+      if (!found) throw createError;
+      userId = found.id;
+    } else {
+      userId = created.user?.id ?? null;
+    }
+    if (!userId) throw new Error("Não consegui criar o usuário.");
+
+    // Papel padrão: membro (o trigger handle_new_user já criou o profile).
+    await supabaseAdmin
+      .from("user_roles")
+      .upsert({ user_id: userId, role: "membro" }, { onConflict: "user_id,role" });
+
+    // Vincula ao Domus (se o pedido indicava um).
+    if (pedido.domus_id) {
+      await supabaseAdmin
+        .from("domus_members")
+        .upsert(
+          { domus_id: pedido.domus_id, profile_id: userId, papel: "membro" },
+          { onConflict: "domus_id,profile_id" },
+        );
+    }
+
+    const { error: updateError } = await context.supabase
+      .from("domus_join_requests")
+      .update({
+        status: "aprovado",
+        reviewed_by: context.userId,
+        reviewed_at: new Date().toISOString(),
+      })
+      .eq("id", data.id);
+    if (updateError) throw updateError;
+
+    return { ok: true, email: pedido.email, senha: DEFAULT_MEMBER_PASSWORD };
+  });
