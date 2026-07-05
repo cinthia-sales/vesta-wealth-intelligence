@@ -10,6 +10,8 @@ type PublicDomus = {
   descricao: string | null;
 };
 
+const DEFAULT_DOMUS_NAME = "Família Malta Furtado";
+
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
@@ -100,7 +102,7 @@ function DomusLanding() {
           <p>
             {selectedDomus
               ? `Pedido direcionado ao Domus ${selectedDomus.nome}.`
-              : "Ainda não há Domus publicado; seu pedido fica registrado para a Vesta."}
+              : `Pedido direcionado ao Domus ${DEFAULT_DOMUS_NAME}.`}
           </p>
         </div>
 
