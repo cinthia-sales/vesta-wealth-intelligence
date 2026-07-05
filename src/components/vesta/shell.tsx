@@ -45,7 +45,7 @@ export function ProfileSelector({ onSelect }: { onSelect: (id: ProfileId) => voi
             <div className="ps-card-desc" style={{ margin: "6px 0 10px" }}>
               Carteira XP 6414212<br />visão individual<br />&nbsp;
             </div>
-            <div className="ps-card-badge ps-badge-ind">Individual</div>
+            <div className="ps-card-badge ps-badge-ind">Individual - Restrictus</div>
           </div>
         </div>
 
@@ -56,7 +56,7 @@ export function ProfileSelector({ onSelect }: { onSelect: (id: ProfileId) => voi
             <div className="ps-card-desc" style={{ margin: "6px 0 10px" }}>
               Carteira XP 5296823<br />visão individual<br />&nbsp;
             </div>
-            <div className="ps-card-badge ps-badge-ind">Individual</div>
+            <div className="ps-card-badge ps-badge-ind">Individual - Restrictus</div>
           </div>
         </div>
       </div>
