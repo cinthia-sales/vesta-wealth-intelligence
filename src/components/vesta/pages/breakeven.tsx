@@ -91,7 +91,7 @@ function BreakevenConsolidado({ data }: { data: typeof PAULO_DATA }) {
   }
   const maxV = Math.max(...points.map((p) => Math.max(p.a, p.b)));
   const minV = Math.min(...points.map((p) => Math.min(p.a, p.b)));
-  const W = 600, H = 220, PL = 50, PR = 12, PT = 10, PB = 22;
+  const W = 600, H = 220, PL = 60, PR = 12, PT = 10, PB = 34;
   const xs = (m: number) => PL + (m / 78) * (W - PL - PR);
   const ys = (v: number) => PT + (1 - (v - minV) / (maxV - minV)) * (H - PT - PB);
   const pathA = points.map((p, i) => (i ? "L" : "M") + xs(p.m) + " " + ys(p.a)).join(" ");
@@ -114,6 +114,7 @@ function BreakevenConsolidado({ data }: { data: typeof PAULO_DATA }) {
           <div className="card-hdr">Linha A (ficou) vs Linha B (reestruturou) <span>debêntures acumuladas</span></div>
           <div className="chart-c" style={{ height: 240 }}>
             <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "100%" }}>
+              <ChartAxes minV={minV} maxV={maxV} maxMonth={78} W={W} H={H} PL={PL} PR={PR} PT={PT} PB={PB} xs={xs} ys={ys} />
               <path d={pathA} fill="none" stroke="#dc2626" strokeWidth={2} />
               <path d={pathB} fill="none" stroke="#4f8ef7" strokeWidth={2} />
             </svg>
