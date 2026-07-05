@@ -263,9 +263,37 @@ export function DomusPage({
           lineHeight: 1.6,
         }}
       >
-        💡 Os pedidos já ficam salvos no banco. A criação automática de usuário pode entrar no próximo passo,
-        depois que você decidir se prefere convite por email ou cadastro manual com senha temporária.
+        💡 Ao aprovar um pedido, a Vesta cria o acesso automaticamente com a senha padrão{" "}
+        <strong>{DEFAULT_MEMBER_PASSWORD}</strong>. Repasse essa senha ao novo membro por fora —
+        ele troca depois em "esqueci a senha".
       </div>
+
+      {approveMutation.error && (
+        <div className="auth-error" style={{ marginTop: 10 }}>
+          {(approveMutation.error as Error).message}
+        </div>
+      )}
+
+      {aprovado && (
+        <div className="domus-approved-overlay" onClick={() => setAprovado(null)}>
+          <div className="domus-approved-card" onClick={(e) => e.stopPropagation()}>
+            <p className="public-domus-kicker">Vesta permitiu</p>
+            <h3>Acesso concedido</h3>
+            <p>Passe estes dados ao novo membro:</p>
+            <dl>
+              <dt>Email</dt>
+              <dd>{aprovado.email}</dd>
+              <dt>Senha padrão</dt>
+              <dd><code>{aprovado.senha}</code></dd>
+            </dl>
+            <p style={{ fontSize: 12, color: "var(--muted)" }}>
+              No primeiro login ele será saudado pela Deusa. Depois pode trocar a senha em
+              "esqueci minha senha".
+            </p>
+            <button onClick={() => setAprovado(null)}>Entendido</button>
+          </div>
+        </div>
+      )}
     </>
   );
 }
