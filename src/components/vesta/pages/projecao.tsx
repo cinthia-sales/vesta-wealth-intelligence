@@ -57,7 +57,7 @@ export function ProjecaoPage({ profileId }: { profileId: ProfileId }) {
   const [freq, setFreq] = useState<Freq>("mensal");
   const [aporte, setAporte] = useState(0);
   const [bonus, setBonus] = useState(0); // aporte pontual único (PLR, férias)
-  const [bonusAno, setBonusAno] = useState(2027); // ano em que o bônus entra
+  const [bonusAno, setBonusAno] = useState(2026); // ano em que o bônus entra
   const freqCfg = FREQS.find((f) => f.id === freq) ?? FREQS[0];
   const aporteMensalEq = (aporte * freqCfg.perYear) / 12;
 
@@ -85,7 +85,7 @@ export function ProjecaoPage({ profileId }: { profileId: ProfileId }) {
 
     serie.push({ ano: 2026, total: u.total, rf: u.rf, rv: rvBase });
 
-    let bonusAcum = 0;
+    let bonusAcum = bonusAno === 2026 ? bonus : 0;
     for (let i = 1; i <= 10; i++) {
       const anoAtual = 2026 + i;
       const cdi = curvaCdi[i] ?? curvaCdi[curvaCdi.length - 1];
@@ -226,7 +226,7 @@ export function ProjecaoPage({ profileId }: { profileId: ProfileId }) {
             <label style={{ minWidth: 80 }}>Ano de entrada:</label>
             <input
               type="range"
-              min={2027}
+              min={2026}
               max={2036}
               step={1}
               value={bonusAno}
