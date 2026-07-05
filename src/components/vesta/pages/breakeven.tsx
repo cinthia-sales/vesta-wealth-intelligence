@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ProfileId } from "@/lib/profile-derive";
+import { getUser } from "@/data/vesta-users";
 
 function fmtR(n: number) {
   return "R$ " + Math.round(n).toLocaleString("pt-BR");
