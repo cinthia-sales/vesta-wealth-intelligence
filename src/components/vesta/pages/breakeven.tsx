@@ -11,6 +11,29 @@ function fmtRk(n: number) {
   return "R$ " + Math.round(n);
 }
 
+// Escala "nice" — arredonda min/max para números redondos com N divisões iguais
+function niceNum(range: number, round: boolean) {
+  const exponent = Math.floor(Math.log10(Math.max(range, 1e-9)));
+  const fraction = range / Math.pow(10, exponent);
+  let nice: number;
+  if (round) {
+    nice = fraction < 1.5 ? 1 : fraction < 3 ? 2 : fraction < 7 ? 5 : 10;
+  } else {
+    nice = fraction <= 1 ? 1 : fraction <= 2 ? 2 : fraction <= 5 ? 5 : 10;
+  }
+  return nice * Math.pow(10, exponent);
+}
+function niceScale(min: number, max: number, divisions = 4) {
+  if (max <= min) return { niceMin: min, niceMax: max || min + 1 };
+  const range = niceNum(max - min, false);
+  const step = niceNum(range / divisions, true);
+  const niceMin = Math.floor(min / step) * step;
+  const niceMax = niceMin + step * divisions >= max ? niceMin + step * divisions : Math.ceil(max / step) * step;
+  return { niceMin, niceMax };
+}
+
+
+
 function ChartAxes({
   minV, maxV, maxMonth, W, H, PL, PR, PT, PB, xs, ys,
 }: {
@@ -66,16 +89,16 @@ const PAULO_DATA = {
       ganhoMes: 407,
     },
   ],
-  // Baldes interdependentes: A = tudo que saiu, B = tudo que entrou (mesmo dia)
+  // Composições interdependentes: A = tudo que saiu, B = tudo que entrou (mesmo dia)
   baldes: {
     A: {
-      nome: "Balde A — o que foi vendido",
+      nome: "Composição A — o que foi vendido",
       composicao: "Debêntures antigas (Itapoá + Localiza) + Fundos liquidados",
       capital: 393822,   // 125.772 (deb antigas) + 268.050 (fundos)
       taxaAno: 0.1160,   // média ponderada das taxas antigas
     },
     B: {
-      nome: "Balde B — o que foi comprado",
+      nome: "Composição B — o que foi comprado",
       composicao: "Debêntures novas (J&F + Jalles) + LCAs + LCD BRDE",
       capital: 379124,   // 112.124 + 267.000 (já líquido do deságio e do IR)
       taxaAno: 0.1378,   // média ponderada das taxas novas
@@ -177,7 +200,7 @@ function GraficoCustoGanho({
   );
 }
 
-// Gráfico Balde A vs Balde B — duas curvas compostas cruzando
+// Gráfico Composição A vs Composição B — duas curvas compostas cruzando
 function GraficoBaldes({
   capA, taxaA, capB, taxaB, inicio,
 }: {
@@ -190,17 +213,20 @@ function GraficoBaldes({
       ? Math.log(capA / capB) / Math.log((1 + taxaB) / (1 + taxaA))
       : Infinity;
   const crossMeses = crossAnos * 12;
+  // Horizonte maior para evidenciar a curvatura (>= 2.6x o cruzamento)
   const horizonte = isFinite(crossMeses)
-    ? Math.max(24, Math.min(120, Math.ceil(crossMeses * 1.8)))
+    ? Math.max(48, Math.min(180, Math.ceil((crossMeses * 2.6) / 12) * 12))
     : 60;
 
-  const N = 60;
+  const N = 80;
   const vA = (m: number) => capA * Math.pow(1 + taxaA, m / 12);
   const vB = (m: number) => capB * Math.pow(1 + taxaB, m / 12);
-  const maxV = Math.max(vA(horizonte), vB(horizonte)) * 1.02;
-  const minV = Math.min(capA, capB) * 0.98;
+  const rawMax = Math.max(vA(horizonte), vB(horizonte));
+  const rawMin = Math.min(capA, capB);
+  const pad = (rawMax - rawMin) * 0.12;
+  const { niceMin: minV, niceMax: maxV } = niceScale(rawMin - pad * 0.4, rawMax + pad, 4);
 
-  const W = 600, H = 240, PL = 70, PR = 12, PT = 12, PB = 34;
+  const W = 620, H = 280, PL = 74, PR = 20, PT = 40, PB = 38;
   const xs = (m: number) => PL + (m / horizonte) * (W - PL - PR);
   const ys = (v: number) => PT + (1 - (v - minV) / (maxV - minV)) * (H - PT - PB);
 
@@ -220,8 +246,21 @@ function GraficoBaldes({
       ? new Date(inicio.ano, inicio.mes + Math.round(mCross), 1).toLocaleDateString("pt-BR", { month: "short", year: "2-digit" })
       : "";
 
+  // Callout do cruzamento — fica no topo do gráfico para não sobrepor as curvas
+  const labelText = mCross !== null
+    ? `Cruzamento · m${Math.ceil(mCross)} · ${dataCross} · ${fmtRk(vA(mCross))}`
+    : "";
+  const labelW = 240;
+  const labelH = 22;
+  const labelX = mCross !== null
+    ? Math.min(Math.max(xs(mCross) - labelW / 2, PL + 2), W - PR - labelW - 2)
+    : 0;
+  const labelY = 6;
+  const labelCx = labelX + labelW / 2;
+  const labelCy = labelY + labelH;
+
   return (
-    <div className="chart-c" style={{ height: 260 }}>
+    <div className="chart-c" style={{ height: 300 }}>
       <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "100%" }}>
         <ChartAxes
           minV={minV} maxV={maxV} maxMonth={horizonte}
@@ -235,12 +274,24 @@ function GraficoBaldes({
               x1={xs(mCross)} x2={xs(mCross)} y1={PT} y2={H - PB}
               stroke="var(--accent)" strokeDasharray="3 3" strokeWidth={1}
             />
-            <circle cx={xs(mCross)} cy={yCross} r={4} fill="var(--accent)" />
+            <circle cx={xs(mCross)} cy={yCross} r={4.5} fill="var(--accent)" />
+            {/* conector do ponto até o callout */}
+            <line
+              x1={xs(mCross)} y1={yCross - 5}
+              x2={labelCx} y2={labelCy}
+              stroke="var(--accent)" strokeOpacity=".35" strokeWidth={1}
+            />
+            {/* callout */}
+            <rect
+              x={labelX} y={labelY} width={labelW} height={labelH} rx={4}
+              fill="white" stroke="var(--accent)" strokeOpacity=".55"
+            />
             <text
-              x={xs(mCross) + 6} y={yCross - 8}
-              fontSize={11} fill="var(--accent)" fontWeight={600}
+              x={labelCx} y={labelY + 15}
+              fontSize={11.5} fill="var(--accent)" fontWeight={600}
+              textAnchor="middle"
             >
-              m{Math.ceil(mCross)} · {dataCross} · {fmtRk(vA(mCross))}
+              {labelText}
             </text>
           </>
         )}
@@ -249,11 +300,13 @@ function GraficoBaldes({
   );
 }
 
+
+
 function BreakevenConsolidado({ data }: { data: typeof PAULO_DATA }) {
   const { custo, ganho, ativos, inicio, baldes } = data;
   const { A, B } = baldes;
 
-  // Breakeven de baldes: mês em que VF_B alcança VF_A
+  // Breakeven das composições: mês em que VF_B alcança VF_A
   const crossAnos =
     B.taxaAno > A.taxaAno && A.capital > B.capital
       ? Math.log(A.capital / B.capital) / Math.log((1 + B.taxaAno) / (1 + A.taxaAno))
@@ -276,9 +329,9 @@ function BreakevenConsolidado({ data }: { data: typeof PAULO_DATA }) {
   return (
     <>
       <div className="kpi-row">
-        <div className="kpi"><div className="kpi-l">Custo do rearranjo</div><div className="kpi-v bad">{fmtR(custo)}</div><div className="kpi-s">deságio + IR (Balde A − Balde B hoje)</div></div>
+        <div className="kpi"><div className="kpi-l">Custo do rearranjo</div><div className="kpi-v bad">{fmtR(custo)}</div><div className="kpi-s">deságio + IR (Composição A − Composição B hoje)</div></div>
         <div className="kpi"><div className="kpi-l">Ganho mensal</div><div className="kpi-v good">+{fmtR(ganho)}</div><div className="kpi-s">renda corrente adicional</div></div>
-        <div className="kpi"><div className="kpi-l">Breakeven dos baldes</div><div className="kpi-v blue">{isFinite(mesesBreakeven) ? `${mesesBreakeven} meses` : "—"}</div><div className="kpi-s">{isFinite(mesesBreakeven) ? dataBreakeven : "B não alcança A"}</div></div>
+        <div className="kpi"><div className="kpi-l">Breakeven das composições</div><div className="kpi-v blue">{isFinite(mesesBreakeven) ? `${mesesBreakeven} meses` : "—"}</div><div className="kpi-s">{isFinite(mesesBreakeven) ? dataBreakeven : "B não alcança A"}</div></div>
         <div className="kpi"><div className="kpi-l">Ganho anual vitalício</div><div className="kpi-v good">+{fmtR(ganho * 12)}</div><div className="kpi-s">depois do breakeven</div></div>
       </div>
 
@@ -287,18 +340,18 @@ function BreakevenConsolidado({ data }: { data: typeof PAULO_DATA }) {
           Como ler o gráfico
         </div>
         <p style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.55, margin: 0 }}>
-          <strong>Balde A</strong> é tudo que foi vendido (deb antigas + fundos) rendendo às taxas antigas —
-          a trajetória que existiria se nada mudasse. <strong>Balde B</strong> é tudo que foi comprado no
+          <strong>Composição A</strong> é tudo que foi vendido (deb antigas + fundos) rendendo às taxas antigas —
+          a trajetória que existiria se nada mudasse. <strong>Composição B</strong> é tudo que foi comprado no
           mesmo dia (deb novas + LCAs/LCD BRDE), já líquido do deságio e do IR, rendendo às taxas novas.
-          Como B começa {fmtR(custo)} abaixo, mas cresce mais rápido, as curvas se cruzam quando o Balde
-          B ultrapassa o A — esse é o breakeven real do rearranjo. As trocas 1-a-1 (essa deb contra
+          Como B começa {fmtR(custo)} abaixo, mas cresce mais rápido, as curvas se cruzam quando a Composição
+          B ultrapassa a A — esse é o breakeven real do rearranjo. As trocas 1-a-1 (essa deb contra
           aquela deb) ficam no simulador de trocas.
         </p>
       </div>
 
       <div className="card">
         <div className="card-hdr">
-          Balde A vs Balde B <span>curvas compostas até se cruzarem</span>
+          Composição A vs Composição B <span>curvas compostas até se cruzarem</span>
         </div>
         <GraficoBaldes
           capA={A.capital} taxaA={A.taxaAno}
@@ -308,21 +361,21 @@ function BreakevenConsolidado({ data }: { data: typeof PAULO_DATA }) {
         <div style={{ display: "flex", gap: 18, marginTop: 10, fontSize: 12, color: "var(--muted)", flexWrap: "wrap" }}>
           <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
             <span style={{ display: "inline-block", width: 18, height: 2, background: "#dc2626" }} />
-            Balde A · {fmtR(A.capital)} @ {(A.taxaAno * 100).toFixed(2)}% a.a.
+            Composição A · {fmtR(A.capital)} @ {(A.taxaAno * 100).toFixed(2)}% a.a.
           </span>
           <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
             <span style={{ display: "inline-block", width: 18, height: 2, background: "#4f8ef7" }} />
-            Balde B · {fmtR(B.capital)} @ {(B.taxaAno * 100).toFixed(2)}% a.a.
+            Composição B · {fmtR(B.capital)} @ {(B.taxaAno * 100).toFixed(2)}% a.a.
           </span>
         </div>
       </div>
 
       <div className="g32" style={{ marginTop: 14 }}>
         <div className="card">
-          <div className="card-hdr">Composição dos baldes</div>
+          <div className="card-hdr">Composições</div>
           <table className="tbl">
             <thead>
-              <tr><th>Balde</th><th>Composição</th><th className="r">Capital</th><th className="r">Taxa média</th></tr>
+              <tr><th></th><th>Composição</th><th className="r">Capital</th><th className="r">Taxa média</th></tr>
             </thead>
             <tbody>
               <tr>
@@ -350,7 +403,7 @@ function BreakevenConsolidado({ data }: { data: typeof PAULO_DATA }) {
           <div className="card-hdr">Marcos ao longo do tempo</div>
           <table className="tbl">
             <thead>
-              <tr><th>Mês</th><th>Data</th><th className="r">Balde A</th><th className="r">Balde B</th><th className="r">B − A</th></tr>
+              <tr><th>Mês</th><th>Data</th><th className="r">Composição A</th><th className="r">Composição B</th><th className="r">B − A</th></tr>
             </thead>
             <tbody>
               {marcos.map((mk) => (
@@ -669,8 +722,8 @@ function SimuladorTrocaBreakeven({
           <span>{jaConfirmado ? "editando breakeven confirmado" : "modo hipotético"}</span>
         </div>
         <div style={{ padding: 16, fontSize: 13, color: "var(--muted)", lineHeight: 1.6 }}>
-          Monte a operação em <strong>dois baldes</strong>: o <strong>Grupo A</strong> é de onde
-          o dinheiro sai, o <strong>Grupo B</strong> é para onde ele vai. Cada balde pode ter
+          Monte a operação em <strong>duas composições</strong>: o <strong>Grupo A</strong> é de onde
+          o dinheiro sai, o <strong>Grupo B</strong> é para onde ele vai. Cada composição pode ter
           quantas linhas você precisar. O sistema calcula o <em>ponto de encontro</em> — o prazo
           em que a nova alocação supera a antiga. Quando você confirmar, isto vira um breakeven
           real e passa a ser vigiado.
@@ -1286,7 +1339,7 @@ export function BreakevenPage({ profileId }: { profileId: ProfileId }) {
               }}
             >
               <p style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.6, maxWidth: 480, margin: "0 auto 14px" }}>
-                Nenhum novo giro simulado. Abra o simulador para montar em dois baldes
+                Nenhum novo giro simulado. Abra o simulador para montar em duas composições
                 (de onde sai / para onde vai) e, se confirmar, ele passa a ser vigiado ao lado do atual.
               </p>
               <button
@@ -1346,7 +1399,7 @@ export function BreakevenPage({ profileId }: { profileId: ProfileId }) {
             Acelerador em repouso
           </div>
           <p style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.6, maxWidth: 480, margin: "0 auto 16px" }}>
-            Use o simulador para montar a troca em dois baldes (de onde sai / para onde vai),
+            Use o simulador para montar a troca em duas composições (de onde sai / para onde vai),
             com taxa a mercado, taxa na curva, duration e prazo. Se você <strong>de fato
             realizar</strong> as trocas, confirme — a partir daí este painel passa a exibir o
             breakeven real e o acompanha até se pagar.
@@ -1382,7 +1435,7 @@ export function BreakevenPage({ profileId }: { profileId: ProfileId }) {
         <p>
           {breakevenUsuario
             ? "Ajuste as linhas e reconfirme, ou descarte para começar do zero."
-            : "Monte a troca em dois baldes. Nada afeta a carteira até você confirmar."}
+            : "Monte a troca em duas composições. Nada afeta a carteira até você confirmar."}
         </p>
         <button
           type="button"
