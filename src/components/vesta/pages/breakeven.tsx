@@ -11,6 +11,26 @@ function fmtRk(n: number) {
   return "R$ " + Math.round(n);
 }
 
+// Escala "nice" — arredonda min/max para números redondos com N divisões iguais
+function niceNum(range: number, round: boolean) {
+  const exponent = Math.floor(Math.log10(Math.max(range, 1e-9)));
+  const fraction = range / Math.pow(10, exponent);
+  let nice: number;
+  if (round) {
+    nice = fraction < 1.5 ? 1 : fraction < 3 ? 2 : fraction < 7 ? 5 : 10;
+  } else {
+    nice = fraction <= 1 ? 1 : fraction <= 2 ? 2 : fraction <= 5 ? 5 : 10;
+  }
+  return nice * Math.pow(10, exponent);
+}
+function niceScale(min: number, max: number, divisions = 4) {
+  if (max <= min) return { niceMin: min, niceMax: max || min + 1 };
+  const range = niceNum(max - min, false);
+  const step = niceNum(range / divisions, true);
+  const niceMin = Math.floor(min / step) * step;
+  const niceMax = niceMin + step * divisions >= max ? niceMin + step * divisions : Math.ceil(max / step) * step;
+  return { niceMin, niceMax };
+
 function ChartAxes({
   minV, maxV, maxMonth, W, H, PL, PR, PT, PB, xs, ys,
 }: {
