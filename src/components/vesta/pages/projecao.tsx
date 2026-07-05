@@ -194,6 +194,9 @@ export function ProjecaoPage({ profileId }: { profileId: ProfileId }) {
             Equivalente a {fmtR(aporteMensalEq)}/mês
           </div>
         )}
+        <div style={{ marginTop: 4, color: "var(--muted)", fontSize: 12, textAlign: "right" }}>
+          Limite: {fmtR(freqCfg.max)}/{freqCfg.sufixo}
+        </div>
       </div>
 
       <div className="card" style={{ marginBottom: 14 }}>
