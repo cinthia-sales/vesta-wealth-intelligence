@@ -121,15 +121,15 @@ const PAULO: UserData = {
 };
 
 const CINTHIA: UserData = {
-  nome: "Cinthia",
+  nome: "Cínthia",
   conta: "XP 6414212",
   total: 440301,
   rf: 439472,
   rv: 0,
   rf_pct: 100,
   rv_pct: 0,
-  saudacao: "Esta é a sua carteira, Cinthia. Posição em 30/06/2026.",
-  topbar_sub: "Carteira Cinthia · Conta XP 6414212",
+  saudacao: "Esta é a sua carteira, Cínthia. Posição em 30/06/2026.",
+  topbar_sub: "Carteira Cínthia · Conta XP 6414212",
   kpi4_label: "LCI vence em",
   kpi4_val: "mai/2027",
   kpi4_sub: "R$225k · ~10 meses · oportunidade",
@@ -191,7 +191,7 @@ function buildFamiliar(): UserData {
     rf_pct: (rf / total) * 100,
     rv_pct: (rv / total) * 100,
     saudacao: "Vesta personificada., segue visão consolidada da família. ",
-    topbar_sub: "Visão familiar · Cinthia como gestora",
+    topbar_sub: "Visão familiar · Cínthia como gestora",
     kpi4_label: "Breakeven do plano",
     kpi4_val: "mai/2028",
     kpi4_sub: "22 meses · +R$ 692/mês",

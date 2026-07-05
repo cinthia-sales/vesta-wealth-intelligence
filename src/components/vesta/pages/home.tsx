@@ -14,7 +14,7 @@ export function HomePage({ profileId }: { profileId: ProfileId }) {
   return (
     <>
       <div className="ph">
-        <h1>Bom dia, Cinthia</h1>
+        <h1>Bom dia, Cínthia</h1>
         <p>{u.saudacao}</p>
       </div>
 
