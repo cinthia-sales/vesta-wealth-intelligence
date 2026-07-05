@@ -154,7 +154,8 @@ export function PosicaoPage({ profileId }: { profileId: ProfileId }) {
                     </td>
                     <td><span className={"sb " + r.sb}>{r.cls}</span></td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
