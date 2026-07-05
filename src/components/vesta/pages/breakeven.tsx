@@ -52,24 +52,97 @@ const PAULO_DATA = {
   ganho: 692,
   ativos: [
     {
+      nome: "Debêntures",
       fonte: "Debêntures novas vs antigas (J&F + Jalles vs Itapoá + Localiza)",
       capital: 112124,
       ganhoTaxa: "+3,05%/ano",
       ganhoMes: 285,
+      custoIsolado: 13648, // deságio na venda das antigas
     },
     {
+      nome: "Renda fixa",
       fonte: "Fundos liquidados → novos ativos RF (LCAs + LCD BRDE)",
       capital: 267000,
       ganhoTaxa: "+1,83%/ano",
       ganhoMes: 407,
+      custoIsolado: 1050, // IR na liquidação dos fundos
     },
   ],
   linhas: { tA: 0.1181, tB: 0.1486, cA: 125772, cB: 112124 },
   inicio: { ano: 2026, mes: 6 },
 };
 
+// Mini-gráfico: custo (linha vermelha plana) vs ganho acumulado (linha azul crescente).
+// Cruzam exatamente no mês custo / ganhoMes — bate com o KPI.
+function GraficoCustoGanho({
+  custo, ganhoMes, titulo, sub,
+}: {
+  custo: number; ganhoMes: number; titulo: string; sub?: string;
+}) {
+  const mesesCross = ganhoMes > 0 ? custo / ganhoMes : Infinity;
+  const horizonte = isFinite(mesesCross)
+    ? Math.max(12, Math.min(96, Math.ceil(mesesCross * 1.8)))
+    : 60;
+  const maxV = Math.max(custo * 1.15, ganhoMes * horizonte);
+  const minV = 0;
+  const W = 600, H = 200, PL = 60, PR = 12, PT = 10, PB = 34;
+  const xs = (m: number) => PL + (m / horizonte) * (W - PL - PR);
+  const ys = (v: number) => PT + (1 - (v - minV) / (maxV - minV)) * (H - PT - PB);
+  const yCusto = ys(custo);
+  const pathGanho =
+    `M ${xs(0)} ${ys(0)} L ${xs(horizonte)} ${ys(ganhoMes * horizonte)}`;
+  const mCross = isFinite(mesesCross) && mesesCross <= horizonte ? mesesCross : null;
+  return (
+    <div className="card">
+      <div className="card-hdr">
+        {titulo} {sub && <span>{sub}</span>}
+      </div>
+      <div className="chart-c" style={{ height: 220 }}>
+        <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "100%" }}>
+          <ChartAxes
+            minV={minV} maxV={maxV} maxMonth={horizonte}
+            W={W} H={H} PL={PL} PR={PR} PT={PT} PB={PB} xs={xs} ys={ys}
+          />
+          {/* Custo (linha vermelha horizontal) */}
+          <line
+            x1={xs(0)} x2={xs(horizonte)} y1={yCusto} y2={yCusto}
+            stroke="#dc2626" strokeWidth={2}
+          />
+          {/* Ganho acumulado (linha azul crescente) */}
+          <path d={pathGanho} fill="none" stroke="#4f8ef7" strokeWidth={2} />
+          {mCross !== null && (
+            <>
+              <line
+                x1={xs(mCross)} x2={xs(mCross)} y1={PT} y2={H - PB}
+                stroke="var(--accent)" strokeDasharray="3 3" strokeWidth={1}
+              />
+              <circle cx={xs(mCross)} cy={yCusto} r={4} fill="var(--accent)" />
+              <text
+                x={xs(mCross) + 6} y={yCusto - 8}
+                fontSize={11} fill="var(--accent)" fontWeight={600}
+              >
+                m{Math.ceil(mCross)} · {fmtRk(custo)}
+              </text>
+            </>
+          )}
+        </svg>
+      </div>
+      <div style={{ display: "flex", gap: 18, marginTop: 10, fontSize: 12, color: "var(--muted)", flexWrap: "wrap" }}>
+        <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+          <span style={{ display: "inline-block", width: 18, height: 2, background: "#dc2626" }} />
+          Custo do movimento ({fmtR(custo)})
+        </span>
+        <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+          <span style={{ display: "inline-block", width: 18, height: 2, background: "#4f8ef7" }} />
+          Ganho acumulado (+{fmtR(ganhoMes)}/mês)
+        </span>
+      </div>
+    </div>
+  );
+}
+
 function BreakevenConsolidado({ data }: { data: typeof PAULO_DATA }) {
-  const { custo, ganho, ativos, linhas, inicio } = data;
+  const { custo, ganho, ativos, inicio } = data;
   const progs = [1, 3, 6, 9, 12, 18, 22].map((m) => {
     const a = ganho * m;
     const p = Math.min(100, Math.round((a / custo) * 100));
@@ -80,32 +153,6 @@ function BreakevenConsolidado({ data }: { data: typeof PAULO_DATA }) {
     });
     return { m, p, ok, d };
   });
-
-  const points: { m: number; a: number; b: number }[] = [];
-  for (let m = 0; m <= 78; m += 4) {
-    points.push({
-      m,
-      a: linhas.cA * Math.pow(1 + linhas.tA, m / 12),
-      b: linhas.cB * Math.pow(1 + linhas.tB, m / 12),
-    });
-  }
-  const maxV = Math.max(...points.map((p) => Math.max(p.a, p.b)));
-  const minV = Math.min(...points.map((p) => Math.min(p.a, p.b)));
-  const W = 600, H = 220, PL = 60, PR = 12, PT = 10, PB = 34;
-  const xs = (m: number) => PL + (m / 78) * (W - PL - PR);
-  const ys = (v: number) => PT + (1 - (v - minV) / (maxV - minV)) * (H - PT - PB);
-  const pathA = points.map((p, i) => (i ? "L" : "M") + xs(p.m) + " " + ys(p.a)).join(" ");
-  const pathB = points.map((p, i) => (i ? "L" : "M") + xs(p.m) + " " + ys(p.b)).join(" ");
-
-  // Ponto de encontro analítico entre as duas curvas
-  let cruzamento: { m: number; v: number } | null = null;
-  if (linhas.cA > 0 && linhas.cB > 0 && linhas.tA !== linhas.tB) {
-    const mCross = 12 * Math.log(linhas.cA / linhas.cB) / Math.log((1 + linhas.tB) / (1 + linhas.tA));
-    if (isFinite(mCross) && mCross > 0 && mCross <= 78) {
-      const vCross = linhas.cA * Math.pow(1 + linhas.tA, mCross / 12);
-      cruzamento = { m: Math.round(mCross), v: vCross };
-    }
-  }
 
   const capitalTotal = ativos.reduce((s, a) => s + a.capital, 0);
   const mesesBreakeven = Math.ceil(custo / ganho);
@@ -119,43 +166,36 @@ function BreakevenConsolidado({ data }: { data: typeof PAULO_DATA }) {
         <div className="kpi"><div className="kpi-l">Ganho anual vitalício</div><div className="kpi-v good">+{fmtR(ganho * 12)}</div><div className="kpi-s">depois do breakeven</div></div>
       </div>
 
-      <div className="g32">
-        <div className="card">
-          <div className="card-hdr">Linha A (ficou) vs Linha B (reestruturou) <span>debêntures acumuladas</span></div>
-          <div className="chart-c" style={{ height: 240 }}>
-            <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "100%" }}>
-              <ChartAxes minV={minV} maxV={maxV} maxMonth={78} W={W} H={H} PL={PL} PR={PR} PT={PT} PB={PB} xs={xs} ys={ys} />
-              <path d={pathA} fill="none" stroke="#dc2626" strokeWidth={2} />
-              <path d={pathB} fill="none" stroke="#4f8ef7" strokeWidth={2} />
-              {cruzamento && (
-                <>
-                  <line
-                    x1={xs(cruzamento.m)} x2={xs(cruzamento.m)}
-                    y1={PT} y2={H - PB}
-                    stroke="var(--accent)" strokeDasharray="3 3" strokeWidth={1}
-                  />
-                  <circle cx={xs(cruzamento.m)} cy={ys(cruzamento.v)} r={4} fill="var(--accent)" />
-                  <text
-                    x={xs(cruzamento.m) + 6} y={ys(cruzamento.v) - 8}
-                    fontSize={11} fill="var(--accent)" fontWeight={600}
-                  >
-                    m{cruzamento.m} · {fmtRk(cruzamento.v)}
-                  </text>
-                </>
-              )}
-            </svg>
-          </div>
-          <div style={{ display: "flex", gap: 18, marginTop: 10, fontSize: 12, color: "var(--muted)" }}>
-            <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
-              <span style={{ display: "inline-block", width: 18, height: 2, background: "#dc2626" }} />
-              Linha A — taxas antigas ({(linhas.tA * 100).toFixed(2)}%)
-            </span>
-            <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
-              <span style={{ display: "inline-block", width: 18, height: 2, background: "#4f8ef7" }} />
-              Linha B — reestruturado ({(linhas.tB * 100).toFixed(2)}%)
-            </span>
-          </div>
+      <div className="card" style={{ padding: "14px 18px", marginBottom: 14, background: "#faf7f0" }}>
+        <div style={{ fontFamily: "var(--font-display)", fontSize: 15, marginBottom: 4 }}>
+          Como ler os gráficos
         </div>
+        <p style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.55, margin: 0 }}>
+          Cada movimento tem seu próprio custo (linha vermelha, plana) e seu próprio ganho mensal
+          (linha azul, subindo). O ponto onde elas se cruzam é o mês em que aquele movimento se paga
+          sozinho. O terceiro gráfico soma tudo — é o que bate com o KPI de {mesesBreakeven} meses.
+        </p>
+      </div>
+
+      <div className="g32" style={{ marginBottom: 14 }}>
+        {ativos.map((a, i) => (
+          <GraficoCustoGanho
+            key={a.nome}
+            custo={a.custoIsolado}
+            ganhoMes={a.ganhoMes}
+            titulo={`Movimento ${i + 1} — ${a.nome}`}
+            sub={`isolado · ${a.ganhoTaxa}`}
+          />
+        ))}
+      </div>
+
+      <div className="g32">
+        <GraficoCustoGanho
+          custo={custo}
+          ganhoMes={ganho}
+          titulo="Consolidado — os dois movimentos juntos"
+          sub={`custo total ÷ ganho total = ${mesesBreakeven}m`}
+        />
 
         <div className="card">
           <div className="card-hdr">Recuperação mês a mês</div>
