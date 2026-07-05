@@ -142,7 +142,7 @@ function GraficoCustoGanho({
 }
 
 function BreakevenConsolidado({ data }: { data: typeof PAULO_DATA }) {
-  const { custo, ganho, ativos, linhas, inicio } = data;
+  const { custo, ganho, ativos, inicio } = data;
   const progs = [1, 3, 6, 9, 12, 18, 22].map((m) => {
     const a = ganho * m;
     const p = Math.min(100, Math.round((a / custo) * 100));
