@@ -85,7 +85,9 @@ export function ProjecaoPage({ profileId }: { profileId: ProfileId }) {
 
     serie.push({ ano: 2026, total: u.total, rf: u.rf, rv: rvBase });
 
+    let bonusAcum = 0;
     for (let i = 1; i <= 10; i++) {
+      const anoAtual = 2026 + i;
       const cdi = curvaCdi[i] ?? curvaCdi[curvaCdi.length - 1];
       const ipca = curvaIpca[i] ?? curvaIpca[curvaIpca.length - 1];
       posEvol.forEach((p) => {
@@ -93,10 +95,13 @@ export function ProjecaoPage({ profileId }: { profileId: ProfileId }) {
         p.v = p.v * (1 + t / 100);
       });
       rvVal = rvVal * 1.1; // 10% aa
+      // bônus pontual: entra uma única vez no ano escolhido e depois rende
+      if (anoAtual === bonusAno) bonusAcum += bonus;
+      bonusAcum = bonusAcum * (1 + (cdi * 0.9) / 100);
       const rfTotal = posEvol.reduce((s, p) => s + p.v, 0);
       const aporteAno = aporteMensalEq * 12 * i; // aportes acumulados vão pra CDI base
-      const total = rfTotal + rvVal + aporteAno * Math.pow(1 + (cdi * 0.9) / 100, 0.5);
-      serie.push({ ano: 2026 + i, total, rf: rfTotal + aporteAno, rv: rvVal });
+      const total = rfTotal + rvVal + aporteAno * Math.pow(1 + (cdi * 0.9) / 100, 0.5) + bonusAcum;
+      serie.push({ ano: anoAtual, total, rf: rfTotal + aporteAno + bonusAcum, rv: rvVal });
     }
 
     // Breakdown por bucket no ano final
