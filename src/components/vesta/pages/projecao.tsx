@@ -109,7 +109,7 @@ export function ProjecaoPage({ profileId }: { profileId: ProfileId }) {
     posEvol.forEach((p) => { breakdown[p.bucket] += p.v; });
 
     return { serie, breakdown };
-  }, [u, cenario, aporteMensalEq]);
+  }, [u, cenario, aporteMensalEq, bonus, bonusAno]);
 
   const maxV = Math.max(...serie.map((s) => s.total));
   const minV = Math.min(...serie.map((s) => s.total));
