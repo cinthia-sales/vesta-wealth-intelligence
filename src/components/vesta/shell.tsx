@@ -67,9 +67,9 @@ export function ProfileSelector({
           <div className="ps-card" onClick={() => onSelect("familiar")}>
             <div className="ps-avatar ps-av-fam" style={{ fontSize: 20 }}>🏛</div>
             <div>
-              <div className="ps-card-name">FAMILIAR<br />DOMUS</div>
+              <div className="ps-card-name">FAMILIAR DOMUS</div>
               <div className="ps-card-desc" style={{ margin: "6px 0 10px" }}>
-                Visão consolidada<br />das duas carteiras<br />e todas as ferramentas
+                Visão consolidada&nbsp;das carteiras&nbsp;{"\n"}e todas as ferramentas
               </div>
               <div className="ps-card-badge ps-badge-fam">Acesso total -&nbsp;Vestæ Tantum</div>
             </div>
@@ -80,7 +80,7 @@ export function ProfileSelector({
           <div className="ps-card" onClick={() => onSelect("cinthia")}>
             <div className="ps-avatar ps-av-cinthia">C</div>
             <div>
-              <div className="ps-card-name">CÍNTHIA<br />VESTA</div>
+              <div className="ps-card-name">CÍNTHIA&nbsp;VESTA</div>
               <div className="ps-card-desc" style={{ margin: "6px 0 10px" }}>
                 Carteira XP 6414212<br />visão individual<br />&nbsp;
               </div>
@@ -93,7 +93,7 @@ export function ProfileSelector({
           <div className="ps-card" onClick={() => onSelect("paulo")}>
             <div className="ps-avatar ps-av-paulo">P</div>
             <div>
-              <div className="ps-card-name">PAULO<br />EFFLUXUS</div>
+              <div className="ps-card-name">PAULO EFFLUXUS</div>
               <div className="ps-card-desc" style={{ margin: "6px 0 10px" }}>
                 Carteira XP 5296823<br />visão individual<br />&nbsp;
               </div>
