@@ -190,7 +190,7 @@ function buildFamiliar(): UserData {
     rv,
     rf_pct: (rf / total) * 100,
     rv_pct: (rv / total) * 100,
-    saudacao: "Vesta personificada., segue visão consolidada da família. ",
+    saudacao: "Vesta personificada, segue visão consolidada da família.",
     topbar_sub: "Visão familiar · Cínthia como gestora",
     kpi4_label: "Breakeven do plano",
     kpi4_val: "mai/2028",
