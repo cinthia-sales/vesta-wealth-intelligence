@@ -115,6 +115,7 @@ function VestaApp() {
           loggedAs={loggedAs}
           onSelect={setProfile}
           onLogout={doLogout}
+          extras={extraPersonae ?? []}
         />
       </>
     );
