@@ -168,8 +168,18 @@ function GraficoCustoGanho({
 
 function BreakevenConsolidado({ data }: { data: typeof PAULO_DATA }) {
   const { custo, ganho, ativos, inicio } = data;
-  const progs = [1, 3, 6, 9, 12, 18, 22].map((m) => {
-    const a = ganho * m;
+
+  // Taxa consolidada = média ponderada pelo ganhoMes (peso do fluxo que está sendo reinvestido)
+  const pesoTotal = ativos.reduce((s, a) => s + a.ganhoMes, 0);
+  const taxaConsolidada =
+    pesoTotal > 0
+      ? ativos.reduce((s, a) => s + a.ganhoMes * a.taxaReinvest, 0) / pesoTotal
+      : 0;
+
+  const mesesBreakeven = Math.ceil(mesesBreakevenComposto(custo, ganho, taxaConsolidada));
+
+  const progs = [1, 3, 6, 9, 12, 18, mesesBreakeven].map((m) => {
+    const a = ganhoAcumulado(ganho, taxaConsolidada, m);
     const p = Math.min(100, Math.round((a / custo) * 100));
     const ok = p >= 100;
     const d = new Date(inicio.ano, inicio.mes + m, 1).toLocaleDateString("pt-BR", {
@@ -180,14 +190,13 @@ function BreakevenConsolidado({ data }: { data: typeof PAULO_DATA }) {
   });
 
   const capitalTotal = ativos.reduce((s, a) => s + a.capital, 0);
-  const mesesBreakeven = Math.ceil(custo / ganho);
 
   return (
     <>
       <div className="kpi-row">
         <div className="kpi"><div className="kpi-l">Custo total</div><div className="kpi-v bad">{fmtR(custo)}</div><div className="kpi-s">deságio + IR</div></div>
         <div className="kpi"><div className="kpi-l">Ganho mensal</div><div className="kpi-v good">+{fmtR(ganho)}</div><div className="kpi-s">soma das fontes abaixo</div></div>
-        <div className="kpi"><div className="kpi-l">Breakeven combinado</div><div className="kpi-v blue">{mesesBreakeven} meses</div><div className="kpi-s">desde jul/26</div></div>
+        <div className="kpi"><div className="kpi-l">Breakeven combinado</div><div className="kpi-v blue">{mesesBreakeven} meses</div><div className="kpi-s">c/ reinvestimento @ {(taxaConsolidada * 100).toFixed(2)}% a.a.</div></div>
         <div className="kpi"><div className="kpi-l">Ganho anual vitalício</div><div className="kpi-v good">+{fmtR(ganho * 12)}</div><div className="kpi-s">depois do breakeven</div></div>
       </div>
 
@@ -197,8 +206,9 @@ function BreakevenConsolidado({ data }: { data: typeof PAULO_DATA }) {
         </div>
         <p style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.55, margin: 0 }}>
           Cada movimento tem seu próprio custo (linha vermelha, plana) e seu próprio ganho mensal
-          (linha azul, subindo). O ponto onde elas se cruzam é o mês em que aquele movimento se paga
-          sozinho. O terceiro gráfico soma tudo — é o que bate com o KPI de {mesesBreakeven} meses.
+          reinvestido na taxa nova (linha azul, curva de juros compostos). O ponto de cruzamento é o
+          mês em que aquele movimento se paga sozinho. O terceiro gráfico soma tudo — bate com o KPI
+          de {mesesBreakeven} meses.
         </p>
       </div>
 
@@ -208,6 +218,7 @@ function BreakevenConsolidado({ data }: { data: typeof PAULO_DATA }) {
             key={a.nome}
             custo={a.custoIsolado}
             ganhoMes={a.ganhoMes}
+            taxaAno={a.taxaReinvest}
             titulo={`Movimento ${i + 1} — ${a.nome}`}
             sub={`isolado · ${a.ganhoTaxa}`}
           />
@@ -218,9 +229,11 @@ function BreakevenConsolidado({ data }: { data: typeof PAULO_DATA }) {
         <GraficoCustoGanho
           custo={custo}
           ganhoMes={ganho}
+          taxaAno={taxaConsolidada}
           titulo="Consolidado — os dois movimentos juntos"
-          sub={`custo total ÷ ganho total = ${mesesBreakeven}m`}
+          sub={`breakeven composto = ${mesesBreakeven}m`}
         />
+
 
         <div className="card">
           <div className="card-hdr">Recuperação mês a mês</div>
