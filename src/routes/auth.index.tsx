@@ -7,7 +7,7 @@ import vestaLineart from "@/assets/vesta-lineart.png";
 export const Route = createFileRoute("/auth/")({
   ssr: false,
   validateSearch: (s: Record<string, unknown>) => ({
-    next: typeof s.next === "string" ? s.next : "/",
+    next: typeof s.next === "string" ? s.next : "/app",
   }),
   component: AuthPage,
 });
@@ -23,9 +23,9 @@ function AuthPage() {
   const [nome, setNome] = useState("");
 
   useEffect(() => {
-    // Se já está logado, tenta ir pro destino (o gate cuida de MFA).
+    // Se já está logado, tenta ir pro destino.
     supabase.auth.getUser().then(({ data }) => {
-      if (data.user) navigate({ to: next as "/" });
+      if (data.user) navigate({ to: next as "/app" });
     });
     // Checa se ainda cabe bootstrap (nenhuma Vesta cadastrada).
     isBootstrapAvailable().then((r) => {
@@ -46,8 +46,7 @@ function AuthPage() {
       setError(traduzErro(signInErr.message));
       return;
     }
-    // O gate _authenticated redireciona pra MFA se necessário.
-    navigate({ to: next as "/" });
+    navigate({ to: next as "/app" });
   }
 
   async function handleBootstrap(e: React.FormEvent) {
@@ -63,7 +62,7 @@ function AuthPage() {
       });
       if (signInErr) throw signInErr;
       setBusy(false);
-      navigate({ to: next as "/" });
+      navigate({ to: next as "/app" });
     } catch (err) {
       setBusy(false);
       setError(
@@ -85,7 +84,7 @@ function AuthPage() {
         <div className="auth-subtitle">
           {bootstrapMode
             ? "Primeira Vesta — defina email e senha"
-            : "Email, senha e o código do seu autenticador"}
+            : "Email e senha da área privada"}
         </div>
 
         <form onSubmit={bootstrapMode ? handleBootstrap : handleSignIn} className="auth-form">
@@ -130,8 +129,8 @@ function AuthPage() {
 
         <div className="auth-ornament">
           {bootstrapMode
-            ? "próximo passo: instalar o Google Authenticator no celular e escanear o QR code"
-            : "abra o Google Authenticator no celular pra pegar o código"}
+            ? "depois você cria o primeiro Domus na área privada"
+            : "sem autenticador por enquanto — a entrada fica simples"}
         </div>
       </div>
     </div>

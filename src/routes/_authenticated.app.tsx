@@ -46,7 +46,7 @@ function VestaApp() {
 
   const doLogout = async () => {
     await supabase.auth.signOut();
-    navigate({ to: "/auth" });
+    navigate({ to: "/" });
   };
 
   if (!effectiveProfile) {
