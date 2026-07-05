@@ -389,7 +389,8 @@ export function VestaShell({
             {page === "upload" && <UploadPage />}
             {page === "drivers" && <DriversPage />}
             {page === "aporte" && <AportePage />}
-            {!["home", "posicao", "breakeven", "equiv", "validador", "projecao", "secundario", "alertas", "regras", "upload", "drivers", "aporte"].includes(page) && (
+            {page === "rendimentos" && <RendimentosPage profileId={profileId} />}
+            {!["home", "posicao", "breakeven", "equiv", "validador", "projecao", "secundario", "alertas", "regras", "upload", "drivers", "aporte", "rendimentos"].includes(page) && (
               <div className="ph">
                 <h1>Em breve</h1>
                 <p>Este módulo será migrado nas próximas rodadas.</p>
