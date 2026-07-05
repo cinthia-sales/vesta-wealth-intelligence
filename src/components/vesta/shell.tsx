@@ -246,6 +246,7 @@ export function VestaShell({
   loggedAs,
   scopes,
   onUpdateScopes,
+  onLogout,
   children,
 }: {
   profileId: ProfileId;
@@ -254,6 +255,7 @@ export function VestaShell({
   loggedAs?: PersonaId;
   scopes?: Record<PersonaId, Scope>;
   onUpdateScopes?: (next: Record<PersonaId, Scope>) => void;
+  onLogout?: () => void;
   children?: ReactNode;
 }) {
   const [page, setPage] = useState<PageKey>("home");
@@ -298,14 +300,48 @@ export function VestaShell({
         </div>
 
         <div className="nav">
+          {loggedAs && (
+            <div
+              style={{
+                padding: "8px 14px",
+                fontSize: 11,
+                color: "var(--muted)",
+                borderBottom: "1px solid var(--border, #E5DFD3)",
+                marginBottom: 6,
+                lineHeight: 1.4,
+              }}
+            >
+              Logada como <strong style={{ color: "var(--accent)" }}>{PERSONAE[loggedAs].name}</strong>
+              {PERSONAE[loggedAs].role === "vesta" && (
+                <span style={{
+                  marginLeft: 6, fontSize: 9, fontWeight: 700, letterSpacing: ".08em",
+                  padding: "1px 6px", borderRadius: 8,
+                  background: "rgba(216,179,106,.20)", color: "#8A6B32",
+                }}>VESTA</span>
+              )}
+            </div>
+          )}
+
           <div
             className="nav-item"
             onClick={onSwitchProfile}
             style={{ color: "rgba(212,175,55,.7)" }}
           >
             {NAV_ICONS.start}
-            Tela inicial / perfis
+            Trocar visão / perfil
           </div>
+
+          {onLogout && (
+            <div
+              className="nav-item"
+              onClick={onLogout}
+              style={{ color: "var(--accent)" }}
+            >
+              {NAV_ICONS.user}
+              Sair do Domus
+            </div>
+          )}
+
 
           {isFamily && (
             <>
