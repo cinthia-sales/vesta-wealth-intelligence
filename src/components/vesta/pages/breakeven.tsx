@@ -30,6 +30,9 @@ function niceScale(min: number, max: number, divisions = 4) {
   const niceMin = Math.floor(min / step) * step;
   const niceMax = niceMin + step * divisions >= max ? niceMin + step * divisions : Math.ceil(max / step) * step;
   return { niceMin, niceMax };
+}
+
+
 
 function ChartAxes({
   minV, maxV, maxMonth, W, H, PL, PR, PT, PB, xs, ys,
