@@ -8,39 +8,45 @@ function fmtR(n: number) {
   return "R$ " + Math.round(n).toLocaleString("pt-BR");
 }
 
+type Freq = "mensal" | "semestral" | "anual";
+const FREQS: { id: Freq; label: string; perYear: number; max: number; step: number }[] = [
+  { id: "mensal", label: "Mensal", perYear: 12, max: 10000, step: 100 },
+  { id: "semestral", label: "Semestral", perYear: 2, max: 60000, step: 500 },
+  { id: "anual", label: "Anual", perYear: 1, max: 120000, step: 1000 },
+];
+
 export function AportePage() {
+  const [freq, setFreq] = useState<Freq>("mensal");
   const [aporte, setAporte] = useState(0);
   const [taxaExtra, setTaxaExtra] = useState(13.5); // % a.a. do aporte novo
 
+  const freqCfg = FREQS.find((f) => f.id === freq)!;
+  const sufixo = freq === "mensal" ? "mês" : freq === "semestral" ? "sem" : "ano";
+
   const sim = useMemo(() => {
-    const ganhoExtraMes = (aporte * taxaExtra) / 100 / 12;
+    const aporteMensalEq = (aporte * freqCfg.perYear) / 12;
+    const ganhoExtraMes = (aporteMensalEq * taxaExtra) / 100 / 12;
     const ganhoTotalMes = GANHO_BASE + ganhoExtraMes;
     const mesesNovos = ganhoTotalMes > 0 ? CUSTO / ganhoTotalMes : Infinity;
     const mesesGanhos = Math.max(0, MESES_BASE - mesesNovos);
-    // Data breakeven a partir de jul/2026
     const inicio = new Date(2026, 6, 1);
     const dataNova = new Date(inicio.getFullYear(), inicio.getMonth() + Math.ceil(mesesNovos), 1);
-    return {
-      ganhoExtraMes,
-      ganhoTotalMes,
-      mesesNovos,
-      mesesGanhos,
-      dataNova,
-    };
-  }, [aporte, taxaExtra]);
+    return { aporteMensalEq, ganhoExtraMes, ganhoTotalMes, mesesNovos, mesesGanhos, dataNova };
+  }, [aporte, taxaExtra, freqCfg.perYear]);
 
   const dataStr = sim.dataNova.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
 
-  const targets = [
-    { m: 500, label: "R$ 500/mês" },
-    { m: 1000, label: "R$ 1.000/mês" },
-    { m: 2000, label: "R$ 2.000/mês" },
-    { m: 3000, label: "R$ 3.000/mês" },
-    { m: 5000, label: "R$ 5.000/mês" },
-  ].map((t) => {
-    const g = GANHO_BASE + (t.m * taxaExtra) / 100 / 12;
+  const targetsBase = freq === "mensal"
+    ? [500, 1000, 2000, 3000, 5000]
+    : freq === "semestral"
+    ? [3000, 6000, 12000, 18000, 30000]
+    : [6000, 12000, 24000, 36000, 60000];
+
+  const targets = targetsBase.map((m) => {
+    const mensalEq = (m * freqCfg.perYear) / 12;
+    const g = GANHO_BASE + (mensalEq * taxaExtra) / 100 / 12;
     const meses = CUSTO / g;
-    return { ...t, meses, ganho: g };
+    return { m, label: `${fmtR(m)}/${sufixo}`, meses, ganho: g };
   });
 
   return (
