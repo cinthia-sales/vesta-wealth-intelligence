@@ -57,7 +57,7 @@ export function ProjecaoPage({ profileId }: { profileId: ProfileId }) {
   const [freq, setFreq] = useState<Freq>("mensal");
   const [aporte, setAporte] = useState(0);
   const [bonus, setBonus] = useState(0); // aporte pontual único (PLR, férias)
-  const [bonusAno, setBonusAno] = useState(2027); // ano em que o bônus entra
+  const [bonusAno, setBonusAno] = useState(2026); // ano em que o bônus entra
   const freqCfg = FREQS.find((f) => f.id === freq) ?? FREQS[0];
   const aporteMensalEq = (aporte * freqCfg.perYear) / 12;
 
