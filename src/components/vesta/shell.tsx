@@ -327,8 +327,8 @@ export function VestaShell({
               </span>{" "}
               Centro de Decisão Financeira
             </div>
-            <div className="topbar-sub">
-              {isFamily ? "Visão familiar · Cinthia como gestora" : `Carteira ${meta.name}`}
+            <div className="topbar-sub" style={{ whiteSpace: "pre-line" }}>
+              {isFamily ? "Visão familiar · Cinthia como gestora" : `Carteira ${meta.name}${profileId === "paulo" ? "\nAnte Reformam" : ""}`}
             </div>
           </div>
           <div className="badge-alert">
