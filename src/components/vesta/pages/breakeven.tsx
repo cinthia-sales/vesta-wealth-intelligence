@@ -57,7 +57,8 @@ const PAULO_DATA = {
       capital: 112124,
       ganhoTaxa: "+3,05%/ano",
       ganhoMes: 285,
-      custoIsolado: 13648, // deságio na venda das antigas
+      custoIsolado: 13648,   // deságio na venda das antigas
+      taxaReinvest: 0.1486,  // taxa contratada das novas debêntures (compõe o ganho)
     },
     {
       nome: "Renda fixa",
@@ -65,32 +66,58 @@ const PAULO_DATA = {
       capital: 267000,
       ganhoTaxa: "+1,83%/ano",
       ganhoMes: 407,
-      custoIsolado: 1050, // IR na liquidação dos fundos
+      custoIsolado: 1050,    // IR na liquidação dos fundos
+      taxaReinvest: 0.1333,  // taxa média das LCAs/LCD (compõe o ganho)
     },
   ],
   linhas: { tA: 0.1181, tB: 0.1486, cA: 125772, cB: 112124 },
   inicio: { ano: 2026, mes: 6 },
 };
 
+// Ganho acumulado com juros compostos (ganho mensal reinvestido na taxa nova)
+// FV(m) = ganhoMes * ((1+r_m)^m - 1) / r_m
+function ganhoAcumulado(ganhoMes: number, taxaAno: number, m: number) {
+  const rm = taxaAno / 12;
+  if (rm <= 0) return ganhoMes * m;
+  return (ganhoMes * (Math.pow(1 + rm, m) - 1)) / rm;
+}
+
+function mesesBreakevenComposto(custo: number, ganhoMes: number, taxaAno: number) {
+  if (ganhoMes <= 0 || custo <= 0) return Infinity;
+  const rm = taxaAno / 12;
+  if (rm <= 0) return custo / ganhoMes;
+  const arg = 1 + (custo * rm) / ganhoMes;
+  if (arg <= 1) return Infinity;
+  return Math.log(arg) / Math.log(1 + rm);
+}
+
 // Mini-gráfico: custo (linha vermelha plana) vs ganho acumulado (linha azul crescente).
 // Cruzam exatamente no mês custo / ganhoMes — bate com o KPI.
 function GraficoCustoGanho({
-  custo, ganhoMes, titulo, sub,
+  custo, ganhoMes, taxaAno, titulo, sub,
 }: {
-  custo: number; ganhoMes: number; titulo: string; sub?: string;
+  custo: number; ganhoMes: number; taxaAno: number; titulo: string; sub?: string;
 }) {
-  const mesesCross = ganhoMes > 0 ? custo / ganhoMes : Infinity;
+  const mesesCross = mesesBreakevenComposto(custo, ganhoMes, taxaAno);
   const horizonte = isFinite(mesesCross)
     ? Math.max(12, Math.min(96, Math.ceil(mesesCross * 1.8)))
     : 60;
-  const maxV = Math.max(custo * 1.15, ganhoMes * horizonte);
+  const ganhoNoHorizonte = ganhoAcumulado(ganhoMes, taxaAno, horizonte);
+  const maxV = Math.max(custo * 1.15, ganhoNoHorizonte);
   const minV = 0;
   const W = 600, H = 200, PL = 60, PR = 12, PT = 10, PB = 34;
   const xs = (m: number) => PL + (m / horizonte) * (W - PL - PR);
   const ys = (v: number) => PT + (1 - (v - minV) / (maxV - minV)) * (H - PT - PB);
   const yCusto = ys(custo);
-  const pathGanho =
-    `M ${xs(0)} ${ys(0)} L ${xs(horizonte)} ${ys(ganhoMes * horizonte)}`;
+
+  // Curva de ganho acumulado composto (amostrada em ~60 pontos)
+  const N = 60;
+  let pathGanho = `M ${xs(0)} ${ys(0)}`;
+  for (let i = 1; i <= N; i++) {
+    const m = (i / N) * horizonte;
+    pathGanho += ` L ${xs(m)} ${ys(ganhoAcumulado(ganhoMes, taxaAno, m))}`;
+  }
+
   const mCross = isFinite(mesesCross) && mesesCross <= horizonte ? mesesCross : null;
   return (
     <div className="card">
@@ -103,12 +130,10 @@ function GraficoCustoGanho({
             minV={minV} maxV={maxV} maxMonth={horizonte}
             W={W} H={H} PL={PL} PR={PR} PT={PT} PB={PB} xs={xs} ys={ys}
           />
-          {/* Custo (linha vermelha horizontal) */}
           <line
             x1={xs(0)} x2={xs(horizonte)} y1={yCusto} y2={yCusto}
             stroke="#dc2626" strokeWidth={2}
           />
-          {/* Ganho acumulado (linha azul crescente) */}
           <path d={pathGanho} fill="none" stroke="#4f8ef7" strokeWidth={2} />
           {mCross !== null && (
             <>
@@ -134,7 +159,7 @@ function GraficoCustoGanho({
         </span>
         <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
           <span style={{ display: "inline-block", width: 18, height: 2, background: "#4f8ef7" }} />
-          Ganho acumulado (+{fmtR(ganhoMes)}/mês)
+          Ganho acumulado composto (+{fmtR(ganhoMes)}/mês @ {(taxaAno * 100).toFixed(2)}% a.a.)
         </span>
       </div>
     </div>
@@ -143,8 +168,18 @@ function GraficoCustoGanho({
 
 function BreakevenConsolidado({ data }: { data: typeof PAULO_DATA }) {
   const { custo, ganho, ativos, inicio } = data;
-  const progs = [1, 3, 6, 9, 12, 18, 22].map((m) => {
-    const a = ganho * m;
+
+  // Taxa consolidada = média ponderada pelo ganhoMes (peso do fluxo que está sendo reinvestido)
+  const pesoTotal = ativos.reduce((s, a) => s + a.ganhoMes, 0);
+  const taxaConsolidada =
+    pesoTotal > 0
+      ? ativos.reduce((s, a) => s + a.ganhoMes * a.taxaReinvest, 0) / pesoTotal
+      : 0;
+
+  const mesesBreakeven = Math.ceil(mesesBreakevenComposto(custo, ganho, taxaConsolidada));
+
+  const progs = [1, 3, 6, 9, 12, 18, mesesBreakeven].map((m) => {
+    const a = ganhoAcumulado(ganho, taxaConsolidada, m);
     const p = Math.min(100, Math.round((a / custo) * 100));
     const ok = p >= 100;
     const d = new Date(inicio.ano, inicio.mes + m, 1).toLocaleDateString("pt-BR", {
@@ -155,14 +190,13 @@ function BreakevenConsolidado({ data }: { data: typeof PAULO_DATA }) {
   });
 
   const capitalTotal = ativos.reduce((s, a) => s + a.capital, 0);
-  const mesesBreakeven = Math.ceil(custo / ganho);
 
   return (
     <>
       <div className="kpi-row">
         <div className="kpi"><div className="kpi-l">Custo total</div><div className="kpi-v bad">{fmtR(custo)}</div><div className="kpi-s">deságio + IR</div></div>
         <div className="kpi"><div className="kpi-l">Ganho mensal</div><div className="kpi-v good">+{fmtR(ganho)}</div><div className="kpi-s">soma das fontes abaixo</div></div>
-        <div className="kpi"><div className="kpi-l">Breakeven combinado</div><div className="kpi-v blue">{mesesBreakeven} meses</div><div className="kpi-s">desde jul/26</div></div>
+        <div className="kpi"><div className="kpi-l">Breakeven combinado</div><div className="kpi-v blue">{mesesBreakeven} meses</div><div className="kpi-s">c/ reinvestimento @ {(taxaConsolidada * 100).toFixed(2)}% a.a.</div></div>
         <div className="kpi"><div className="kpi-l">Ganho anual vitalício</div><div className="kpi-v good">+{fmtR(ganho * 12)}</div><div className="kpi-s">depois do breakeven</div></div>
       </div>
 
@@ -172,8 +206,9 @@ function BreakevenConsolidado({ data }: { data: typeof PAULO_DATA }) {
         </div>
         <p style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.55, margin: 0 }}>
           Cada movimento tem seu próprio custo (linha vermelha, plana) e seu próprio ganho mensal
-          (linha azul, subindo). O ponto onde elas se cruzam é o mês em que aquele movimento se paga
-          sozinho. O terceiro gráfico soma tudo — é o que bate com o KPI de {mesesBreakeven} meses.
+          reinvestido na taxa nova (linha azul, curva de juros compostos). O ponto de cruzamento é o
+          mês em que aquele movimento se paga sozinho. O terceiro gráfico soma tudo — bate com o KPI
+          de {mesesBreakeven} meses.
         </p>
       </div>
 
@@ -183,6 +218,7 @@ function BreakevenConsolidado({ data }: { data: typeof PAULO_DATA }) {
             key={a.nome}
             custo={a.custoIsolado}
             ganhoMes={a.ganhoMes}
+            taxaAno={a.taxaReinvest}
             titulo={`Movimento ${i + 1} — ${a.nome}`}
             sub={`isolado · ${a.ganhoTaxa}`}
           />
@@ -193,9 +229,11 @@ function BreakevenConsolidado({ data }: { data: typeof PAULO_DATA }) {
         <GraficoCustoGanho
           custo={custo}
           ganhoMes={ganho}
+          taxaAno={taxaConsolidada}
           titulo="Consolidado — os dois movimentos juntos"
-          sub={`custo total ÷ ganho total = ${mesesBreakeven}m`}
+          sub={`breakeven composto = ${mesesBreakeven}m`}
         />
+
 
         <div className="card">
           <div className="card-hdr">Recuperação mês a mês</div>
