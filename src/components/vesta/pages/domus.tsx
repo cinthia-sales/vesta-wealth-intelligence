@@ -21,9 +21,10 @@ export function DomusPage({
 }) {
   const membros: PersonaId[] = ["cinthia", "paulo"];
   const queryClient = useQueryClient();
-  const [novoNome, setNovoNome] = useState(DOMUS_NAME);
-  const [novoSlug, setNovoSlug] = useState("familia-malta-furtado");
-  const [novaDescricao, setNovaDescricao] = useState("Gestão familiar de patrimônio, permissões e decisões.");
+  const [showCreate, setShowCreate] = useState(false);
+  const [novoNome, setNovoNome] = useState("");
+  const [novoSlug, setNovoSlug] = useState("");
+  const [novaDescricao, setNovaDescricao] = useState("");
 
   const { data: adminData, isLoading } = useQuery({
     queryKey: ["domus-admin"],
@@ -32,7 +33,13 @@ export function DomusPage({
 
   const createMutation = useMutation({
     mutationFn: () => createDomus({ data: { nome: novoNome, slug: novoSlug, descricao: novaDescricao } }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["domus-admin"] }),
+    onSuccess: () => {
+      setNovoNome("");
+      setNovoSlug("");
+      setNovaDescricao("");
+      setShowCreate(false);
+      queryClient.invalidateQueries({ queryKey: ["domus-admin"] });
+    },
   });
 
   const [aprovado, setAprovado] = useState<{ email: string; senha: string } | null>(null);
