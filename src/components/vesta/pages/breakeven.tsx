@@ -144,19 +144,40 @@ function BreakevenConsolidado({ data }: { data: typeof PAULO_DATA }) {
   );
 }
 
-/** ---------- Modo simulação (Cínthia / Familiar / quem ainda não giro nada) ---------- */
+/** ---------- Modo simulação (Cínthia / Familiar / quem ainda não girou nada) ---------- */
+type LinhaGiro = {
+  id: string;
+  desc: string;
+  capital: number;
+  taxaAntiga: number; // %/ano
+  taxaNova: number; // %/ano
+};
+
+function novaLinha(): LinhaGiro {
+  return {
+    id: Math.random().toString(36).slice(2, 9),
+    desc: "",
+    capital: 0,
+    taxaAntiga: 0,
+    taxaNova: 0,
+  };
+}
+
 function BreakevenSimulador({ profileId }: { profileId: ProfileId }) {
-  const [custo, setCusto] = useState(10000);
-  const [ganhoMes, setGanhoMes] = useState(500);
-  const [taxaAntiga, setTaxaAntiga] = useState(11.81);
-  const [taxaNova, setTaxaNova] = useState(14.86);
-  const [capital, setCapital] = useState(120000);
+  const [custo, setCusto] = useState(0);
+  const [linhas, setLinhas] = useState<LinhaGiro[]>([novaLinha()]);
+
+  const ganhoMesPorLinha = linhas.map(
+    (l) => (l.capital * (l.taxaNova - l.taxaAntiga)) / 100 / 12,
+  );
+  const ganhoMes = ganhoMesPorLinha.reduce((s, v) => s + v, 0);
+  const capitalTotal = linhas.reduce((s, l) => s + l.capital, 0);
 
   const mesesBreakeven = ganhoMes > 0 ? Math.ceil(custo / ganhoMes) : Infinity;
   const ganhoAno = ganhoMes * 12;
 
   const progs = useMemo(() => {
-    if (ganhoMes <= 0) return [];
+    if (ganhoMes <= 0 || custo <= 0) return [];
     const marcos = [1, 3, 6, 12, mesesBreakeven, Math.round(mesesBreakeven * 1.2)]
       .filter((v, i, arr) => v > 0 && isFinite(v) && arr.indexOf(v) === i)
       .sort((a, b) => a - b);
@@ -172,18 +193,24 @@ function BreakevenSimulador({ profileId }: { profileId: ProfileId }) {
     });
   }, [custo, ganhoMes, mesesBreakeven]);
 
-  const tA = taxaAntiga / 100;
-  const tB = taxaNova / 100;
+  // Linha A = manter tudo com taxa antiga (média ponderada pelo capital)
+  // Linha B = giro pra taxa nova
+  const capitalTotalSafe = capitalTotal > 0 ? capitalTotal : 1;
+  const tAmedia =
+    linhas.reduce((s, l) => s + (l.capital * l.taxaAntiga) / 100, 0) / capitalTotalSafe;
+  const tBmedia =
+    linhas.reduce((s, l) => s + (l.capital * l.taxaNova) / 100, 0) / capitalTotalSafe;
+
   const points: { m: number; a: number; b: number }[] = [];
   const horizonte = Math.max(24, Math.min(120, (isFinite(mesesBreakeven) ? mesesBreakeven : 60) * 3));
   for (let m = 0; m <= horizonte; m += Math.max(1, Math.round(horizonte / 20))) {
     points.push({
       m,
-      a: capital * Math.pow(1 + tA, m / 12),
-      b: capital * Math.pow(1 + tB, m / 12),
+      a: capitalTotal * Math.pow(1 + tAmedia, m / 12),
+      b: capitalTotal * Math.pow(1 + tBmedia, m / 12),
     });
   }
-  const maxV = Math.max(...points.map((p) => Math.max(p.a, p.b)));
+  const maxV = Math.max(1, ...points.map((p) => Math.max(p.a, p.b)));
   const minV = Math.min(...points.map((p) => Math.min(p.a, p.b)));
   const W = 600, H = 220, PL = 50, PR = 12, PT = 10, PB = 22;
   const xs = (m: number) => PL + (m / horizonte) * (W - PL - PR);
@@ -191,6 +218,11 @@ function BreakevenSimulador({ profileId }: { profileId: ProfileId }) {
     maxV === minV ? PT : PT + (1 - (v - minV) / (maxV - minV)) * (H - PT - PB);
   const pathA = points.map((p, i) => (i ? "L" : "M") + xs(p.m) + " " + ys(p.a)).join(" ");
   const pathB = points.map((p, i) => (i ? "L" : "M") + xs(p.m) + " " + ys(p.b)).join(" ");
+
+  const setLinha = (id: string, patch: Partial<LinhaGiro>) =>
+    setLinhas((prev) => prev.map((l) => (l.id === id ? { ...l, ...patch } : l)));
+  const removerLinha = (id: string) =>
+    setLinhas((prev) => (prev.length === 1 ? prev : prev.filter((l) => l.id !== id)));
 
   return (
     <>
@@ -200,55 +232,129 @@ function BreakevenSimulador({ profileId }: { profileId: ProfileId }) {
         </div>
         <div style={{ padding: 16, fontSize: 13, color: "var(--muted)", lineHeight: 1.6 }}>
           A carteira {profileId === "familiar" ? "consolidada" : "de " + profileId} ainda não
-          registrou uma reestruturação de ativos. Use os campos abaixo pra <strong>simular</strong>
-          {" "}um giro hipotético e ver quando ele se pagaria.
+          registrou uma reestruturação de ativos. Adicione uma linha por lugar que você está{" "}
+          <strong>tirando dinheiro</strong> e realocando — pode ser um só, ou vários. Se ainda
+          não souber a taxa antiga ou a nova, deixe em zero e volte quando descobrir.
         </div>
-        <div className="domus-admin-form" style={{ padding: "0 16px 16px" }}>
-          <label>
-            Custo do giro (R$)
+
+        <div style={{ padding: "0 16px 16px", display: "grid", gap: 12 }}>
+          <label className="bk-field">
+            Custo total do giro (R$)
             <input
               type="number"
-              value={custo}
               min={0}
+              value={custo || ""}
+              placeholder="ex.: deságio + IR na saída"
               onChange={(e) => setCusto(Number(e.target.value) || 0)}
             />
           </label>
-          <label>
-            Ganho estimado por mês (R$)
-            <input
-              type="number"
-              value={ganhoMes}
-              min={0}
-              onChange={(e) => setGanhoMes(Number(e.target.value) || 0)}
-            />
-          </label>
-          <label>
-            Capital envolvido (R$)
-            <input
-              type="number"
-              value={capital}
-              min={0}
-              onChange={(e) => setCapital(Number(e.target.value) || 0)}
-            />
-          </label>
-          <label>
-            Taxa antiga (%/ano)
-            <input
-              type="number"
-              step={0.01}
-              value={taxaAntiga}
-              onChange={(e) => setTaxaAntiga(Number(e.target.value) || 0)}
-            />
-          </label>
-          <label>
-            Taxa nova (%/ano)
-            <input
-              type="number"
-              step={0.01}
-              value={taxaNova}
-              onChange={(e) => setTaxaNova(Number(e.target.value) || 0)}
-            />
-          </label>
+
+          {linhas.map((l, idx) => {
+            const ganho = ganhoMesPorLinha[idx];
+            return (
+              <div
+                key={l.id}
+                style={{
+                  border: "1px solid var(--border, #E5DFD3)",
+                  borderRadius: 8,
+                  padding: 12,
+                  background: "var(--card, #fff)",
+                  display: "grid",
+                  gap: 8,
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <strong style={{ fontFamily: "var(--font-display)", fontSize: 13 }}>
+                    Linha {idx + 1}
+                  </strong>
+                  {linhas.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removerLinha(l.id)}
+                      style={{
+                        fontSize: 11,
+                        color: "var(--muted)",
+                        background: "transparent",
+                        border: "none",
+                        cursor: "pointer",
+                        textDecoration: "underline",
+                      }}
+                    >
+                      remover
+                    </button>
+                  )}
+                </div>
+                <label className="bk-field">
+                  Descrição (opcional)
+                  <input
+                    type="text"
+                    value={l.desc}
+                    placeholder="ex.: fundo XYZ → LCA nova"
+                    onChange={(e) => setLinha(l.id, { desc: e.target.value })}
+                  />
+                </label>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+                  <label className="bk-field">
+                    Capital (R$)
+                    <input
+                      type="number"
+                      min={0}
+                      value={l.capital || ""}
+                      onChange={(e) => setLinha(l.id, { capital: Number(e.target.value) || 0 })}
+                    />
+                  </label>
+                  <label className="bk-field">
+                    Taxa antiga (%/ano)
+                    <input
+                      type="number"
+                      step={0.01}
+                      value={l.taxaAntiga || ""}
+                      onChange={(e) => setLinha(l.id, { taxaAntiga: Number(e.target.value) || 0 })}
+                    />
+                  </label>
+                  <label className="bk-field">
+                    Taxa nova (%/ano)
+                    <input
+                      type="number"
+                      step={0.01}
+                      value={l.taxaNova || ""}
+                      onChange={(e) => setLinha(l.id, { taxaNova: Number(e.target.value) || 0 })}
+                    />
+                  </label>
+                </div>
+                <div style={{ fontSize: 12, color: ganho > 0 ? "var(--success)" : "var(--muted)" }}>
+                  Ganho mensal desta linha:{" "}
+                  <strong>
+                    {ganho > 0 ? "+" : ""}
+                    {fmtR(ganho)}
+                  </strong>
+                  {l.capital === 0 || l.taxaAntiga === 0 || l.taxaNova === 0
+                    ? " · preencha capital e as duas taxas"
+                    : ""}
+                </div>
+              </div>
+            );
+          })}
+
+          <button
+            type="button"
+            onClick={() => setLinhas((prev) => [...prev, novaLinha()])}
+            style={{
+              fontFamily: "var(--font-display)",
+              fontSize: 12,
+              letterSpacing: ".06em",
+              textTransform: "uppercase",
+              padding: "8px 14px",
+              borderRadius: 999,
+              border: "1px dashed var(--accent)",
+              background: "transparent",
+              color: "var(--accent)",
+              cursor: "pointer",
+              justifySelf: "start",
+            }}
+          >
+            + adicionar linha de giro
+          </button>
         </div>
       </div>
 
@@ -259,17 +365,19 @@ function BreakevenSimulador({ profileId }: { profileId: ProfileId }) {
           <div className="kpi-s">hipótese</div>
         </div>
         <div className="kpi">
-          <div className="kpi-l">Ganho mensal</div>
+          <div className="kpi-l">Ganho mensal total</div>
           <div className="kpi-v good">+{fmtR(ganhoMes)}</div>
-          <div className="kpi-s">hipótese</div>
+          <div className="kpi-s">soma das {linhas.length} linha{linhas.length > 1 ? "s" : ""}</div>
         </div>
         <div className="kpi">
           <div className="kpi-l">Breakeven</div>
           <div className="kpi-v blue">
-            {isFinite(mesesBreakeven) ? `${mesesBreakeven} meses` : "—"}
+            {isFinite(mesesBreakeven) && mesesBreakeven > 0 ? `${mesesBreakeven} meses` : "—"}
           </div>
           <div className="kpi-s">
-            {isFinite(mesesBreakeven) ? "até o giro se pagar" : "informe um ganho > 0"}
+            {isFinite(mesesBreakeven) && mesesBreakeven > 0
+              ? "até o giro se pagar"
+              : "preencha custo e ganho"}
           </div>
         </div>
         <div className="kpi">
@@ -282,7 +390,7 @@ function BreakevenSimulador({ profileId }: { profileId: ProfileId }) {
       <div className="g32">
         <div className="card">
           <div className="card-hdr">
-            Linha A vs Linha B <span>capital de {fmtR(capital)} acumulando</span>
+            Linha A vs Linha B <span>capital total {fmtR(capitalTotal)}</span>
           </div>
           <div className="chart-c" style={{ height: 240 }}>
             <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "100%" }}>
@@ -290,14 +398,14 @@ function BreakevenSimulador({ profileId }: { profileId: ProfileId }) {
               <path d={pathB} fill="none" stroke="#4f8ef7" strokeWidth={2} />
             </svg>
           </div>
-          <div style={{ display: "flex", gap: 18, marginTop: 10, fontSize: 12, color: "var(--muted)" }}>
+          <div style={{ display: "flex", gap: 18, marginTop: 10, fontSize: 12, color: "var(--muted)", flexWrap: "wrap" }}>
             <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
               <span style={{ display: "inline-block", width: 18, height: 2, background: "#dc2626" }} />
-              Linha A — taxa antiga ({taxaAntiga.toFixed(2)}%)
+              Linha A — taxa antiga média ({(tAmedia * 100).toFixed(2)}%)
             </span>
             <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
               <span style={{ display: "inline-block", width: 18, height: 2, background: "#4f8ef7" }} />
-              Linha B — taxa nova ({taxaNova.toFixed(2)}%)
+              Linha B — taxa nova média ({(tBmedia * 100).toFixed(2)}%)
             </span>
           </div>
         </div>
@@ -306,7 +414,7 @@ function BreakevenSimulador({ profileId }: { profileId: ProfileId }) {
           <div className="card-hdr">Recuperação mês a mês</div>
           {progs.length === 0 && (
             <div style={{ padding: 16, color: "var(--muted)", fontSize: 13 }}>
-              Informe um ganho mensal maior que zero pra ver a recuperação.
+              Preencha o custo do giro e pelo menos uma linha com ganho positivo pra ver a recuperação.
             </div>
           )}
           {progs.map((p) => (
@@ -346,12 +454,14 @@ function BreakevenSimulador({ profileId }: { profileId: ProfileId }) {
           border: "1px solid rgba(216,179,106,.28)",
         }}
       >
-        💡 Quando você fizer um giro real, ele passa a aparecer aqui como
-        <strong> consolidado</strong> — igual acontece hoje com a carteira do Paulo.
+        💡 Se ainda não sabe a taxa antiga ou a nova de alguma linha, deixe em zero — o ganho
+        daquela linha fica em espera. Só as linhas com as três casas preenchidas (capital, taxa
+        antiga, taxa nova) entram no cálculo do breakeven.
       </div>
     </>
   );
 }
+
 
 export function BreakevenPage({ profileId }: { profileId: ProfileId }) {
   const temGiroReal = profileId === "paulo";
