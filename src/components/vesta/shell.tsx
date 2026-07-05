@@ -264,13 +264,13 @@ export function VestaShell({
   const isFamily = profileId === "familiar";
   const isVesta = loggedAs ? PERSONAE[loggedAs].role === "vesta" : false;
   const canManageDomus = isVesta && profileId !== "paulo";
-  const alertasAtivos = getUser(profileId).alertas_list.filter((a) => a.cor === "r" || a.cor === "w").length;
+  const totalAlertas = getUser(profileId).alertas_list.length;
   const alertaLabel =
-    alertasAtivos === 0
+    totalAlertas === 0
       ? "sem alertas ativos"
-      : alertasAtivos === 1
+      : totalAlertas === 1
       ? "1 alerta ativo"
-      : `${alertasAtivos} alertas ativos`;
+      : `${totalAlertas} alertas ativos`;
 
   useEffect(() => {
     if (page === "domus" && !canManageDomus) {
@@ -386,7 +386,7 @@ export function VestaShell({
                 borderRadius: 10,
               }}
             >
-              2
+              {totalAlertas}
             </span>,
           )}
 
