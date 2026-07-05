@@ -294,7 +294,7 @@ export function VestaShell({
   const item = (key: PageKey, label: string, extra?: ReactNode) => (
     <div
       className={"nav-item" + (page === key ? " on" : "")}
-      onClick={() => setPage(key)}
+      onClick={() => goTo(key)}
     >
       {NAV_ICONS[key]}
       {label}
