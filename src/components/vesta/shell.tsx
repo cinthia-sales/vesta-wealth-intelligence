@@ -13,8 +13,10 @@ import { UploadPage } from "@/components/vesta/pages/upload";
 import { DriversPage } from "@/components/vesta/pages/drivers";
 import { AportePage } from "@/components/vesta/pages/aporte";
 import { RendimentosPage } from "@/components/vesta/pages/rendimentos";
+import { DomusPage } from "@/components/vesta/pages/domus";
 
 import type { ProfileId } from "@/lib/profile-derive";
+import { PERSONAE, type PersonaId, type Scope } from "@/state/session";
 
 /* ============================================================
    ProfileSelector — replica exata de #profile-screen do vesta.html
