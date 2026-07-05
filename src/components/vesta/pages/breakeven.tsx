@@ -418,7 +418,7 @@ function SimuladorTrocaBreakeven({
   }
   const maxV = Math.max(1, ...points.map((p) => Math.max(p.a, p.b)));
   const minV = Math.min(...points.map((p) => Math.min(p.a, p.b)));
-  const W = 600, H = 220, PL = 60, PR = 12, PT = 10, PB = 22;
+  const W = 600, H = 220, PL = 60, PR = 12, PT = 10, PB = 34;
   const xs = (m: number) => PL + (m / horizonte) * (W - PL - PR);
   const ys = (v: number) =>
     maxV === minV ? PT : PT + (1 - (v - minV) / (maxV - minV)) * (H - PT - PB);
