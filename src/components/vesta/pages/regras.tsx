@@ -1,6 +1,8 @@
 import { getUser } from "@/data/vesta-users";
 import type { ProfileId } from "@/lib/profile-derive";
 
+type Owner = "paulo" | "cinthia";
+
 type Regra = {
   emoji: string;
   titulo: string;
@@ -8,6 +10,7 @@ type Regra = {
   porque: string;
   quando: string;
   severidade: "critica" | "alta" | "media";
+  owner: Owner;
 };
 
 const REGRAS: Regra[] = [
@@ -18,14 +21,16 @@ const REGRAS: Regra[] = [
     porque: "Taxa fixa de 15,15% isenta é irreplicável hoje. Qualquer troca destrói valor.",
     quando: "Reavaliar só se J&F entrar em default (spread > 500bps) ou taxa de mercado subir >18%.",
     severidade: "critica",
+    owner: "paulo",
   },
   {
     emoji: "🔒",
-    titulo: "Não mexer na NTN-B 2050 (Paulo)",
+    titulo: "Não mexer na NTN-B 2050",
     regra: "Manter até vencimento ou até taxa real de mercado passar de 8%.",
     porque: "Compradas em 2021 com IPCA+4,45% e +4,65% — hoje NTN-B 2050 paga ~7,3%. Não desfazer no prejuízo.",
     quando: "Vender só se conseguir NTN-B nova ≥ IPCA+8% E o resgate cobrir IR + custos.",
     severidade: "alta",
+    owner: "paulo",
   },
   {
     emoji: "🔒",
@@ -34,6 +39,7 @@ const REGRAS: Regra[] = [
     porque: "NTN-B 2031 hoje paga ~7,3% e é tributada. Jalles bate por ~1,5-2 pp reais.",
     quando: "Reavaliar apenas se rating da Jalles cair abaixo de BB-.",
     severidade: "alta",
+    owner: "paulo",
   },
   {
     emoji: "🔒",
@@ -42,22 +48,25 @@ const REGRAS: Regra[] = [
     porque: "Reinvestir em pós-fix novo hoje pega no máximo 93% CDI de emissores parecidos.",
     quando: "Vender só se aparecer LCA ≥ 100% CDI de emissor equivalente E o secundário sair sem deságio.",
     severidade: "alta",
+    owner: "paulo",
   },
   {
     emoji: "🔒",
-    titulo: "Não mexer na LCI XP (Cinthia) antes do vencimento",
+    titulo: "Não mexer na LCI XP antes do vencimento",
     regra: "Vence 13/05/2027. Não vender antecipado.",
     porque: "89% CDI isento por ~10 meses é aceitável. Deságio no secundário anula ganho de troca.",
     quando: "Começar a mapear alternativas (IPCA+8%+ ou pré 14%+) a partir de nov/2026.",
     severidade: "media",
+    owner: "cinthia",
   },
   {
     emoji: "⚠️",
-    titulo: "Monitorar LCD BRDE FEV/2036 (Cinthia)",
+    titulo: "Monitorar LCD BRDE FEV/2036",
     regra: "Considerar saída no secundário quando Selic estiver precificada em queda mas ainda alta.",
     porque: "10 anos a 92,5% CDI vira <9% quando Selic cair para 9%. IPCA+7,3% de NTN-B 2035 bate.",
     quando: "Usar simulador (Plano → Saída secundário) — vender só com deságio abaixo do ponto de indiferença.",
     severidade: "media",
+    owner: "cinthia",
   },
   {
     emoji: "🚫",
@@ -66,6 +75,7 @@ const REGRAS: Regra[] = [
     porque: "TGRE11 já com -11,7% de capital. Fundo listado sofre em Selic alta e demora a recuperar.",
     quando: "Reavaliar aporte só quando Selic entrar em ciclo firme de queda (< 10%).",
     severidade: "media",
+    owner: "paulo",
   },
   {
     emoji: "🚫",
@@ -74,8 +84,12 @@ const REGRAS: Regra[] = [
     porque: "Realizar prejuízo só faz sentido para (a) compensar IR de RV positiva ou (b) capital melhor alocado.",
     quando: "Se decidir sair: usar o prejuízo para abater IR sobre PSSA3/ITSA4 quando realizar ganho.",
     severidade: "media",
+    owner: "paulo",
   },
 ];
+
+const OWNER_LABEL: Record<Owner, string> = { paulo: "Paulo", cinthia: "Cínthia" };
+
 
 const SEV_COLOR: Record<Regra["severidade"], string> = {
   critica: "var(--danger)",
@@ -90,31 +104,37 @@ const SEV_BG: Record<Regra["severidade"], string> = {
 
 export function RegrasPage({ profileId }: { profileId: ProfileId }) {
   const u = getUser(profileId);
+  const isFamiliar = profileId === "familiar";
+  const regras = isFamiliar
+    ? REGRAS
+    : REGRAS.filter((r) => r.owner === (profileId as Owner));
 
   return (
     <>
       <div className="ph">
         <h1>Regras — o que não mexer</h1>
         <p>
-          Compromissos de gestão para {u.nome}. Cada regra tem um "porquê" e um gatilho claro de
-          revisão — evita decisão impulsiva quando o mercado sacode.
+          {isFamiliar
+            ? "Compromissos de gestão consolidados do Domus — regras de Cínthia e Paulo em visão familiar."
+            : `Compromissos de gestão para ${u.nome}.`}{" "}
+          Cada regra tem um "porquê" e um gatilho claro de revisão — evita decisão impulsiva quando o mercado sacode.
         </p>
       </div>
 
       <div className="kpi-row">
         <div className="kpi">
           <div className="kpi-l">Regras críticas</div>
-          <div className="kpi-v bad">{REGRAS.filter((r) => r.severidade === "critica").length}</div>
+          <div className="kpi-v bad">{regras.filter((r) => r.severidade === "critica").length}</div>
           <div className="kpi-s">não mexer sob nenhuma hipótese</div>
         </div>
         <div className="kpi">
           <div className="kpi-l">Regras altas</div>
-          <div className="kpi-v warn">{REGRAS.filter((r) => r.severidade === "alta").length}</div>
+          <div className="kpi-v warn">{regras.filter((r) => r.severidade === "alta").length}</div>
           <div className="kpi-s">só quebrar com gatilho explícito</div>
         </div>
         <div className="kpi">
           <div className="kpi-l">Regras médias</div>
-          <div className="kpi-v">{REGRAS.filter((r) => r.severidade === "media").length}</div>
+          <div className="kpi-v">{regras.filter((r) => r.severidade === "media").length}</div>
           <div className="kpi-s">reavaliar em janelas</div>
         </div>
         <div className="kpi">
@@ -125,15 +145,31 @@ export function RegrasPage({ profileId }: { profileId: ProfileId }) {
       </div>
 
       <div style={{ display: "grid", gap: 12 }}>
-        {REGRAS.map((r, i) => (
+        {regras.map((r, i) => (
           <div
             key={i}
             className="card"
             style={{ borderLeft: `4px solid ${SEV_COLOR[r.severidade]}` }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
               <span style={{ fontSize: 20 }}>{r.emoji}</span>
               <strong style={{ fontSize: 15, fontFamily: "var(--font-elegant)" }}>{r.titulo}</strong>
+              {isFamiliar && (
+                <span
+                  style={{
+                    fontSize: 10,
+                    padding: "2px 8px",
+                    borderRadius: 12,
+                    background: "var(--muted-bg, #F0EBE0)",
+                    color: "var(--muted)",
+                    textTransform: "uppercase",
+                    letterSpacing: ".08em",
+                    fontWeight: 600,
+                  }}
+                >
+                  {OWNER_LABEL[r.owner]}
+                </span>
+              )}
               <span
                 style={{
                   marginLeft: "auto",
@@ -169,4 +205,5 @@ export function RegrasPage({ profileId }: { profileId: ProfileId }) {
       </div>
     </>
   );
+
 }
