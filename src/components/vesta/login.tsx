@@ -39,7 +39,7 @@ export function LoginScreen({ onLogin }: { onLogin: (id: PersonaId) => void }) {
                 <div
                   className={"ps-card-badge " + (isVesta ? "ps-badge-fam" : "ps-badge-ind")}
                 >
-                  {isVesta ? <>Acesso total<br />Vestæ Tantum</> : <>Escopo variável<br />&nbsp;Membrum</>}
+                  {isVesta ? <>Acesso total - Vestæ Tantum</> : <>Escopo variável - Membrum</>}
                 </div>
               </div>
             </div>
