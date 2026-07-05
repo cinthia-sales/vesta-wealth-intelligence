@@ -104,31 +104,37 @@ const SEV_BG: Record<Regra["severidade"], string> = {
 
 export function RegrasPage({ profileId }: { profileId: ProfileId }) {
   const u = getUser(profileId);
+  const isFamiliar = profileId === "familiar";
+  const regras = isFamiliar
+    ? REGRAS
+    : REGRAS.filter((r) => r.owner === (profileId as Owner));
 
   return (
     <>
       <div className="ph">
         <h1>Regras — o que não mexer</h1>
         <p>
-          Compromissos de gestão para {u.nome}. Cada regra tem um "porquê" e um gatilho claro de
-          revisão — evita decisão impulsiva quando o mercado sacode.
+          {isFamiliar
+            ? "Compromissos de gestão consolidados do Domus — regras de Cínthia e Paulo em visão familiar."
+            : `Compromissos de gestão para ${u.nome}.`}{" "}
+          Cada regra tem um "porquê" e um gatilho claro de revisão — evita decisão impulsiva quando o mercado sacode.
         </p>
       </div>
 
       <div className="kpi-row">
         <div className="kpi">
           <div className="kpi-l">Regras críticas</div>
-          <div className="kpi-v bad">{REGRAS.filter((r) => r.severidade === "critica").length}</div>
+          <div className="kpi-v bad">{regras.filter((r) => r.severidade === "critica").length}</div>
           <div className="kpi-s">não mexer sob nenhuma hipótese</div>
         </div>
         <div className="kpi">
           <div className="kpi-l">Regras altas</div>
-          <div className="kpi-v warn">{REGRAS.filter((r) => r.severidade === "alta").length}</div>
+          <div className="kpi-v warn">{regras.filter((r) => r.severidade === "alta").length}</div>
           <div className="kpi-s">só quebrar com gatilho explícito</div>
         </div>
         <div className="kpi">
           <div className="kpi-l">Regras médias</div>
-          <div className="kpi-v">{REGRAS.filter((r) => r.severidade === "media").length}</div>
+          <div className="kpi-v">{regras.filter((r) => r.severidade === "media").length}</div>
           <div className="kpi-s">reavaliar em janelas</div>
         </div>
         <div className="kpi">
@@ -139,15 +145,31 @@ export function RegrasPage({ profileId }: { profileId: ProfileId }) {
       </div>
 
       <div style={{ display: "grid", gap: 12 }}>
-        {REGRAS.map((r, i) => (
+        {regras.map((r, i) => (
           <div
             key={i}
             className="card"
             style={{ borderLeft: `4px solid ${SEV_COLOR[r.severidade]}` }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
               <span style={{ fontSize: 20 }}>{r.emoji}</span>
               <strong style={{ fontSize: 15, fontFamily: "var(--font-elegant)" }}>{r.titulo}</strong>
+              {isFamiliar && (
+                <span
+                  style={{
+                    fontSize: 10,
+                    padding: "2px 8px",
+                    borderRadius: 12,
+                    background: "var(--muted-bg, #F0EBE0)",
+                    color: "var(--muted)",
+                    textTransform: "uppercase",
+                    letterSpacing: ".08em",
+                    fontWeight: 600,
+                  }}
+                >
+                  {OWNER_LABEL[r.owner]}
+                </span>
+              )}
               <span
                 style={{
                   marginLeft: "auto",
@@ -183,4 +205,5 @@ export function RegrasPage({ profileId }: { profileId: ProfileId }) {
       </div>
     </>
   );
+
 }
