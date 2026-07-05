@@ -210,7 +210,8 @@ type PageKey =
   | "upload"
   | "drivers"
   | "aporte"
-  | "rendimentos";
+  | "rendimentos"
+  | "domus";
 
 const PROFILE_META: Record<ProfileId, { name: string; sub: string; avatarBg: string; avatarColor: string; content: ReactNode }> = {
   familiar: {
@@ -242,11 +243,17 @@ const PROFILE_META: Record<ProfileId, { name: string; sub: string; avatarBg: str
 export function VestaShell({
   profileId,
   onSwitchProfile,
+  loggedAs,
+  scopes,
+  onUpdateScopes,
   children,
 }: {
   profileId: ProfileId;
   onChangeProfile?: (id: ProfileId) => void;
   onSwitchProfile: () => void;
+  loggedAs?: PersonaId;
+  scopes?: Record<PersonaId, Scope>;
+  onUpdateScopes?: (next: Record<PersonaId, Scope>) => void;
   children?: ReactNode;
 }) {
   const [page, setPage] = useState<PageKey>("home");
