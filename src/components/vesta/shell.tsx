@@ -434,7 +434,10 @@ export function VestaShell({
             {page === "drivers" && <DriversPage />}
             {page === "aporte" && <AportePage />}
             {page === "rendimentos" && <RendimentosPage profileId={profileId} />}
-            {!["home", "posicao", "breakeven", "equiv", "validador", "projecao", "secundario", "alertas", "regras", "upload", "drivers", "aporte", "rendimentos"].includes(page) && (
+            {page === "domus" && isVesta && scopes && onUpdateScopes && (
+              <DomusPage scopes={scopes} onUpdateScopes={onUpdateScopes} />
+            )}
+            {!["home", "posicao", "breakeven", "equiv", "validador", "projecao", "secundario", "alertas", "regras", "upload", "drivers", "aporte", "rendimentos", "domus"].includes(page) && (
               <div className="ph">
                 <h1>Em breve</h1>
                 <p>Este módulo será migrado nas próximas rodadas.</p>
