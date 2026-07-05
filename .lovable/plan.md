@@ -1,39 +1,91 @@
+## Objetivo
 
-## O que ficou para amanhã
+Trocar o "login" mock por autenticação real, com MFA obrigatório via app autenticador (Google Authenticator — o QR code é padrão, então Authy/1Password também funcionam se ela preferir), cadastro fechado, e mover os dados fixos do código para o banco protegido por RLS.
 
-Do que combinamos nas últimas rodadas, ainda em aberto:
+## Fase 1 — Estrutura de autenticação
 
-1. **Badge "2 alertas ativos" travada** (este ajuste — ver abaixo).
-2. **Confirmar LCD BRDE FEV/2036 (Cinthia)** — R$106.833 não apareceu no último `PosicaoDetalhada`, precisa checar na XP se aparece em "Posição" e a taxa exata.
-3. **Come-cotas XPAG11 (Paulo)** — comparar rentabilidade líquida real vs LCA 92% CDI direta antes de novembro.
-4. **BPAC11 (Paulo)** — definir stop loss ou prazo de revisão da tese (-37% sobre PM).
-5. **NTN-B AGO/2026 (Paulo)** — decisão do reinvestimento (~R$95k liberam 15/08/2026).
-6. **Aporte pontual (PLR/férias)** — já entregue em Breakeven e em Projeção. Se quiser propagar para outra tela, avisar.
+1. **Backend (Lovable Cloud)**
+   - Signup público desligado.
+   - Ativar Google sign-in fica de fora (Paulo não tem Google).
+   - Habilitar proteção contra senhas vazadas (HIBP).
+2. **Tabelas novas**
+   - `profiles` (nome, email, avatar, criado_por) ligada ao usuário.
+   - `app_role` enum: `vesta` | `membro`.
+   - `user_roles` (user_id, role) — separada por segurança.
+   - Função `has_role(user_id, role)` SECURITY DEFINER pra RLS.
+3. **Trigger** que cria `profile` automaticamente no signup.
 
-Fora isso, Fase 4 (Domus / Personae com login e escopos por Vesta) segue documentada em `.lovable/plan.md`, aguardando decisão de partir para 4a (mock em memória) ou refinar mais o modelo.
+## Fase 2 — Fluxo de login com MFA obrigatório
 
-## Ajuste desta rodada — badge de alertas dinâmica
+Telas novas (todas em português, no estilo Vesta atual):
 
-**Problema:** em `src/components/vesta/shell.tsx` (linha 444) o texto `2 alertas ativos` está hardcoded. Não muda entre Paulo, Cinthia ou Familiar, nem quando a lista de alertas do usuário cresce ou encolhe.
-
-**Fix:**
-- Ler `u.alertas_list` do usuário ativo (`getUser(profileId)`, já disponível no shell).
-- Contar quantos são "acionáveis" = severidade `r` (urgente) + `w` (atenção). Positivos (`g`) não somam no badge do header, para não gerar falso alarme.
-- Renderizar `{n} alerta ativo` / `{n} alertas ativos` (plural correto). Se zero, mostrar `sem alertas ativos` e opcionalmente aplicar uma variante visual mais neutra (ou deixar o mesmo estilo, decidimos no build).
-- Para o perfil `familiar`, `getUser("familiar")` já retorna a lista consolidada — então a mesma expressão funciona sem código extra.
-
-**Escopo:** só o bloco `badge-alert` no header do shell. Não mexe nas páginas de Alertas nem no `alertas_list` de cada usuário.
-
-### Detalhe técnico
-
-```tsx
-// dentro do render do shell, onde já temos meta / profileId
-const u = getUser(profileId);
-const alertasAtivos = u.alertas_list.filter((a) => a.cor === "r" || a.cor === "w").length;
-const alertaLabel =
-  alertasAtivos === 0 ? "sem alertas ativos"
-  : alertasAtivos === 1 ? "1 alerta ativo"
-  : `${alertasAtivos} alertas ativos`;
+```text
+/auth              → email + senha
+/auth/mfa-setup    → 1º login: mostra QR code + campo do código de 6 dígitos
+/auth/mfa-verify   → logins seguintes: só o campo do código
+/auth/reset        → definir senha (usado no convite e no "esqueci")
 ```
 
-E trocar `2 alertas ativos` por `{alertaLabel}`. Se `getUser` ainda não estiver importado no shell, adicionar o import de `@/data/vesta-users`.
+- Após email+senha, o app checa se o usuário já tem fator TOTP.
+  - **Sem fator** → força `/auth/mfa-setup`. Só entra depois de escanear o QR e digitar o código correto.
+  - **Com fator** → pede o código de 6 dígitos em `/auth/mfa-verify`.
+- Sessão só é considerada válida (`aal2`) depois do código. Sem MFA verificado, todas as rotas protegidas redirecionam de volta pro passo faltante.
+
+## Fase 3 — Painel Vesta (só papel `vesta` acessa)
+
+Nova página `/vesta/usuarios`:
+
+- Listar usuários (nome, email, papel, MFA ativo?, último login).
+- Botão "Convidar usuário": abre modal com email + papel (`vesta`/`membro`) → dispara convite por email.
+- Botão "Resetar MFA" (quando o Paulo perder o celular, você tira o fator dele e ele reconfigura no próximo login).
+- Botão "Remover acesso".
+
+Tudo isso via server functions (`createServerFn` + `requireSupabaseAuth`) que verificam `has_role(user, 'vesta')` antes de chamar a Auth Admin API.
+
+## Fase 4 — Migração dos dados mock pro banco
+
+Tabelas por dado (todas com RLS scoped por `owner_id` + policy pra `vesta` ver tudo):
+
+- `carteiras` (owner_id, conta, total, rf, rv, kpi4…)
+- `rf_ativos` (owner_id, nome, valor, taxa, cdi, vencimento, status, nota)
+- `rv_ativos` (owner_id, ticker, valor, pm, retorno, classe…)
+- `alertas` (owner_id, cor, titulo, det)
+- `vencimentos` (owner_id, icon, nome, det, badge, cor)
+- `resumo_itens` (owner_id, dot, nome, det)
+
+Seed inicial via migration: linhas da Cinthia com `owner_id = <uuid da cinthia>` e do Paulo com `owner_id = <uuid do paulo>` (preenchidos depois que você criar as duas contas pelo painel).
+
+`getUser()` em `src/data/vesta-users.ts` vira server function que:
+- Se `profileId === "familiar"` e usuário é `vesta` → agrega as duas carteiras.
+- Se `profileId === "paulo"` → só permite se `has_role('vesta')` ou owner.
+- Se `profileId === "cinthia"` → mesma regra.
+
+## Fase 5 — Emails de auth
+
+Configurar templates de email do Lovable pra:
+- Convite ("Cinthia te convidou pro Vesta — clique pra definir sua senha")
+- Reset de senha
+- Confirmação de email
+
+## Detalhes técnicos
+
+- Lib usada: Supabase MFA nativo (`supabase.auth.mfa.enroll/challenge/verify`) — o QR gerado é TOTP-padrão, compatível com Google Auth, MS Auth, Authy, 1Password.
+- `_authenticated/route.tsx` (gerenciado pela plataforma) já bloqueia rotas privadas; adiciono um gate extra que exige `aal === 'aal2'` (MFA confirmado nesta sessão).
+- Rotas Vesta ficam em `_authenticated/_vesta/` com `beforeLoad` chamando `has_role`.
+- Todas as tabelas: `GRANT` para `authenticated`, `service_role`; nenhuma pra `anon` (não há leitura pública).
+
+## Fora de escopo (fica pra depois se você quiser)
+
+- Recuperação de MFA por códigos-backup (posso adicionar).
+- Login por biometria/passkey no celular.
+- Log de auditoria (quem entrou quando, o que a Vesta alterou).
+
+## Ordem de execução
+
+1. Migration (tabelas, roles, RLS, trigger).
+2. Configurar auth (signup off, HIBP on).
+3. Telas de auth + MFA.
+4. Painel Vesta de usuários.
+5. Server functions de dados + trocar o mock.
+6. Templates de email.
+7. Você cria as duas contas (Cinthia e Paulo) pelo painel; seed dos dados atuais é aplicado nas contas criadas.

@@ -1,8 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 import { ProfileSelector, VestaShell } from "@/components/vesta/shell";
-import { LoginScreen } from "@/components/vesta/login";
+import { supabase } from "@/integrations/supabase/client";
 import type { ProfileId } from "@/lib/profile-derive";
 import {
   DEFAULT_SCOPES,
@@ -11,41 +12,43 @@ import {
   type PersonaId,
   type Scope,
 } from "@/state/session";
+import { getMyRole } from "@/lib/auth.functions";
 
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute("/_authenticated/")({
   component: VestaApp,
 });
 
 function VestaApp() {
-  const [loggedAs, setLoggedAs] = useState<PersonaId | null>(null);
+  const navigate = useNavigate();
   const [scopes, setScopes] = useState<Record<PersonaId, Scope>>(DEFAULT_SCOPES);
   const [profile, setProfile] = useState<ProfileId | null>(null);
 
-  // 1) Login mockado
-  if (!loggedAs) {
+  const { data: roleData, isLoading } = useQuery({
+    queryKey: ["my-role"],
+    queryFn: () => getMyRole(),
+  });
+
+  if (isLoading) {
     return (
-      <LoginScreen
-        onLogin={(id) => {
-          setLoggedAs(id);
-          setProfile(null);
-        }}
-      />
+      <div id="profile-screen">
+        <div className="ps-vesta">✦ Vesta ✦</div>
+        <div className="ps-subtitle">Carregando…</div>
+      </div>
     );
   }
 
+  const loggedAs: PersonaId = roleData?.role === "vesta" ? "cinthia" : "paulo";
   const scope = scopes[loggedAs];
   const allowed = allowedProfiles(loggedAs, scope);
 
-  // 2) Se o membro só pode ver a própria carteira, pula o seletor.
   const effectiveProfile: ProfileId | null =
     profile ?? (allowed.length === 1 ? allowed[0] : null);
 
-  const doLogout = () => {
-    setLoggedAs(null);
-    setProfile(null);
+  const doLogout = async () => {
+    await supabase.auth.signOut();
+    navigate({ to: "/auth" });
   };
 
-  // 3) Seletor filtrado por escopo
   if (!effectiveProfile) {
     return (
       <ProfileSelector
@@ -57,7 +60,6 @@ function VestaApp() {
     );
   }
 
-  // 4) Guard: se por algum motivo o profile atual não é mais permitido, volta pro seletor.
   if (!allowed.includes(effectiveProfile)) {
     setProfile(null);
     return null;
@@ -69,7 +71,6 @@ function VestaApp() {
       loggedAs={loggedAs}
       scopes={scopes}
       onUpdateScopes={
-        // Só a Vesta gere escopos.
         PERSONAE[loggedAs].role === "vesta" ? setScopes : undefined
       }
       onChangeProfile={setProfile}
