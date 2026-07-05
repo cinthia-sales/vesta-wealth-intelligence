@@ -14,6 +14,140 @@ export type Database = {
   }
   public: {
     Tables: {
+      domus: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          descricao: string | null
+          id: string
+          nome: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          descricao?: string | null
+          id?: string
+          nome: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          descricao?: string | null
+          id?: string
+          nome?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "domus_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      domus_join_requests: {
+        Row: {
+          created_at: string
+          domus_id: string | null
+          email: string
+          id: string
+          mensagem: string | null
+          nome: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          domus_id?: string | null
+          email: string
+          id?: string
+          mensagem?: string | null
+          nome: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          domus_id?: string | null
+          email?: string
+          id?: string
+          mensagem?: string | null
+          nome?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "domus_join_requests_domus_id_fkey"
+            columns: ["domus_id"]
+            isOneToOne: false
+            referencedRelation: "domus"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "domus_join_requests_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      domus_members: {
+        Row: {
+          created_at: string
+          domus_id: string
+          id: string
+          papel: string
+          profile_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          domus_id: string
+          id?: string
+          papel?: string
+          profile_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          domus_id?: string
+          id?: string
+          papel?: string
+          profile_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "domus_members_domus_id_fkey"
+            columns: ["domus_id"]
+            isOneToOne: false
+            referencedRelation: "domus"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "domus_members_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
