@@ -97,6 +97,16 @@ function BreakevenConsolidado({ data }: { data: typeof PAULO_DATA }) {
   const pathA = points.map((p, i) => (i ? "L" : "M") + xs(p.m) + " " + ys(p.a)).join(" ");
   const pathB = points.map((p, i) => (i ? "L" : "M") + xs(p.m) + " " + ys(p.b)).join(" ");
 
+  // Ponto de encontro analítico entre as duas curvas
+  let cruzamento: { m: number; v: number } | null = null;
+  if (linhas.cA > 0 && linhas.cB > 0 && linhas.tA !== linhas.tB) {
+    const mCross = 12 * Math.log(linhas.cA / linhas.cB) / Math.log((1 + linhas.tB) / (1 + linhas.tA));
+    if (isFinite(mCross) && mCross > 0 && mCross <= 78) {
+      const vCross = linhas.cA * Math.pow(1 + linhas.tA, mCross / 12);
+      cruzamento = { m: Math.round(mCross), v: vCross };
+    }
+  }
+
   const capitalTotal = ativos.reduce((s, a) => s + a.capital, 0);
   const mesesBreakeven = Math.ceil(custo / ganho);
 
