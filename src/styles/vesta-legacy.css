@@ -44,7 +44,8 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 .nav-item svg{width:17px;height:17px;flex-shrink:0;opacity:.8}
 .nav-item.on svg{opacity:1}
 .sidebar-foot{padding:12px 10px;border-top:1px solid rgba(232,180,192,.12)}
-.active-profile-bar{white-space:nowrap;overflow:hidden}
+.active-profile-bar{min-width:0}
+.apb-name,.apb-sub{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* ── MAIN ── */
 .main{flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden}
