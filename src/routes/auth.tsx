@@ -84,8 +84,8 @@ function AuthPage() {
         </div>
         <div className="auth-subtitle">
           {bootstrapMode
-            ? "Primeira Vesta — defina seu acesso"
-            : "Autenticação segura com código do celular"}
+            ? "Primeira Vesta — defina email e senha"
+            : "Email, senha e o código do seu autenticador"}
         </div>
 
         <form onSubmit={bootstrapMode ? handleBootstrap : handleSignIn} className="auth-form">
@@ -130,8 +130,8 @@ function AuthPage() {
 
         <div className="auth-ornament">
           {bootstrapMode
-            ? "após entrar você vai configurar o autenticador do celular"
-            : "seu celular vai gerar um código de 6 dígitos"}
+            ? "próximo passo: instalar o Google Authenticator no celular e escanear o QR code"
+            : "abra o Google Authenticator no celular pra pegar o código"}
         </div>
       </div>
     </div>
