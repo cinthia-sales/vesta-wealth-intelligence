@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import vestaHero from "@/assets/vesta-hero.png.asset.json";
+
 
 type PublicDomus = {
   id: string;
@@ -82,7 +82,7 @@ function DomusLanding() {
   return (
     <main className="public-domus">
       <section className="public-domus-hero">
-        <img src={vestaHero.url} alt="" className="public-domus-lineart" />
+        
         <p className="public-domus-kicker">Vesta · Domus et Patrimonium</p>
         <h1>Entrada no Domus</h1>
         <p className="public-domus-copy">
