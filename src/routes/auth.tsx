@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { isBootstrapAvailable } from "@/lib/auth.functions";
 import vestaLineart from "@/assets/vesta-lineart.png";
 
-export const Route = createFileRoute("/auth/")({
+export const Route = createFileRoute("/auth")({
   ssr: false,
   validateSearch: (s: Record<string, unknown>) => ({
     next: typeof s.next === "string" ? s.next : "/app",
