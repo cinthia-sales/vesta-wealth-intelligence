@@ -86,17 +86,24 @@ function MfaSetup() {
       <div className="auth-card">
         <img src={vestaLineart} alt="" className="auth-lineart" />
         <div className="auth-vesta">Vesta</div>
-        <div className="auth-title">Configurar autenticador</div>
+        <div className="auth-title">Vincular o celular</div>
         <div className="auth-subtitle">
-          Escaneie com Google Authenticator, Authy ou 1Password
+          Isso troca a senha por um código que muda a cada 30 segundos — só quem tem o seu celular consegue entrar.
         </div>
+
+        <ol className="auth-steps">
+          <li>Baixe o <b>Google Authenticator</b> (ou Microsoft Authenticator / Authy) no celular.</li>
+          <li>Abra o app, toque em <b>+</b> e escolha <b>Ler QR code</b>.</li>
+          <li>Aponte a câmera pro QR abaixo.</li>
+          <li>Digite aqui o código de 6 dígitos que aparecer no app.</li>
+        </ol>
 
         {qr ? (
           <div className="auth-qr">
             <img src={qr} alt="QR code" width={220} height={220} />
             {secret && (
               <details>
-                <summary>não consigo escanear</summary>
+                <summary>não consigo escanear — digitar código manual</summary>
                 <code>{secret}</code>
               </details>
             )}
