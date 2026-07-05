@@ -392,19 +392,21 @@ export function VestaShell({
           </div>
         </div>
 
-        <div className="active-profile-bar" onClick={onSwitchProfile} title="Trocar perfil">
-          <div
-            className="apb-avatar"
-            style={{ background: meta.avatarBg, color: meta.avatarColor, fontSize: 14 }}
-          >
-            {meta.content}
+        {isVesta && (
+          <div className="active-profile-bar" onClick={onSwitchProfile} title="Trocar perfil">
+            <div
+              className="apb-avatar"
+              style={{ background: meta.avatarBg, color: meta.avatarColor, fontSize: 14 }}
+            >
+              {meta.content}
+            </div>
+            <div className="apb-info">
+              <div className="apb-name">{meta.name}</div>
+              <div className="apb-sub">{meta.sub}</div>
+            </div>
+            <div className="apb-change">↩</div>
           </div>
-          <div className="apb-info">
-            <div className="apb-name">{meta.name}</div>
-            <div className="apb-sub">{meta.sub}</div>
-          </div>
-          <div className="apb-change">↩</div>
-        </div>
+        )}
 
         <div className="nav">
           {loggedAs && (
@@ -429,14 +431,17 @@ export function VestaShell({
             </div>
           )}
 
-          <div
-            className="nav-item"
-            onClick={onSwitchProfile}
-            style={{ color: "rgba(212,175,55,.7)" }}
-          >
-            {NAV_ICONS.start}
-            Trocar visão / perfil
-          </div>
+          {isVesta && (
+            <div
+              className="nav-item"
+              onClick={onSwitchProfile}
+              style={{ color: "rgba(212,175,55,.7)" }}
+            >
+              {NAV_ICONS.start}
+              Trocar visão / perfil
+            </div>
+          )}
+
 
           {onLogout && (
             <div
