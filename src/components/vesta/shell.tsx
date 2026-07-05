@@ -343,12 +343,23 @@ export function VestaShell({
           {item("equiv", "Equivalência de taxas")}
           {item("validador", "Validador de troca")}
           {item("breakeven", "Breakeven")}
+          {item("aporte", "Acelerar breakeven")}
           {item("projecao", "Projeção patrimônio")}
           {item("secundario", "Saída secundário")}
           {item("regras", "Regras — não mexer")}
           {item("upload", "Importar arquivos XP")}
           {item("drivers", "Influenciadores")}
-          {item("aporte", "Acelerar breakeven")}
+
+          {isVesta && (
+            <>
+              <div className="nav-sec">Domus</div>
+              {item(
+                "domus",
+                "Gerir Domus",
+                <span style={{ marginLeft: "auto", fontSize: 12 }}>🏛</span>,
+              )}
+            </>
+          )}
         </div>
 
         <div className="sidebar-foot" />
