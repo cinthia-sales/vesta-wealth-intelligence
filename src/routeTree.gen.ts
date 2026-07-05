@@ -10,10 +10,10 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as McpRouteImport } from './routes/mcp'
-import { Route as AppRouteImport } from './routes/app'
 import { Route as AuthIndexRouteImport } from './routes/auth.index'
 import { Route as AuthMfaVerifyRouteImport } from './routes/auth.mfa-verify'
 import { Route as AuthMfaSetupRouteImport } from './routes/auth.mfa-setup'
+import { Route as AuthenticatedAppRouteImport } from './routes/_authenticated.app'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
@@ -21,11 +21,6 @@ import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[
 const McpRoute = McpRouteImport.update({
   id: '/mcp',
   path: '/mcp',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AppRoute = AppRouteImport.update({
-  id: '/app',
-  path: '/app',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthIndexRoute = AuthIndexRouteImport.update({
@@ -41,6 +36,11 @@ const AuthMfaVerifyRoute = AuthMfaVerifyRouteImport.update({
 const AuthMfaSetupRoute = AuthMfaSetupRouteImport.update({
   id: '/auth/mfa-setup',
   path: '/auth/mfa-setup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedAppRoute = AuthenticatedAppRouteImport.update({
+  id: '/_authenticated/app',
+  path: '/app',
   getParentRoute: () => rootRouteImport,
 } as any)
 const Char91DotwellKnownChar93OauthProtectedResourceRoute =
@@ -63,20 +63,20 @@ const Char91DotmcpChar93InvokeToolToolRoute =
   } as any)
 
 export interface FileRoutesByFullPath {
-  '/app': typeof AppRoute
   '/mcp': typeof McpRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/app': typeof AuthenticatedAppRoute
   '/auth/mfa-setup': typeof AuthMfaSetupRoute
   '/auth/mfa-verify': typeof AuthMfaVerifyRoute
   '/auth/': typeof AuthIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
 }
 export interface FileRoutesByTo {
-  '/app': typeof AppRoute
   '/mcp': typeof McpRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/app': typeof AuthenticatedAppRoute
   '/auth/mfa-setup': typeof AuthMfaSetupRoute
   '/auth/mfa-verify': typeof AuthMfaVerifyRoute
   '/auth': typeof AuthIndexRoute
@@ -84,10 +84,10 @@ export interface FileRoutesByTo {
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/app': typeof AppRoute
   '/mcp': typeof McpRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/_authenticated/app': typeof AuthenticatedAppRoute
   '/auth/mfa-setup': typeof AuthMfaSetupRoute
   '/auth/mfa-verify': typeof AuthMfaVerifyRoute
   '/auth/': typeof AuthIndexRoute
@@ -96,30 +96,30 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    | '/app'
     | '/mcp'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
+    | '/app'
     | '/auth/mfa-setup'
     | '/auth/mfa-verify'
     | '/auth/'
     | '/.mcp/invoke-tool/$tool'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | '/app'
     | '/mcp'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
+    | '/app'
     | '/auth/mfa-setup'
     | '/auth/mfa-verify'
     | '/auth'
     | '/.mcp/invoke-tool/$tool'
   id:
     | '__root__'
-    | '/app'
     | '/mcp'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
+    | '/_authenticated/app'
     | '/auth/mfa-setup'
     | '/auth/mfa-verify'
     | '/auth/'
@@ -127,10 +127,10 @@ export interface FileRouteTypes {
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  AppRoute: typeof AppRoute
   McpRoute: typeof McpRoute
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  AuthenticatedAppRoute: typeof AuthenticatedAppRoute
   AuthMfaSetupRoute: typeof AuthMfaSetupRoute
   AuthMfaVerifyRoute: typeof AuthMfaVerifyRoute
   AuthIndexRoute: typeof AuthIndexRoute
@@ -144,13 +144,6 @@ declare module '@tanstack/react-router' {
       path: '/mcp'
       fullPath: '/mcp'
       preLoaderRoute: typeof McpRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/app': {
-      id: '/app'
-      path: '/app'
-      fullPath: '/app'
-      preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth/': {
@@ -172,6 +165,13 @@ declare module '@tanstack/react-router' {
       path: '/auth/mfa-setup'
       fullPath: '/auth/mfa-setup'
       preLoaderRoute: typeof AuthMfaSetupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/app': {
+      id: '/_authenticated/app'
+      path: '/app'
+      fullPath: '/app'
+      preLoaderRoute: typeof AuthenticatedAppRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/.well-known/oauth-protected-resource': {
@@ -199,11 +199,11 @@ declare module '@tanstack/react-router' {
 }
 
 const rootRouteChildren: RootRouteChildren = {
-  AppRoute: AppRoute,
   McpRoute: McpRoute,
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
+  AuthenticatedAppRoute: AuthenticatedAppRoute,
   AuthMfaSetupRoute: AuthMfaSetupRoute,
   AuthMfaVerifyRoute: AuthMfaVerifyRoute,
   AuthIndexRoute: AuthIndexRoute,
