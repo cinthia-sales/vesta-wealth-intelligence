@@ -458,29 +458,7 @@ export function VestaShell({
                   }`}
             </div>
           </div>
-          <div className="badge-alert">
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-              {alertaBreakdown.map((item) => (
-                <span
-                  key={item.key}
-                  title={`${item.title}: ${item.count}`}
-                  style={{ display: "inline-flex", alignItems: "center", gap: 2 }}
-                >
-                  <span
-                    style={{
-                      width: 7,
-                      height: 7,
-                      borderRadius: "50%",
-                      background: item.color,
-                      display: "inline-block",
-                    }}
-                  />
-                  {item.count}
-                </span>
-              ))}
-            </span>
-            {alertaLabel}
-          </div>
+          <div className="badge-alert">{alertaLabel}</div>
         </div>
 
         <div className="update-bar">
