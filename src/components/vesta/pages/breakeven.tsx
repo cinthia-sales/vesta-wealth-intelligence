@@ -602,27 +602,25 @@ function SimuladorTrocaBreakeven({
               <ChartAxes minV={minV} maxV={maxV} maxMonth={horizonte} W={W} H={H} PL={PL} PR={PR} PT={PT} PB={PB} xs={xs} ys={ys} />
               <path d={pathA} fill="none" stroke="#dc2626" strokeWidth={2} />
               <path d={pathB} fill="none" stroke="#4f8ef7" strokeWidth={2} />
-              {pontoEncontro && pontoEncontro.meses <= horizonte && (
-                <>
-                  <line
-                    x1={xs(pontoEncontro.meses)}
-                    x2={xs(pontoEncontro.meses)}
-                    y1={PT}
-                    y2={H - PB}
-                    stroke="var(--accent)"
-                    strokeDasharray="3 3"
-                    strokeWidth={1}
-                  />
-                  <text
-                    x={xs(pontoEncontro.meses) + 4}
-                    y={PT + 12}
-                    fontSize={11}
-                    fill="var(--accent)"
-                  >
-                    m{pontoEncontro.meses}
-                  </text>
-                </>
-              )}
+              {pontoEncontro && pontoEncontro.meses <= horizonte && (() => {
+                const vCross = capitalA * Math.pow(1 + taxaCurvaA, pontoEncontro.meses / 12);
+                return (
+                  <>
+                    <line
+                      x1={xs(pontoEncontro.meses)} x2={xs(pontoEncontro.meses)}
+                      y1={PT} y2={H - PB}
+                      stroke="var(--accent)" strokeDasharray="3 3" strokeWidth={1}
+                    />
+                    <circle cx={xs(pontoEncontro.meses)} cy={ys(vCross)} r={4} fill="var(--accent)" />
+                    <text
+                      x={xs(pontoEncontro.meses) + 6} y={ys(vCross) - 8}
+                      fontSize={11} fill="var(--accent)" fontWeight={600}
+                    >
+                      m{pontoEncontro.meses} · {fmtRk(vCross)}
+                    </text>
+                  </>
+                );
+              })()}
             </svg>
           </div>
           <div style={{ display: "flex", gap: 18, marginTop: 10, fontSize: 12, color: "var(--muted)", flexWrap: "wrap" }}>
