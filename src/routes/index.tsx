@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import vestaLineart from "@/assets/vesta-lineart.png";
+import vestaHero from "@/assets/vesta-hero.png.asset.json";
 
 type PublicDomus = {
   id: string;
