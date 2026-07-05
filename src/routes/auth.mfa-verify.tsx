@@ -1,8 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import vestaLineart from "@/assets/vesta-lineart.png";
 
 export const Route = createFileRoute("/auth/mfa-verify")({
+  ssr: false,
   validateSearch: (s: Record<string, unknown>) => ({
     next: typeof s.next === "string" ? s.next : "/",
   }),
@@ -63,7 +65,8 @@ function MfaVerify() {
   return (
     <div className="auth-wrap">
       <div className="auth-card">
-        <div className="auth-vesta">✦ Vesta ✦</div>
+        <img src={vestaLineart} alt="" className="auth-lineart" />
+        <div className="auth-vesta">Vesta</div>
         <div className="auth-title">Código do autenticador</div>
         <div className="auth-subtitle">
           Abra o app e digite os 6 dígitos

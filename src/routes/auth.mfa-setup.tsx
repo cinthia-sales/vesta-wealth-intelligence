@@ -1,8 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import vestaLineart from "@/assets/vesta-lineart.png";
 
 export const Route = createFileRoute("/auth/mfa-setup")({
+  ssr: false,
   validateSearch: (s: Record<string, unknown>) => ({
     next: typeof s.next === "string" ? s.next : "/",
   }),
@@ -82,7 +84,8 @@ function MfaSetup() {
   return (
     <div className="auth-wrap">
       <div className="auth-card">
-        <div className="auth-vesta">✦ Vesta ✦</div>
+        <img src={vestaLineart} alt="" className="auth-lineart" />
+        <div className="auth-vesta">Vesta</div>
         <div className="auth-title">Configurar autenticador</div>
         <div className="auth-subtitle">
           Escaneie com Google Authenticator, Authy ou 1Password
