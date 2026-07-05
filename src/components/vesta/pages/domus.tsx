@@ -4,6 +4,9 @@ import {
   type PersonaId,
   type Scope,
 } from "@/state/session";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { createDomus, getDomusAdmin, updateJoinRequestStatus } from "@/lib/domus.functions";
+import { useState } from "react";
 
 /* ============================================================
    DomusPage — só a Vesta acessa.
@@ -17,6 +20,26 @@ export function DomusPage({
   onUpdateScopes: (next: Record<PersonaId, Scope>) => void;
 }) {
   const membros: PersonaId[] = ["cinthia", "paulo"];
+  const queryClient = useQueryClient();
+  const [novoNome, setNovoNome] = useState(DOMUS_NAME);
+  const [novoSlug, setNovoSlug] = useState("familia-malta-furtado");
+  const [novaDescricao, setNovaDescricao] = useState("Gestão familiar de patrimônio, permissões e decisões.");
+
+  const { data: adminData, isLoading } = useQuery({
+    queryKey: ["domus-admin"],
+    queryFn: () => getDomusAdmin(),
+  });
+
+  const createMutation = useMutation({
+    mutationFn: () => createDomus({ data: { nome: novoNome, slug: novoSlug, descricao: novaDescricao } }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["domus-admin"] }),
+  });
+
+  const statusMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: "aprovado" | "recusado" }) =>
+      updateJoinRequestStatus({ data: { id, status } }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["domus-admin"] }),
+  });
 
   const toggleConsolidado = (id: PersonaId) => {
     onUpdateScopes({
@@ -44,6 +67,77 @@ export function DomusPage({
           <strong>{DOMUS_NAME}</strong> · como Vesta, você é soberana sobre quem vê o quê.
           Cada membro sempre vê a própria carteira; o resto é você quem libera.
         </p>
+      </div>
+
+      <div className="card" style={{ marginBottom: 14 }}>
+        <div className="card-hdr">
+          Criar Domus <span>{adminData?.domus?.length ?? 0} cadastrados</span>
+        </div>
+        <form
+          className="domus-admin-form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            createMutation.mutate();
+          }}
+        >
+          <label>
+            Nome
+            <input value={novoNome} onChange={(e) => setNovoNome(e.target.value)} required />
+          </label>
+          <label>
+            Identificador
+            <input
+              value={novoSlug}
+              onChange={(e) => setNovoSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"))}
+              required
+            />
+          </label>
+          <label className="wide">
+            Descrição
+            <textarea value={novaDescricao} onChange={(e) => setNovaDescricao(e.target.value)} rows={3} />
+          </label>
+          <button type="submit" disabled={createMutation.isPending}>
+            {createMutation.isPending ? "Criando…" : "Criar Domus"}
+          </button>
+          {createMutation.error && <div className="auth-error wide">{(createMutation.error as Error).message}</div>}
+        </form>
+        <div className="domus-list">
+          {isLoading && <span>Carregando Domus…</span>}
+          {adminData?.domus?.map((item) => (
+            <div key={item.id} className="domus-pill">
+              <strong>{item.nome}</strong>
+              <span>/{item.slug}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="card" style={{ marginBottom: 14 }}>
+        <div className="card-hdr">
+          Pedidos de entrada <span>{adminData?.requests?.filter((r: any) => r.status === "pendente").length ?? 0} pendentes</span>
+        </div>
+        <div className="domus-requests">
+          {isLoading && <div className="aitem-det">Carregando pedidos…</div>}
+          {adminData?.requests?.length === 0 && <div className="aitem-det">Nenhum pedido ainda.</div>}
+          {adminData?.requests?.map((pedido: any) => (
+            <div key={pedido.id} className="domus-request">
+              <div>
+                <div className="aitem-name">{pedido.nome}</div>
+                <div className="aitem-det">{pedido.email} · {pedido.domus?.nome ?? "Domus a definir"}</div>
+                {pedido.mensagem && <p>{pedido.mensagem}</p>}
+              </div>
+              <span className={`sb ${pedido.status === "pendente" ? "sb-w" : pedido.status === "aprovado" ? "sb-g" : "sb-r"}`}>
+                {pedido.status}
+              </span>
+              {pedido.status === "pendente" && (
+                <div className="domus-request-actions">
+                  <button onClick={() => statusMutation.mutate({ id: pedido.id, status: "aprovado" })}>aprovar</button>
+                  <button onClick={() => statusMutation.mutate({ id: pedido.id, status: "recusado" })}>recusar</button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="card" style={{ marginBottom: 14 }}>
@@ -150,9 +244,8 @@ export function DomusPage({
           lineHeight: 1.6,
         }}
       >
-        💡 <strong>Fase 4a — mock em memória.</strong> Mudanças aqui alteram o que cada
-        Persona vê ao entrar, mas não persistem entre reloads da página. Nas próximas fases
-        entra persistência local (4b) e depois backend real com auth e RLS (4c).
+        💡 Os pedidos já ficam salvos no banco. A criação automática de usuário pode entrar no próximo passo,
+        depois que você decidir se prefere convite por email ou cadastro manual com senha temporária.
       </div>
     </>
   );

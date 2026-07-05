@@ -14,7 +14,7 @@ import {
 } from "@/state/session";
 import { getMyRole } from "@/lib/auth.functions";
 
-export const Route = createFileRoute("/_authenticated/")({
+export const Route = createFileRoute("/_authenticated/app")({
   component: VestaApp,
 });
 
@@ -46,7 +46,7 @@ function VestaApp() {
 
   const doLogout = async () => {
     await supabase.auth.signOut();
-    navigate({ to: "/auth" });
+    navigate({ to: "/" });
   };
 
   if (!effectiveProfile) {

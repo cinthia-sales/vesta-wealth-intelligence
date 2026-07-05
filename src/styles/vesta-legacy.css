@@ -624,3 +624,31 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
   text-decoration:underline;cursor:pointer;
 }
 .auth-linkbtn:hover{color:var(--accent)}
+
+/* ── Página pública Domus ── */
+.public-domus{
+  min-height:100vh;background:linear-gradient(180deg,#FBF5F3 0%,#F3E7E4 100%);
+  color:var(--text);font-family:var(--font-body);padding:32px 18px 48px;
+}
+.public-domus-hero{max-width:760px;margin:0 auto;text-align:center;padding:42px 0 34px}
+.public-domus-lineart{width:118px;height:118px;object-fit:contain;opacity:.86;margin-bottom:10px}
+.public-domus-kicker{font-family:var(--font-display);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);margin-bottom:10px}
+.public-domus h1{font-family:var(--font-elegant);font-size:48px;font-weight:300;letter-spacing:.03em;margin-bottom:12px;color:#2A0F14}
+.public-domus h2{font-family:var(--font-elegant);font-size:30px;font-weight:300;color:#2A0F14;margin-bottom:8px}
+.public-domus-copy,.public-domus-panel p{font-size:15px;line-height:1.7;color:var(--muted)}
+.public-domus-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:24px}
+.public-domus-actions a{display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--accent);border-radius:8px;padding:10px 16px;color:var(--accent);text-decoration:none;font-family:var(--font-display);font-size:11px;letter-spacing:.14em;text-transform:uppercase;background:#fff}
+.public-domus-actions a:first-child{background:var(--accent);color:#fff}
+.public-domus-panel{max-width:880px;margin:0 auto;background:#fff;border:1px solid var(--border);border-radius:14px;padding:28px;box-shadow:0 8px 28px rgba(42,15,20,.08);display:grid;grid-template-columns:.8fr 1.2fr;gap:28px;align-items:start}
+.public-domus-form,.domus-admin-form{display:grid;gap:14px}
+.public-domus-form label,.domus-admin-form label{display:flex;flex-direction:column;gap:6px;font-family:var(--font-display);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.public-domus-form input,.public-domus-form select,.public-domus-form textarea,.domus-admin-form input,.domus-admin-form textarea{width:100%;background:#FFFDFC;border:1px solid var(--border);border-radius:8px;padding:11px 13px;color:var(--text);font-family:var(--font-body);font-size:14px}
+.public-domus-form textarea,.domus-admin-form textarea{resize:vertical;line-height:1.5}
+.public-domus-form button,.domus-admin-form button,.domus-request-actions button{background:var(--accent);color:#fff;border:0;border-radius:8px;padding:11px 14px;font-family:var(--font-display);font-size:11px;letter-spacing:.14em;text-transform:uppercase;cursor:pointer}
+.public-domus-form button:disabled,.domus-admin-form button:disabled{opacity:.55;cursor:not-allowed}
+.public-domus-success{background:var(--success-bg);border:1px solid rgba(78,122,92,.28);color:var(--success);padding:10px 12px;border-radius:8px;font-size:13px;line-height:1.4}
+.domus-admin-form{grid-template-columns:1fr 1fr auto;align-items:end;padding:16px 0}
+.domus-admin-form .wide{grid-column:1 / -1}.domus-admin-form button{height:42px;margin-bottom:0}
+.domus-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}.domus-pill{border:1px solid var(--border);border-radius:999px;padding:7px 11px;background:#FFFDFC;font-size:12px}.domus-pill span{color:var(--muted);margin-left:6px}
+.domus-requests{display:grid;gap:10px}.domus-request{display:grid;grid-template-columns:1fr auto auto;gap:12px;align-items:center;border:1px solid var(--border);border-radius:10px;padding:12px;background:#FFFDFC}.domus-request p{font-size:12px;color:var(--muted);line-height:1.5;margin-top:5px}.domus-request-actions{display:flex;gap:6px}.domus-request-actions button:last-child{background:transparent;color:var(--danger);border:1px solid rgba(192,57,43,.25)}
+@media (max-width:768px){.public-domus h1{font-size:34px}.public-domus-panel{grid-template-columns:1fr;padding:20px}.domus-admin-form,.domus-request{grid-template-columns:1fr}.domus-request-actions{justify-content:flex-start}}
