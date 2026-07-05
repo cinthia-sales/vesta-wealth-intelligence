@@ -71,7 +71,7 @@ export function ProfileSelector({
               <div className="ps-card-desc" style={{ margin: "6px 0 10px" }}>
                 Visão consolidada<br />das duas carteiras<br />e todas as ferramentas
               </div>
-              <div className="ps-card-badge ps-badge-fam">Acesso total<br />&nbsp;Vestæ Tantum</div>
+              <div className="ps-card-badge ps-badge-fam">Acesso total -&nbsp;Vestæ Tantum</div>
             </div>
           </div>
         )}
@@ -84,7 +84,7 @@ export function ProfileSelector({
               <div className="ps-card-desc" style={{ margin: "6px 0 10px" }}>
                 Carteira XP 6414212<br />visão individual<br />&nbsp;
               </div>
-              <div className="ps-card-badge ps-badge-ind">Individual<br />Infinitus</div>
+              <div className="ps-card-badge ps-badge-ind">Individual&nbsp;Infinitus</div>
             </div>
           </div>
         )}
