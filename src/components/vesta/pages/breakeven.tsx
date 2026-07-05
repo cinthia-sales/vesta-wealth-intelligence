@@ -948,6 +948,70 @@ function BreakevenConfirmadoUsuario({
   );
 }
 
+// ---- Interação entre breakeven atual (Paulo) e um novo ------------------
+function InteracaoBreakevens({
+  paulo,
+  novo,
+}: {
+  paulo: typeof PAULO_DATA;
+  novo: BreakevenReal;
+}) {
+  const capNovo = novo.grupoA.reduce((s, l) => s + l.capital, 0);
+  const tA_novo = mediaPonderada(novo.grupoA, "taxaCurva");
+  const tB_novo = mediaPonderada(novo.grupoB, "taxaCurva");
+  const ganhoMesNovo = (capNovo * (tB_novo - tA_novo)) / 12;
+  const mesesNovo = ganhoMesNovo > 0 && novo.custo > 0 ? Math.ceil(novo.custo / ganhoMesNovo) : Infinity;
+
+  const custoAtual = paulo.custo;
+  const ganhoAtual = paulo.ganho;
+  const mesesAtual = Math.ceil(custoAtual / ganhoAtual);
+
+  const custoTotal = custoAtual + novo.custo;
+  const ganhoTotal = ganhoAtual + Math.max(0, ganhoMesNovo);
+  const mesesCombinado = ganhoTotal > 0 ? Math.ceil(custoTotal / ganhoTotal) : Infinity;
+  const encurtou = isFinite(mesesCombinado) ? Math.max(0, mesesAtual - mesesCombinado) : 0;
+
+  return (
+    <div className="card" style={{ marginTop: 16, padding: "18px 20px", borderLeft: "4px solid var(--accent)" }}>
+      <div className="card-hdr" style={{ marginBottom: 10 }}>
+        Interação entre os dois breakevens <span>giro atual + novo giro</span>
+      </div>
+      <div className="kpi-row">
+        <div className="kpi">
+          <div className="kpi-l">Custo somado</div>
+          <div className="kpi-v bad">{fmtR(custoTotal)}</div>
+          <div className="kpi-s">{fmtR(custoAtual)} + {fmtR(novo.custo)}</div>
+        </div>
+        <div className="kpi">
+          <div className="kpi-l">Ganho mensal somado</div>
+          <div className="kpi-v good">+{fmtR(ganhoTotal)}</div>
+          <div className="kpi-s">{fmtR(ganhoAtual)} + {fmtR(Math.max(0, ganhoMesNovo))}</div>
+        </div>
+        <div className="kpi">
+          <div className="kpi-l">Breakeven combinado</div>
+          <div className="kpi-v blue">
+            {isFinite(mesesCombinado) ? `${mesesCombinado} meses` : "—"}
+          </div>
+          <div className="kpi-s">custo total ÷ ganho total</div>
+        </div>
+        <div className="kpi">
+          <div className="kpi-l">Encurta em</div>
+          <div className="kpi-v good">{encurtou} meses</div>
+          <div className="kpi-s">vs {mesesAtual}m do giro atual</div>
+        </div>
+      </div>
+      <p style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.6, margin: "12px 0 0" }}>
+        Somando o giro de jun/2026 ({mesesAtual}m para se pagar) com o novo
+        {isFinite(mesesNovo) ? ` (${mesesNovo}m isolado)` : ""}, a carteira zera o custo total em{" "}
+        <strong>{isFinite(mesesCombinado) ? `${mesesCombinado} meses` : "prazo indeterminado"}</strong>.
+        {encurtou > 0 && (
+          <> O novo giro <strong>acelera</strong> o breakeven do atual porque acrescenta ganho recorrente sem esperar o primeiro terminar.</>
+        )}
+      </p>
+    </div>
+  );
+}
+
 // ---- Página principal ----------------------------------------------------
 export function BreakevenPage({ profileId }: { profileId: ProfileId }) {
   const [breakevenUsuario, setBreakevenUsuario] = useState<BreakevenReal | null>(null);
@@ -967,6 +1031,86 @@ export function BreakevenPage({ profileId }: { profileId: ProfileId }) {
           <p>Quando a reestruturação de junho/2026 se paga completamente.</p>
         </div>
         <BreakevenConsolidado data={PAULO_DATA} />
+
+        <div style={{ margin: "26px 0 14px", borderTop: "1px solid var(--border)", paddingTop: 22 }}>
+          <div style={{ fontFamily: "var(--font-display)", fontSize: 20, marginBottom: 4 }}>
+            Novo breakeven — simulador
+          </div>
+          <p style={{ fontSize: 13, color: "var(--muted)", margin: "0 0 14px", lineHeight: 1.5 }}>
+            Se aparecer outra oportunidade de giro, monte aqui. Ao confirmar, você vê
+            como o novo breakeven interage com o de jun/2026 (ganho combinado, prazo total, meses encurtados).
+          </p>
+
+          {breakevenUsuario && !simular && (
+            <>
+              <BreakevenConfirmadoUsuario
+                breakeven={breakevenUsuario}
+                onEditar={() => setSimular(true)}
+              />
+              <InteracaoBreakevens paulo={PAULO_DATA} novo={breakevenUsuario} />
+            </>
+          )}
+
+          {simular && (
+            <>
+              <div style={{ marginBottom: 10 }}>
+                <button
+                  type="button"
+                  onClick={() => setSimular(false)}
+                  style={{
+                    fontFamily: "var(--font-display)", fontSize: 11, letterSpacing: ".08em",
+                    textTransform: "uppercase", padding: "6px 14px", borderRadius: 999,
+                    border: "1px solid var(--muted)", background: "transparent",
+                    color: "var(--muted)", cursor: "pointer",
+                  }}
+                >
+                  ← voltar
+                </button>
+              </div>
+              <SimuladorTrocaBreakeven
+                profileId={profileId}
+                breakevenExistente={breakevenUsuario}
+                onConfirmar={(be) => {
+                  salvarBreakeven(profileId, be);
+                  setBreakevenUsuario(be);
+                  setSimular(false);
+                }}
+                onDescartar={() => {
+                  salvarBreakeven(profileId, null);
+                  setBreakevenUsuario(null);
+                  setSimular(false);
+                }}
+              />
+            </>
+          )}
+
+          {!breakevenUsuario && !simular && (
+            <div
+              className="card"
+              style={{
+                padding: "22px 20px", textAlign: "center",
+                borderLeft: "4px solid var(--accent)",
+              }}
+            >
+              <p style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.6, maxWidth: 480, margin: "0 auto 14px" }}>
+                Nenhum novo giro simulado. Abra o simulador para montar em dois baldes
+                (de onde sai / para onde vai) e, se confirmar, ele passa a ser vigiado ao lado do atual.
+              </p>
+              <button
+                type="button"
+                onClick={() => setSimular(true)}
+                style={{
+                  fontFamily: "var(--font-display)", fontSize: 12, letterSpacing: ".08em",
+                  textTransform: "uppercase", padding: "10px 20px", borderRadius: 999,
+                  border: "1px solid var(--accent)", background: "var(--accent)",
+                  color: "#fff", cursor: "pointer",
+                }}
+              >
+                Simular novo breakeven
+              </button>
+            </div>
+          )}
+        </div>
       </>
     );
   }
