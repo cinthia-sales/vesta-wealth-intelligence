@@ -84,8 +84,8 @@ function AuthPage() {
         </div>
         <div className="auth-subtitle">
           {bootstrapMode
-            ? "Primeira Vesta — defina seu acesso"
-            : "Autenticação segura com código do celular"}
+            ? "Primeira Vesta — defina email e senha"
+            : "Email, senha e o código do seu autenticador"}
         </div>
 
         <form onSubmit={bootstrapMode ? handleBootstrap : handleSignIn} className="auth-form">
