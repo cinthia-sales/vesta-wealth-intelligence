@@ -1259,15 +1259,274 @@ function InteracaoBreakevens({
   );
 }
 
+// ---- Painel familiar: todos os breakevens em andamento -----------------
+type BreakevenEmAndamento = {
+  dono: "Paulo" | "Cínthia";
+  donoCor: string;
+  titulo: string;
+  descricao: string;
+  custo: number;
+  ganhoMes: number;
+  mesesBreakeven: number;
+  patrimonioDono: number;
+  origem: "confirmado" | "simulado";
+};
+
+function coletarBreakevensFamiliar(): BreakevenEmAndamento[] {
+  const list: BreakevenEmAndamento[] = [];
+  const paulo = getUser("paulo");
+  const cinthia = getUser("cinthia");
+
+  // Paulo — sempre presente (reestruturação de jun/2026)
+  list.push({
+    dono: "Paulo",
+    donoCor: "#4f8ef7",
+    titulo: "Reestruturação jun/2026",
+    descricao: "Deb novas (J&F + Jalles) + LCAs/LCD BRDE ↔ Deb antigas + fundos",
+    custo: PAULO_DATA.custo,
+    ganhoMes: PAULO_DATA.ganho,
+    mesesBreakeven: Math.ceil(PAULO_DATA.custo / PAULO_DATA.ganho),
+    patrimonioDono: paulo.total,
+    origem: "confirmado",
+  });
+
+  // Cínthia — carrega do localStorage se houver
+  const beC = carregarBreakeven("cinthia");
+  if (beC) {
+    const capA = beC.grupoA.reduce((s, l) => s + l.capital, 0);
+    const tA = mediaPonderada(beC.grupoA, "taxaCurva");
+    const tB = mediaPonderada(beC.grupoB, "taxaCurva");
+    const ganhoMes = (capA * (tB - tA)) / 100 / 12;
+    list.push({
+      dono: "Cínthia",
+      donoCor: "#a11d3e",
+      titulo: beC.nome || "Giro confirmado",
+      descricao: `${beC.grupoA.length} ativo(s) A · ${beC.grupoB.length} ativo(s) B`,
+      custo: beC.custo,
+      ganhoMes: Math.max(0, ganhoMes),
+      mesesBreakeven: ganhoMes > 0 && beC.custo > 0 ? Math.ceil(beC.custo / ganhoMes) : Infinity,
+      patrimonioDono: cinthia.total,
+      origem: "confirmado",
+    });
+  }
+
+  // Paulo — extras via simulador (localStorage)
+  const beP = carregarBreakeven("paulo");
+  if (beP) {
+    const capA = beP.grupoA.reduce((s, l) => s + l.capital, 0);
+    const tA = mediaPonderada(beP.grupoA, "taxaCurva");
+    const tB = mediaPonderada(beP.grupoB, "taxaCurva");
+    const ganhoMes = (capA * (tB - tA)) / 100 / 12;
+    list.push({
+      dono: "Paulo",
+      donoCor: "#4f8ef7",
+      titulo: beP.nome || "Novo giro (Paulo)",
+      descricao: `${beP.grupoA.length} ativo(s) A · ${beP.grupoB.length} ativo(s) B`,
+      custo: beP.custo,
+      ganhoMes: Math.max(0, ganhoMes),
+      mesesBreakeven: ganhoMes > 0 && beP.custo > 0 ? Math.ceil(beP.custo / ganhoMes) : Infinity,
+      patrimonioDono: getUser("paulo").total,
+      origem: "confirmado",
+    });
+  }
+
+  return list;
+}
+
+function BreakevenFamiliarPanel() {
+  const beans = useMemo(() => coletarBreakevensFamiliar(), []);
+  const paulo = getUser("paulo");
+  const cinthia = getUser("cinthia");
+  const patrimonioTotal = paulo.total + cinthia.total;
+
+  const custoTotal = beans.reduce((s, b) => s + b.custo, 0);
+  const ganhoTotalMes = beans.reduce((s, b) => s + b.ganhoMes, 0);
+  const ganhoAno = ganhoTotalMes * 12;
+  const mesesConsolidado = ganhoTotalMes > 0 && custoTotal > 0 ? Math.ceil(custoTotal / ganhoTotalMes) : Infinity;
+  const yieldExtraAno = patrimonioTotal > 0 ? (ganhoAno / patrimonioTotal) * 100 : 0;
+  const custoPctPatrimonio = patrimonioTotal > 0 ? (custoTotal / patrimonioTotal) * 100 : 0;
+
+  return (
+    <>
+      <div className="ph">
+        <h1>Plano de breakeven — Familiar Domus</h1>
+        <p>
+          Todos os giros em andamento nas duas carteiras e como se pagam no patrimônio total
+          de {fmtR(patrimonioTotal)}.
+        </p>
+      </div>
+
+      <div className="kpi-row">
+        <div className="kpi">
+          <div className="kpi-l">Giros ativos</div>
+          <div className="kpi-v">{beans.length}</div>
+          <div className="kpi-s">{beans.filter((b) => b.dono === "Paulo").length} Paulo · {beans.filter((b) => b.dono === "Cínthia").length} Cínthia</div>
+        </div>
+        <div className="kpi">
+          <div className="kpi-l">Custo consolidado</div>
+          <div className="kpi-v bad">{fmtR(custoTotal)}</div>
+          <div className="kpi-s">{custoPctPatrimonio.toFixed(2)}% do patrimônio familiar</div>
+        </div>
+        <div className="kpi">
+          <div className="kpi-l">Ganho mensal somado</div>
+          <div className="kpi-v good">+{fmtR(ganhoTotalMes)}</div>
+          <div className="kpi-s">+{fmtR(ganhoAno)}/ano · +{yieldExtraAno.toFixed(2)} pp de yield</div>
+        </div>
+        <div className="kpi">
+          <div className="kpi-l">Breakeven consolidado</div>
+          <div className="kpi-v blue">{isFinite(mesesConsolidado) ? `${mesesConsolidado} meses` : "—"}</div>
+          <div className="kpi-s">custo total ÷ ganho total</div>
+        </div>
+      </div>
+
+      <div className="card" style={{ padding: "14px 18px", marginBottom: 14, background: "#faf7f0" }}>
+        <div style={{ fontFamily: "var(--font-display)", fontSize: 15, marginBottom: 4 }}>
+          Como o rearranjo se paga no patrimônio total
+        </div>
+        <p style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.55, margin: 0 }}>
+          A família investiu <strong>{fmtR(custoTotal)}</strong> (deságio + IR) para trocar
+          ativos velhos por taxas melhores — isso é <strong>{custoPctPatrimonio.toFixed(2)}%</strong> do
+          patrimônio total. Em troca, entram <strong>+{fmtR(ganhoTotalMes)}/mês</strong> de renda
+          recorrente ({yieldExtraAno.toFixed(2)} pp de yield adicional ao ano). O custo é
+          zerado em {isFinite(mesesConsolidado) ? `${mesesConsolidado} meses` : "prazo indeterminado"};
+          daí em diante, o ganho é <strong>vitalício</strong> até o vencimento dos papéis.
+        </p>
+      </div>
+
+      <div className="card">
+        <div className="card-hdr">Giros em andamento por dono</div>
+        <table className="tbl">
+          <thead>
+            <tr>
+              <th>Dono</th>
+              <th>Giro</th>
+              <th className="r">Custo</th>
+              <th className="r">Ganho/mês</th>
+              <th className="r">Breakeven</th>
+              <th className="r">% do patrimônio dono</th>
+              <th className="r">% do patrimônio familiar</th>
+            </tr>
+          </thead>
+          <tbody>
+            {beans.map((b, i) => {
+              const pctDono = b.patrimonioDono > 0 ? (b.custo / b.patrimonioDono) * 100 : 0;
+              const pctFam = patrimonioTotal > 0 ? (b.custo / patrimonioTotal) * 100 : 0;
+              return (
+                <tr key={i}>
+                  <td>
+                    <span
+                      style={{
+                        display: "inline-block",
+                        padding: "2px 8px",
+                        borderRadius: 999,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        background: b.donoCor + "22",
+                        color: b.donoCor,
+                      }}
+                    >
+                      {b.dono}
+                    </span>
+                  </td>
+                  <td>
+                    <div style={{ fontWeight: 600 }}>{b.titulo}</div>
+                    <div style={{ fontSize: 11, color: "var(--muted)" }}>{b.descricao}</div>
+                  </td>
+                  <td className="r bad">{fmtR(b.custo)}</td>
+                  <td className="r good"><strong>+{fmtR(b.ganhoMes)}</strong></td>
+                  <td className="r blue">{isFinite(b.mesesBreakeven) ? `${b.mesesBreakeven}m` : "—"}</td>
+                  <td className="r">{pctDono.toFixed(2)}%</td>
+                  <td className="r">{pctFam.toFixed(2)}%</td>
+                </tr>
+              );
+            })}
+            <tr style={{ background: "#f8f9ff" }}>
+              <td colSpan={2}><strong>Consolidado familiar</strong></td>
+              <td className="r bad"><strong>{fmtR(custoTotal)}</strong></td>
+              <td className="r good"><strong>+{fmtR(ganhoTotalMes)}</strong></td>
+              <td className="r blue"><strong>{isFinite(mesesConsolidado) ? `${mesesConsolidado}m` : "—"}</strong></td>
+              <td className="r">—</td>
+              <td className="r"><strong>{custoPctPatrimonio.toFixed(2)}%</strong></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div className="card" style={{ marginTop: 14 }}>
+        <div className="card-hdr">Impacto no patrimônio total</div>
+        <table className="tbl">
+          <thead>
+            <tr>
+              <th>Carteira</th>
+              <th className="r">Patrimônio</th>
+              <th className="r">Custo do rearranjo</th>
+              <th className="r">Ganho/mês</th>
+              <th className="r">Yield extra a.a.</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[
+              { dono: "Paulo", cor: "#4f8ef7", total: paulo.total },
+              { dono: "Cínthia", cor: "#a11d3e", total: cinthia.total },
+            ].map((row) => {
+              const meus = beans.filter((b) => b.dono === row.dono);
+              const custo = meus.reduce((s, b) => s + b.custo, 0);
+              const ganho = meus.reduce((s, b) => s + b.ganhoMes, 0);
+              const yld = row.total > 0 ? ((ganho * 12) / row.total) * 100 : 0;
+              return (
+                <tr key={row.dono}>
+                  <td>
+                    <span
+                      style={{
+                        display: "inline-block",
+                        padding: "2px 8px",
+                        borderRadius: 999,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        background: row.cor + "22",
+                        color: row.cor,
+                      }}
+                    >
+                      {row.dono}
+                    </span>
+                  </td>
+                  <td className="r">{fmtR(row.total)}</td>
+                  <td className="r bad">{custo > 0 ? fmtR(custo) : "—"}</td>
+                  <td className="r good">{ganho > 0 ? `+${fmtR(ganho)}` : "—"}</td>
+                  <td className="r good">{ganho > 0 ? `+${yld.toFixed(2)} pp` : "—"}</td>
+                </tr>
+              );
+            })}
+            <tr style={{ background: "#f8f9ff" }}>
+              <td><strong>Familiar Domus</strong></td>
+              <td className="r"><strong>{fmtR(patrimonioTotal)}</strong></td>
+              <td className="r bad"><strong>{fmtR(custoTotal)}</strong></td>
+              <td className="r good"><strong>+{fmtR(ganhoTotalMes)}</strong></td>
+              <td className="r good"><strong>+{yieldExtraAno.toFixed(2)} pp</strong></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}
+
 // ---- Página principal ----------------------------------------------------
 export function BreakevenPage({ profileId }: { profileId: ProfileId }) {
   const [breakevenUsuario, setBreakevenUsuario] = useState<BreakevenReal | null>(null);
   const [simular, setSimular] = useState(false);
 
   useEffect(() => {
-    setBreakevenUsuario(carregarBreakeven(profileId));
+    setBreakevenUsuario(profileId === "familiar" ? null : carregarBreakeven(profileId));
     setSimular(false);
   }, [profileId]);
+
+  // Visão familiar: consolida todos os breakevens em andamento nas duas carteiras
+  if (profileId === "familiar") {
+    return <BreakevenFamiliarPanel />;
+  }
+
+
 
   // Paulo mantém dados hardcoded pré-carregados (histórico real da carteira)
   if (profileId === "paulo") {
