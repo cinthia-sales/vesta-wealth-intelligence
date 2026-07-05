@@ -948,6 +948,70 @@ function BreakevenConfirmadoUsuario({
   );
 }
 
+// ---- Interação entre breakeven atual (Paulo) e um novo ------------------
+function InteracaoBreakevens({
+  paulo,
+  novo,
+}: {
+  paulo: typeof PAULO_DATA;
+  novo: BreakevenReal;
+}) {
+  const capNovo = novo.grupoA.reduce((s, l) => s + l.capital, 0);
+  const tA_novo = mediaPonderada(novo.grupoA, "taxaCurva");
+  const tB_novo = mediaPonderada(novo.grupoB, "taxaCurva");
+  const ganhoMesNovo = (capNovo * (tB_novo - tA_novo)) / 12;
+  const mesesNovo = ganhoMesNovo > 0 && novo.custo > 0 ? Math.ceil(novo.custo / ganhoMesNovo) : Infinity;
+
+  const custoAtual = paulo.custo;
+  const ganhoAtual = paulo.ganho;
+  const mesesAtual = Math.ceil(custoAtual / ganhoAtual);
+
+  const custoTotal = custoAtual + novo.custo;
+  const ganhoTotal = ganhoAtual + Math.max(0, ganhoMesNovo);
+  const mesesCombinado = ganhoTotal > 0 ? Math.ceil(custoTotal / ganhoTotal) : Infinity;
+  const encurtou = isFinite(mesesCombinado) ? Math.max(0, mesesAtual - mesesCombinado) : 0;
+
+  return (
+    <div className="card" style={{ marginTop: 16, padding: "18px 20px", borderLeft: "4px solid var(--accent)" }}>
+      <div className="card-hdr" style={{ marginBottom: 10 }}>
+        Interação entre os dois breakevens <span>giro atual + novo giro</span>
+      </div>
+      <div className="kpi-row">
+        <div className="kpi">
+          <div className="kpi-l">Custo somado</div>
+          <div className="kpi-v bad">{fmtR(custoTotal)}</div>
+          <div className="kpi-s">{fmtR(custoAtual)} + {fmtR(novo.custo)}</div>
+        </div>
+        <div className="kpi">
+          <div className="kpi-l">Ganho mensal somado</div>
+          <div className="kpi-v good">+{fmtR(ganhoTotal)}</div>
+          <div className="kpi-s">{fmtR(ganhoAtual)} + {fmtR(Math.max(0, ganhoMesNovo))}</div>
+        </div>
+        <div className="kpi">
+          <div className="kpi-l">Breakeven combinado</div>
+          <div className="kpi-v blue">
+            {isFinite(mesesCombinado) ? `${mesesCombinado} meses` : "—"}
+          </div>
+          <div className="kpi-s">custo total ÷ ganho total</div>
+        </div>
+        <div className="kpi">
+          <div className="kpi-l">Encurta em</div>
+          <div className="kpi-v good">{encurtou} meses</div>
+          <div className="kpi-s">vs {mesesAtual}m do giro atual</div>
+        </div>
+      </div>
+      <p style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.6, margin: "12px 0 0" }}>
+        Somando o giro de jun/2026 ({mesesAtual}m para se pagar) com o novo
+        {isFinite(mesesNovo) ? ` (${mesesNovo}m isolado)` : ""}, a carteira zera o custo total em{" "}
+        <strong>{isFinite(mesesCombinado) ? `${mesesCombinado} meses` : "prazo indeterminado"}</strong>.
+        {encurtou > 0 && (
+          <> O novo giro <strong>acelera</strong> o breakeven do atual porque acrescenta ganho recorrente sem esperar o primeiro terminar.</>
+        )}
+      </p>
+    </div>
+  );
+}
+
 // ---- Página principal ----------------------------------------------------
 export function BreakevenPage({ profileId }: { profileId: ProfileId }) {
   const [breakevenUsuario, setBreakevenUsuario] = useState<BreakevenReal | null>(null);
