@@ -82,6 +82,18 @@ export const getDomusAdmin = createServerFn({ method: "GET" })
     };
   });
 
+export const listDomusPersonae = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    // RLS trata visibilidade: Vesta ve todos, membro ve so a propria linha.
+    const { data, error } = await context.supabase
+      .from("domus_members")
+      .select("id,papel,profile_id,domus:domus_id(nome),profile:profile_id(nome,email)")
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return data ?? [];
+  });
+
 export const updateJoinRequestStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) =>

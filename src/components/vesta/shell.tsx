@@ -22,18 +22,35 @@ import { PERSONAE, type PersonaId, type Scope } from "@/state/session";
 /* ============================================================
    ProfileSelector — replica exata de #profile-screen do vesta.html
    ============================================================ */
+export type ExtraPersona = {
+  id: string;
+  papel: string;
+  profile_id: string;
+  profile?: { nome?: string | null; email?: string | null } | null;
+  domus?: { nome?: string | null } | null;
+};
+
 export function ProfileSelector({
   onSelect,
   allowed,
   loggedAs,
   onLogout,
+  extras = [],
 }: {
   onSelect: (id: ProfileId) => void;
   allowed?: ProfileId[];
   loggedAs?: PersonaId;
   onLogout?: () => void;
+  extras?: ExtraPersona[];
 }) {
   const canSee = (id: ProfileId) => !allowed || allowed.includes(id);
+  const [waiting, setWaiting] = useState<ExtraPersona | null>(null);
+
+  // Nomes hardcoded que ja tem card proprio — evita duplicar.
+  const hardcodedEmails = new Set(["cinthiavr@yahoo.com.br", "phfurtadovr@yahoo.com.br"]);
+  const extraCards = extras.filter(
+    (e) => !hardcodedEmails.has((e.profile?.email ?? "").toLowerCase()),
+  );
 
   return (
     <div id="profile-screen">
@@ -84,6 +101,50 @@ export function ProfileSelector({
             </div>
           </div>
         )}
+
+        {extraCards.map((e) => {
+          const nome = e.profile?.nome ?? e.profile?.email ?? "Sem nome";
+          const inicial = nome.charAt(0).toUpperCase();
+          const primeiroNome = nome.split(" ")[0]?.toUpperCase() ?? nome.toUpperCase();
+          return (
+            <div
+              key={e.id}
+              className="ps-card ps-card-waiting"
+              onClick={() => setWaiting(e)}
+            >
+              <div
+                className="ps-avatar"
+                style={{
+                  background: "rgba(120,110,95,.10)",
+                  color: "var(--muted)",
+                  border: "1px dashed rgba(120,110,95,.35)",
+                }}
+              >
+                {inicial}
+              </div>
+              <div>
+                <div className="ps-card-name">
+                  {primeiroNome}
+                  <br />NOVUS
+                </div>
+                <div className="ps-card-desc" style={{ margin: "6px 0 10px" }}>
+                  {e.domus?.nome ?? "Domus"}
+                  <br />visão individual
+                  <br />&nbsp;
+                </div>
+                <div
+                  className="ps-card-badge"
+                  style={{
+                    background: "rgba(120,110,95,.14)",
+                    color: "var(--muted)",
+                  }}
+                >
+                  Aguardando<br />dados XP
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       <div className="ps-ornament">
@@ -100,6 +161,23 @@ export function ProfileSelector({
           </>
         )}
       </div>
+
+      {waiting && (
+        <div className="domus-approved-overlay" onClick={() => setWaiting(null)}>
+          <div className="domus-approved-card" onClick={(ev) => ev.stopPropagation()}>
+            <p className="public-domus-kicker">Persona sem dados</p>
+            <h3>{waiting.profile?.nome ?? "Novo membro"}</h3>
+            <p style={{ lineHeight: 1.6 }}>
+              A Vesta já aprovou o acesso, mas ainda não subimos os documentos XP dessa persona.
+              Quando o extrato for carregado, a carteira dela aparece aqui como as outras.
+            </p>
+            <p style={{ fontSize: 12, color: "var(--muted)" }}>
+              {waiting.profile?.email} · {waiting.domus?.nome ?? "Domus"} · {waiting.papel}
+            </p>
+            <button onClick={() => setWaiting(null)}>Entendido</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

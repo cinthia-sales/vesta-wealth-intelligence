@@ -13,6 +13,7 @@ import {
   type Scope,
 } from "@/state/session";
 import { getMyRole } from "@/lib/auth.functions";
+import { listDomusPersonae } from "@/lib/domus.functions";
 
 export const Route = createFileRoute("/_authenticated/app")({
   component: VestaApp,
@@ -32,6 +33,12 @@ function VestaApp() {
       return getMyRole();
     },
     retry: false,
+  });
+
+  const { data: extraPersonae } = useQuery({
+    queryKey: ["domus-personae"],
+    queryFn: () => listDomusPersonae(),
+    enabled: !!roleData,
   });
 
   useEffect(() => {
@@ -108,6 +115,7 @@ function VestaApp() {
           loggedAs={loggedAs}
           onSelect={setProfile}
           onLogout={doLogout}
+          extras={extraPersonae ?? []}
         />
       </>
     );
