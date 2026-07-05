@@ -423,7 +423,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 
 @media (max-width: 768px){
   html,body{font-size:13px}
-  .app{flex-direction:column;height:100dvh;overflow:visible}
+  .app{flex-direction:column;height:100dvh;overflow:visible;padding-left:0}
 
   /* Sidebar off-canvas */
   .sidebar{
