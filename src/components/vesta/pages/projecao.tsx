@@ -204,6 +204,41 @@ export function ProjecaoPage({ profileId }: { profileId: ProfileId }) {
         <div style={{ marginTop: 4, color: "var(--muted)", fontSize: 12, textAlign: "right" }}>
           Limite: {fmtR(freqCfg.max)}/{freqCfg.sufixo}
         </div>
+
+        <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px dashed var(--border)" }}>
+          <div style={{ fontSize: 13, marginBottom: 6 }}>
+            <strong>Aporte pontual</strong> <span style={{ color: "var(--muted)" }}>(PLR, férias, bônus — entra uma vez só)</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 13 }}>
+            <label style={{ minWidth: 80 }}>Valor:</label>
+            <input
+              type="range"
+              min={0}
+              max={500000}
+              step={5000}
+              value={bonus}
+              onChange={(e) => setBonus(Number(e.target.value))}
+              style={{ flex: 1 }}
+            />
+            <strong style={{ minWidth: 112, textAlign: "right" }}>{fmtR(bonus)}</strong>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 13, marginTop: 8 }}>
+            <label style={{ minWidth: 80 }}>Ano de entrada:</label>
+            <input
+              type="range"
+              min={2027}
+              max={2036}
+              step={1}
+              value={bonusAno}
+              onChange={(e) => setBonusAno(Number(e.target.value))}
+              style={{ flex: 1 }}
+            />
+            <strong style={{ minWidth: 112, textAlign: "right" }}>{bonusAno}</strong>
+          </div>
+          <div style={{ marginTop: 4, color: "var(--muted)", fontSize: 12, textAlign: "right" }}>
+            Limite: R$ 500.000 · rende ao CDI × 0,9 após a entrada
+          </div>
+        </div>
       </div>
 
       <div className="card" style={{ marginBottom: 14 }}>
