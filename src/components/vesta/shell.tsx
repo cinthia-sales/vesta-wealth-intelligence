@@ -386,7 +386,7 @@ export function VestaShell({
                 borderRadius: 10,
               }}
             >
-              2
+              {totalAlertas}
             </span>,
           )}
 
