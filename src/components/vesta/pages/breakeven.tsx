@@ -967,6 +967,86 @@ export function BreakevenPage({ profileId }: { profileId: ProfileId }) {
           <p>Quando a reestruturação de junho/2026 se paga completamente.</p>
         </div>
         <BreakevenConsolidado data={PAULO_DATA} />
+
+        <div style={{ margin: "26px 0 14px", borderTop: "1px solid var(--border)", paddingTop: 22 }}>
+          <div style={{ fontFamily: "var(--font-display)", fontSize: 20, marginBottom: 4 }}>
+            Novo breakeven — simulador
+          </div>
+          <p style={{ fontSize: 13, color: "var(--muted)", margin: "0 0 14px", lineHeight: 1.5 }}>
+            Se aparecer outra oportunidade de giro, monte aqui. Ao confirmar, você vê
+            como o novo breakeven interage com o de jun/2026 (ganho combinado, prazo total, meses encurtados).
+          </p>
+
+          {breakevenUsuario && !simular && (
+            <>
+              <BreakevenConfirmadoUsuario
+                breakeven={breakevenUsuario}
+                onEditar={() => setSimular(true)}
+              />
+              <InteracaoBreakevens paulo={PAULO_DATA} novo={breakevenUsuario} />
+            </>
+          )}
+
+          {simular && (
+            <>
+              <div style={{ marginBottom: 10 }}>
+                <button
+                  type="button"
+                  onClick={() => setSimular(false)}
+                  style={{
+                    fontFamily: "var(--font-display)", fontSize: 11, letterSpacing: ".08em",
+                    textTransform: "uppercase", padding: "6px 14px", borderRadius: 999,
+                    border: "1px solid var(--muted)", background: "transparent",
+                    color: "var(--muted)", cursor: "pointer",
+                  }}
+                >
+                  ← voltar
+                </button>
+              </div>
+              <SimuladorTrocaBreakeven
+                profileId={profileId}
+                breakevenExistente={breakevenUsuario}
+                onConfirmar={(be) => {
+                  salvarBreakeven(profileId, be);
+                  setBreakevenUsuario(be);
+                  setSimular(false);
+                }}
+                onDescartar={() => {
+                  salvarBreakeven(profileId, null);
+                  setBreakevenUsuario(null);
+                  setSimular(false);
+                }}
+              />
+            </>
+          )}
+
+          {!breakevenUsuario && !simular && (
+            <div
+              className="card"
+              style={{
+                padding: "22px 20px", textAlign: "center",
+                borderLeft: "4px solid var(--accent)",
+              }}
+            >
+              <p style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.6, maxWidth: 480, margin: "0 auto 14px" }}>
+                Nenhum novo giro simulado. Abra o simulador para montar em dois baldes
+                (de onde sai / para onde vai) e, se confirmar, ele passa a ser vigiado ao lado do atual.
+              </p>
+              <button
+                type="button"
+                onClick={() => setSimular(true)}
+                style={{
+                  fontFamily: "var(--font-display)", fontSize: 12, letterSpacing: ".08em",
+                  textTransform: "uppercase", padding: "10px 20px", borderRadius: 999,
+                  border: "1px solid var(--accent)", background: "var(--accent)",
+                  color: "#fff", cursor: "pointer",
+                }}
+              >
+                Simular novo breakeven
+              </button>
+            </div>
+          )}
+        </div>
       </>
     );
   }
