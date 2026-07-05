@@ -5,6 +5,47 @@ function fmtR(n: number) {
   return "R$ " + Math.round(n).toLocaleString("pt-BR");
 }
 
+function fmtRk(n: number) {
+  if (Math.abs(n) >= 1_000_000) return "R$ " + (n / 1_000_000).toFixed(1) + "M";
+  if (Math.abs(n) >= 1_000) return "R$ " + Math.round(n / 1_000) + "k";
+  return "R$ " + Math.round(n);
+}
+
+function ChartAxes({
+  minV, maxV, maxMonth, W, H, PL, PR, PT, PB, xs, ys,
+}: {
+  minV: number; maxV: number; maxMonth: number;
+  W: number; H: number; PL: number; PR: number; PT: number; PB: number;
+  xs: (m: number) => number; ys: (v: number) => number;
+}) {
+  const yTicks = [0, 0.25, 0.5, 0.75, 1].map((f) => minV + f * (maxV - minV));
+  const xStep = maxMonth <= 24 ? 6 : maxMonth <= 60 ? 12 : 24;
+  const xTicks: number[] = [];
+  for (let m = 0; m <= maxMonth; m += xStep) xTicks.push(m);
+  return (
+    <g>
+      {yTicks.map((v, i) => (
+        <g key={"y" + i}>
+          <line x1={PL} x2={W - PR} y1={ys(v)} y2={ys(v)} stroke="rgba(0,0,0,.06)" />
+          <text x={PL - 6} y={ys(v) + 3} fontSize={10} textAnchor="end" fill="var(--muted)">
+            {fmtRk(v)}
+          </text>
+        </g>
+      ))}
+      <line x1={PL} x2={W - PR} y1={H - PB} y2={H - PB} stroke="rgba(0,0,0,.15)" />
+      <line x1={PL} x2={PL} y1={PT} y2={H - PB} stroke="rgba(0,0,0,.15)" />
+      {xTicks.map((m) => (
+        <g key={"x" + m}>
+          <line x1={xs(m)} x2={xs(m)} y1={H - PB} y2={H - PB + 3} stroke="rgba(0,0,0,.25)" />
+          <text x={xs(m)} y={H - PB + 14} fontSize={10} textAnchor="middle" fill="var(--muted)">
+            {m}m
+          </text>
+        </g>
+      ))}
+    </g>
+  );
+}
+
 // ---- Dados reais consolidados (Paulo, pré-carregado) --------------------
 const PAULO_DATA = {
   custo: 14698,
@@ -50,7 +91,7 @@ function BreakevenConsolidado({ data }: { data: typeof PAULO_DATA }) {
   }
   const maxV = Math.max(...points.map((p) => Math.max(p.a, p.b)));
   const minV = Math.min(...points.map((p) => Math.min(p.a, p.b)));
-  const W = 600, H = 220, PL = 50, PR = 12, PT = 10, PB = 22;
+  const W = 600, H = 220, PL = 60, PR = 12, PT = 10, PB = 34;
   const xs = (m: number) => PL + (m / 78) * (W - PL - PR);
   const ys = (v: number) => PT + (1 - (v - minV) / (maxV - minV)) * (H - PT - PB);
   const pathA = points.map((p, i) => (i ? "L" : "M") + xs(p.m) + " " + ys(p.a)).join(" ");
@@ -73,6 +114,7 @@ function BreakevenConsolidado({ data }: { data: typeof PAULO_DATA }) {
           <div className="card-hdr">Linha A (ficou) vs Linha B (reestruturou) <span>debêntures acumuladas</span></div>
           <div className="chart-c" style={{ height: 240 }}>
             <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "100%" }}>
+              <ChartAxes minV={minV} maxV={maxV} maxMonth={78} W={W} H={H} PL={PL} PR={PR} PT={PT} PB={PB} xs={xs} ys={ys} />
               <path d={pathA} fill="none" stroke="#dc2626" strokeWidth={2} />
               <path d={pathB} fill="none" stroke="#4f8ef7" strokeWidth={2} />
             </svg>
@@ -376,7 +418,7 @@ function SimuladorTrocaBreakeven({
   }
   const maxV = Math.max(1, ...points.map((p) => Math.max(p.a, p.b)));
   const minV = Math.min(...points.map((p) => Math.min(p.a, p.b)));
-  const W = 600, H = 220, PL = 60, PR = 12, PT = 10, PB = 22;
+  const W = 600, H = 220, PL = 60, PR = 12, PT = 10, PB = 34;
   const xs = (m: number) => PL + (m / horizonte) * (W - PL - PR);
   const ys = (v: number) =>
     maxV === minV ? PT : PT + (1 - (v - minV) / (maxV - minV)) * (H - PT - PB);
@@ -531,6 +573,7 @@ function SimuladorTrocaBreakeven({
           </div>
           <div className="chart-c" style={{ height: 240 }}>
             <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "100%" }}>
+              <ChartAxes minV={minV} maxV={maxV} maxMonth={horizonte} W={W} H={H} PL={PL} PR={PR} PT={PT} PB={PB} xs={xs} ys={ys} />
               <path d={pathA} fill="none" stroke="#dc2626" strokeWidth={2} />
               <path d={pathB} fill="none" stroke="#4f8ef7" strokeWidth={2} />
               {pontoEncontro && pontoEncontro.meses <= horizonte && (
@@ -754,7 +797,7 @@ function BreakevenConfirmadoUsuario({
   }
   const maxV = Math.max(1, ...points.map((p) => Math.max(p.a, p.b)));
   const minV = Math.min(...points.map((p) => Math.min(p.a, p.b)));
-  const W = 600, H = 220, PL = 60, PR = 12, PT = 10, PB = 22;
+  const W = 600, H = 220, PL = 60, PR = 12, PT = 10, PB = 34;
   const xs = (m: number) => PL + (m / horizonte) * (W - PL - PR);
   const ys = (v: number) => maxV === minV ? PT : PT + (1 - (v - minV) / (maxV - minV)) * (H - PT - PB);
   const pathA = points.map((p, i) => (i ? "L" : "M") + xs(p.m) + " " + ys(p.a)).join(" ");
@@ -808,6 +851,7 @@ function BreakevenConfirmadoUsuario({
           <div className="card-hdr">Grupo A vs Grupo B <span>capital giro {fmtR(capitalA)}</span></div>
           <div className="chart-c" style={{ height: 240 }}>
             <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "100%" }}>
+              <ChartAxes minV={minV} maxV={maxV} maxMonth={horizonte} W={W} H={H} PL={PL} PR={PR} PT={PT} PB={PB} xs={xs} ys={ys} />
               <path d={pathA} fill="none" stroke="#dc2626" strokeWidth={2} />
               <path d={pathB} fill="none" stroke="#4f8ef7" strokeWidth={2} />
             </svg>
