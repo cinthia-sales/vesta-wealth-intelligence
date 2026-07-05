@@ -644,6 +644,8 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 .public-domus-form label,.domus-admin-form label{display:flex;flex-direction:column;gap:6px;font-family:var(--font-display);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
 .public-domus-form input,.public-domus-form select,.public-domus-form textarea,.domus-admin-form input,.domus-admin-form textarea{width:100%;background:#FFFDFC;border:1px solid var(--border);border-radius:8px;padding:11px 13px;color:var(--text);font-family:var(--font-body);font-size:14px}
 .public-domus-form textarea,.domus-admin-form textarea{resize:vertical;line-height:1.5}
+.bk-field{display:flex;flex-direction:column;gap:6px;font-family:var(--font-display);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.bk-field input{width:100%;background:#FFFDFC;border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-family:var(--font-body);font-size:14px;letter-spacing:0;text-transform:none}
 .public-domus-form button,.domus-admin-form button,.domus-request-actions button{background:var(--accent);color:#fff;border:0;border-radius:8px;padding:11px 14px;font-family:var(--font-display);font-size:11px;letter-spacing:.14em;text-transform:uppercase;cursor:pointer}
 .public-domus-form button:disabled,.domus-admin-form button:disabled{opacity:.55;cursor:not-allowed}
 .public-domus-success{background:var(--success-bg);border:1px solid rgba(78,122,92,.28);color:var(--success);padding:10px 12px;border-radius:8px;font-size:13px;line-height:1.4}
