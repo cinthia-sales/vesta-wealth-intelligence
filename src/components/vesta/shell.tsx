@@ -259,6 +259,7 @@ export function VestaShell({
   const [page, setPage] = useState<PageKey>("home");
   const meta = PROFILE_META[profileId];
   const isFamily = profileId === "familiar";
+  const isVesta = loggedAs ? PERSONAE[loggedAs].role === "vesta" : false;
 
   const item = (key: PageKey, label: string, extra?: ReactNode) => (
     <div
