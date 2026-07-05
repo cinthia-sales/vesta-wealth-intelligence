@@ -1,8 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import vestaLineart from "@/assets/vesta-lineart.png";
 
 export const Route = createFileRoute("/auth/mfa-setup")({
+  ssr: false,
   validateSearch: (s: Record<string, unknown>) => ({
     next: typeof s.next === "string" ? s.next : "/",
   }),
