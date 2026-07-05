@@ -82,7 +82,7 @@ function DomusLanding() {
   return (
     <main className="public-domus">
       <section className="public-domus-hero">
-        <img src={vestaLineart} alt="" className="public-domus-lineart" />
+        <img src={vestaHero.url} alt="" className="public-domus-lineart" />
         <p className="public-domus-kicker">Vesta · Domus et Patrimonium</p>
         <h1>Entrada no Domus</h1>
         <p className="public-domus-copy">
