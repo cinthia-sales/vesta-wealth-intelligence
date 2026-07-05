@@ -62,8 +62,10 @@ export function AportePage() {
       <div className="kpi-row">
         <div className="kpi">
           <div className="kpi-l">Aporte simulado</div>
-          <div className="kpi-v blue">{fmtR(aporte)}/mês</div>
-          <div className="kpi-s">a {taxaExtra.toFixed(1)}% a.a.</div>
+          <div className="kpi-v blue">{fmtR(aporte)}/{sufixo}</div>
+          <div className="kpi-s">
+            {freq === "mensal" ? `a ${taxaExtra.toFixed(1)}% a.a.` : `≈ ${fmtR(sim.aporteMensalEq)}/mês · ${taxaExtra.toFixed(1)}% a.a.`}
+          </div>
         </div>
         <div className="kpi">
           <div className="kpi-l">Novo ganho mensal</div>
@@ -88,15 +90,40 @@ export function AportePage() {
         <div className="card-hdr">Simulador</div>
         <div style={{ display: "grid", gap: 16 }}>
           <div>
+            <div style={{ fontSize: 13, marginBottom: 6 }}><strong>Frequência do aporte</strong></div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {FREQS.map((f) => (
+                <button
+                  key={f.id}
+                  onClick={() => { setFreq(f.id); setAporte(0); }}
+                  style={{
+                    padding: "6px 12px",
+                    fontSize: 12,
+                    borderRadius: 6,
+                    border: "1px solid var(--border)",
+                    background: freq === f.id ? "var(--accent)" : "transparent",
+                    color: freq === f.id ? "#fff" : "var(--fg)",
+                    cursor: "pointer",
+                  }}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
             <label style={{ display: "block", marginBottom: 4, fontSize: 13 }}>
-              <strong>Aporte mensal adicional:</strong> {fmtR(aporte)}
+              <strong>Aporte adicional ({sufixo}):</strong> {fmtR(aporte)}
             </label>
             <input
-              type="range" min={0} max={10000} step={100} value={aporte}
+              type="range" min={0} max={freqCfg.max} step={freqCfg.step} value={aporte}
               onChange={(e) => setAporte(Number(e.target.value))}
               style={{ width: "100%" }}
             />
-            <div style={{ fontSize: 11, color: "var(--muted)" }}>0 a R$ 10.000/mês</div>
+            <div style={{ fontSize: 11, color: "var(--muted)" }}>
+              0 a {fmtR(freqCfg.max)}/{sufixo}
+              {freq !== "mensal" && ` · equivale a ${fmtR(sim.aporteMensalEq)}/mês`}
+            </div>
           </div>
           <div>
             <label style={{ display: "block", marginBottom: 4, fontSize: 13 }}>
