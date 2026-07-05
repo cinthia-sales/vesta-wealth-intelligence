@@ -57,8 +57,6 @@ const PAULO_DATA = {
       capital: 112124,
       ganhoTaxa: "+3,05%/ano",
       ganhoMes: 285,
-      custoIsolado: 13648,   // deságio na venda das antigas
-      taxaReinvest: 0.1486,  // taxa contratada das novas debêntures (compõe o ganho)
     },
     {
       nome: "Renda fixa",
@@ -66,10 +64,23 @@ const PAULO_DATA = {
       capital: 267000,
       ganhoTaxa: "+1,83%/ano",
       ganhoMes: 407,
-      custoIsolado: 1050,    // IR na liquidação dos fundos
-      taxaReinvest: 0.1333,  // taxa média das LCAs/LCD (compõe o ganho)
     },
   ],
+  // Baldes interdependentes: A = tudo que saiu, B = tudo que entrou (mesmo dia)
+  baldes: {
+    A: {
+      nome: "Balde A — o que foi vendido",
+      composicao: "Debêntures antigas (Itapoá + Localiza) + Fundos liquidados",
+      capital: 393822,   // 125.772 (deb antigas) + 268.050 (fundos)
+      taxaAno: 0.1160,   // média ponderada das taxas antigas
+    },
+    B: {
+      nome: "Balde B — o que foi comprado",
+      composicao: "Debêntures novas (J&F + Jalles) + LCAs + LCD BRDE",
+      capital: 379124,   // 112.124 + 267.000 (já líquido do deságio e do IR)
+      taxaAno: 0.1378,   // média ponderada das taxas novas
+    },
+  },
   linhas: { tA: 0.1181, tB: 0.1486, cA: 125772, cB: 112124 },
   inicio: { ano: 2026, mes: 6 },
 };
@@ -166,95 +177,199 @@ function GraficoCustoGanho({
   );
 }
 
+// Gráfico Balde A vs Balde B — duas curvas compostas cruzando
+function GraficoBaldes({
+  capA, taxaA, capB, taxaB, inicio,
+}: {
+  capA: number; taxaA: number; capB: number; taxaB: number;
+  inicio: { ano: number; mes: number };
+}) {
+  // Cruzamento (em anos): capA*(1+tA)^t = capB*(1+tB)^t → t = ln(capA/capB) / ln((1+tB)/(1+tA))
+  const crossAnos =
+    taxaB > taxaA && capA > capB
+      ? Math.log(capA / capB) / Math.log((1 + taxaB) / (1 + taxaA))
+      : Infinity;
+  const crossMeses = crossAnos * 12;
+  const horizonte = isFinite(crossMeses)
+    ? Math.max(24, Math.min(120, Math.ceil(crossMeses * 1.8)))
+    : 60;
+
+  const N = 60;
+  const vA = (m: number) => capA * Math.pow(1 + taxaA, m / 12);
+  const vB = (m: number) => capB * Math.pow(1 + taxaB, m / 12);
+  const maxV = Math.max(vA(horizonte), vB(horizonte)) * 1.02;
+  const minV = Math.min(capA, capB) * 0.98;
+
+  const W = 600, H = 240, PL = 70, PR = 12, PT = 12, PB = 34;
+  const xs = (m: number) => PL + (m / horizonte) * (W - PL - PR);
+  const ys = (v: number) => PT + (1 - (v - minV) / (maxV - minV)) * (H - PT - PB);
+
+  const buildPath = (fn: (m: number) => number) => {
+    let d = `M ${xs(0)} ${ys(fn(0))}`;
+    for (let i = 1; i <= N; i++) {
+      const m = (i / N) * horizonte;
+      d += ` L ${xs(m)} ${ys(fn(m))}`;
+    }
+    return d;
+  };
+
+  const mCross = isFinite(crossMeses) && crossMeses <= horizonte ? crossMeses : null;
+  const yCross = mCross !== null ? ys(vA(mCross)) : 0;
+  const dataCross =
+    mCross !== null
+      ? new Date(inicio.ano, inicio.mes + Math.round(mCross), 1).toLocaleDateString("pt-BR", { month: "short", year: "2-digit" })
+      : "";
+
+  return (
+    <div className="chart-c" style={{ height: 260 }}>
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "100%" }}>
+        <ChartAxes
+          minV={minV} maxV={maxV} maxMonth={horizonte}
+          W={W} H={H} PL={PL} PR={PR} PT={PT} PB={PB} xs={xs} ys={ys}
+        />
+        <path d={buildPath(vA)} fill="none" stroke="#dc2626" strokeWidth={2} />
+        <path d={buildPath(vB)} fill="none" stroke="#4f8ef7" strokeWidth={2} />
+        {mCross !== null && (
+          <>
+            <line
+              x1={xs(mCross)} x2={xs(mCross)} y1={PT} y2={H - PB}
+              stroke="var(--accent)" strokeDasharray="3 3" strokeWidth={1}
+            />
+            <circle cx={xs(mCross)} cy={yCross} r={4} fill="var(--accent)" />
+            <text
+              x={xs(mCross) + 6} y={yCross - 8}
+              fontSize={11} fill="var(--accent)" fontWeight={600}
+            >
+              m{Math.ceil(mCross)} · {dataCross} · {fmtRk(vA(mCross))}
+            </text>
+          </>
+        )}
+      </svg>
+    </div>
+  );
+}
+
 function BreakevenConsolidado({ data }: { data: typeof PAULO_DATA }) {
-  const { custo, ganho, ativos, inicio } = data;
+  const { custo, ganho, ativos, inicio, baldes } = data;
+  const { A, B } = baldes;
 
-  // Taxa consolidada = média ponderada pelo ganhoMes (peso do fluxo que está sendo reinvestido)
-  const pesoTotal = ativos.reduce((s, a) => s + a.ganhoMes, 0);
-  const taxaConsolidada =
-    pesoTotal > 0
-      ? ativos.reduce((s, a) => s + a.ganhoMes * a.taxaReinvest, 0) / pesoTotal
-      : 0;
-
-  const mesesBreakeven = Math.ceil(mesesBreakevenComposto(custo, ganho, taxaConsolidada));
-
-  const progs = [1, 3, 6, 9, 12, 18, mesesBreakeven].map((m) => {
-    const a = ganhoAcumulado(ganho, taxaConsolidada, m);
-    const p = Math.min(100, Math.round((a / custo) * 100));
-    const ok = p >= 100;
-    const d = new Date(inicio.ano, inicio.mes + m, 1).toLocaleDateString("pt-BR", {
-      month: "short",
-      year: "2-digit",
-    });
-    return { m, p, ok, d };
-  });
+  // Breakeven de baldes: mês em que VF_B alcança VF_A
+  const crossAnos =
+    B.taxaAno > A.taxaAno && A.capital > B.capital
+      ? Math.log(A.capital / B.capital) / Math.log((1 + B.taxaAno) / (1 + A.taxaAno))
+      : Infinity;
+  const mesesBreakeven = isFinite(crossAnos) ? Math.ceil(crossAnos * 12) : Infinity;
+  const dataBreakeven = isFinite(mesesBreakeven)
+    ? new Date(inicio.ano, inicio.mes + mesesBreakeven, 1).toLocaleDateString("pt-BR", { month: "short", year: "2-digit" })
+    : "—";
 
   const capitalTotal = ativos.reduce((s, a) => s + a.capital, 0);
+
+  const marcos = [3, 6, 12, 24, 36, 48].map((m) => {
+    const a = A.capital * Math.pow(1 + A.taxaAno, m / 12);
+    const b = B.capital * Math.pow(1 + B.taxaAno, m / 12);
+    const dif = b - a;
+    const d = new Date(inicio.ano, inicio.mes + m, 1).toLocaleDateString("pt-BR", { month: "short", year: "2-digit" });
+    return { m, d, a, b, dif };
+  });
 
   return (
     <>
       <div className="kpi-row">
-        <div className="kpi"><div className="kpi-l">Custo total</div><div className="kpi-v bad">{fmtR(custo)}</div><div className="kpi-s">deságio + IR</div></div>
-        <div className="kpi"><div className="kpi-l">Ganho mensal</div><div className="kpi-v good">+{fmtR(ganho)}</div><div className="kpi-s">soma das fontes abaixo</div></div>
-        <div className="kpi"><div className="kpi-l">Breakeven combinado</div><div className="kpi-v blue">{mesesBreakeven} meses</div><div className="kpi-s">c/ reinvestimento @ {(taxaConsolidada * 100).toFixed(2)}% a.a.</div></div>
+        <div className="kpi"><div className="kpi-l">Custo do rearranjo</div><div className="kpi-v bad">{fmtR(custo)}</div><div className="kpi-s">deságio + IR (Balde A − Balde B hoje)</div></div>
+        <div className="kpi"><div className="kpi-l">Ganho mensal</div><div className="kpi-v good">+{fmtR(ganho)}</div><div className="kpi-s">renda corrente adicional</div></div>
+        <div className="kpi"><div className="kpi-l">Breakeven dos baldes</div><div className="kpi-v blue">{isFinite(mesesBreakeven) ? `${mesesBreakeven} meses` : "—"}</div><div className="kpi-s">{isFinite(mesesBreakeven) ? dataBreakeven : "B não alcança A"}</div></div>
         <div className="kpi"><div className="kpi-l">Ganho anual vitalício</div><div className="kpi-v good">+{fmtR(ganho * 12)}</div><div className="kpi-s">depois do breakeven</div></div>
       </div>
 
       <div className="card" style={{ padding: "14px 18px", marginBottom: 14, background: "#faf7f0" }}>
         <div style={{ fontFamily: "var(--font-display)", fontSize: 15, marginBottom: 4 }}>
-          Como ler os gráficos
+          Como ler o gráfico
         </div>
         <p style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.55, margin: 0 }}>
-          Cada movimento tem seu próprio custo (linha vermelha, plana) e seu próprio ganho mensal
-          reinvestido na taxa nova (linha azul, curva de juros compostos). O ponto de cruzamento é o
-          mês em que aquele movimento se paga sozinho. O terceiro gráfico soma tudo — bate com o KPI
-          de {mesesBreakeven} meses.
+          <strong>Balde A</strong> é tudo que foi vendido (deb antigas + fundos) rendendo às taxas antigas —
+          a trajetória que existiria se nada mudasse. <strong>Balde B</strong> é tudo que foi comprado no
+          mesmo dia (deb novas + LCAs/LCD BRDE), já líquido do deságio e do IR, rendendo às taxas novas.
+          Como B começa {fmtR(custo)} abaixo, mas cresce mais rápido, as curvas se cruzam quando o Balde
+          B ultrapassa o A — esse é o breakeven real do rearranjo. As trocas 1-a-1 (essa deb contra
+          aquela deb) ficam no simulador de trocas.
         </p>
       </div>
 
-      <div className="g32" style={{ marginBottom: 14 }}>
-        {ativos.map((a, i) => (
-          <GraficoCustoGanho
-            key={a.nome}
-            custo={a.custoIsolado}
-            ganhoMes={a.ganhoMes}
-            taxaAno={a.taxaReinvest}
-            titulo={`Movimento ${i + 1} — ${a.nome}`}
-            sub={`isolado · ${a.ganhoTaxa}`}
-          />
-        ))}
-      </div>
-
-      <div className="g32">
-        <GraficoCustoGanho
-          custo={custo}
-          ganhoMes={ganho}
-          taxaAno={taxaConsolidada}
-          titulo="Consolidado — os dois movimentos juntos"
-          sub={`breakeven composto = ${mesesBreakeven}m`}
+      <div className="card">
+        <div className="card-hdr">
+          Balde A vs Balde B <span>curvas compostas até se cruzarem</span>
+        </div>
+        <GraficoBaldes
+          capA={A.capital} taxaA={A.taxaAno}
+          capB={B.capital} taxaB={B.taxaAno}
+          inicio={inicio}
         />
-
-
-        <div className="card">
-          <div className="card-hdr">Recuperação mês a mês</div>
-          {progs.map((p) => (
-            <div className="prog" key={p.m}>
-              <div className="prog-hdr">
-                <span>{p.d} (m{p.m})</span>
-                <span style={{ color: p.ok ? "var(--success)" : "var(--text)", fontWeight: p.ok ? 600 : 400 }}>
-                  {p.p}%{p.ok ? " ✓" : ""}
-                </span>
-              </div>
-              <div className="prog-bar">
-                <div
-                  className="prog-fill"
-                  style={{ width: `${p.p}%`, background: p.ok ? "var(--success)" : "var(--accent)" }}
-                />
-              </div>
-            </div>
-          ))}
+        <div style={{ display: "flex", gap: 18, marginTop: 10, fontSize: 12, color: "var(--muted)", flexWrap: "wrap" }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+            <span style={{ display: "inline-block", width: 18, height: 2, background: "#dc2626" }} />
+            Balde A · {fmtR(A.capital)} @ {(A.taxaAno * 100).toFixed(2)}% a.a.
+          </span>
+          <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+            <span style={{ display: "inline-block", width: 18, height: 2, background: "#4f8ef7" }} />
+            Balde B · {fmtR(B.capital)} @ {(B.taxaAno * 100).toFixed(2)}% a.a.
+          </span>
         </div>
       </div>
+
+      <div className="g32" style={{ marginTop: 14 }}>
+        <div className="card">
+          <div className="card-hdr">Composição dos baldes</div>
+          <table className="tbl">
+            <thead>
+              <tr><th>Balde</th><th>Composição</th><th className="r">Capital</th><th className="r">Taxa média</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong style={{ color: "#dc2626" }}>A · vendido</strong></td>
+                <td>{A.composicao}</td>
+                <td className="r">{fmtR(A.capital)}</td>
+                <td className="r">{(A.taxaAno * 100).toFixed(2)}% a.a.</td>
+              </tr>
+              <tr>
+                <td><strong style={{ color: "#4f8ef7" }}>B · comprado</strong></td>
+                <td>{B.composicao}</td>
+                <td className="r">{fmtR(B.capital)}</td>
+                <td className="r">{(B.taxaAno * 100).toFixed(2)}% a.a.</td>
+              </tr>
+              <tr style={{ background: "#f8f9ff" }}>
+                <td colSpan={2}><strong>Diferença hoje (custo do rearranjo)</strong></td>
+                <td className="r bad"><strong>−{fmtR(A.capital - B.capital)}</strong></td>
+                <td className="r good">+{((B.taxaAno - A.taxaAno) * 100).toFixed(2)} pp</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div className="card">
+          <div className="card-hdr">Marcos ao longo do tempo</div>
+          <table className="tbl">
+            <thead>
+              <tr><th>Mês</th><th>Data</th><th className="r">Balde A</th><th className="r">Balde B</th><th className="r">B − A</th></tr>
+            </thead>
+            <tbody>
+              {marcos.map((mk) => (
+                <tr key={mk.m}>
+                  <td>m{mk.m}</td>
+                  <td>{mk.d}</td>
+                  <td className="r">{fmtRk(mk.a)}</td>
+                  <td className="r">{fmtRk(mk.b)}</td>
+                  <td className={"r " + (mk.dif >= 0 ? "good" : "bad")}>
+                    <strong>{mk.dif >= 0 ? "+" : "−"}{fmtRk(Math.abs(mk.dif))}</strong>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+
 
       <div className="card">
         <div className="card-hdr">De onde vem o ganho de +{fmtR(ganho)}/mês</div>
