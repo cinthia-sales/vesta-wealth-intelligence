@@ -5,6 +5,47 @@ function fmtR(n: number) {
   return "R$ " + Math.round(n).toLocaleString("pt-BR");
 }
 
+function fmtRk(n: number) {
+  if (Math.abs(n) >= 1_000_000) return "R$ " + (n / 1_000_000).toFixed(1) + "M";
+  if (Math.abs(n) >= 1_000) return "R$ " + Math.round(n / 1_000) + "k";
+  return "R$ " + Math.round(n);
+}
+
+function ChartAxes({
+  minV, maxV, maxMonth, W, H, PL, PR, PT, PB, xs, ys,
+}: {
+  minV: number; maxV: number; maxMonth: number;
+  W: number; H: number; PL: number; PR: number; PT: number; PB: number;
+  xs: (m: number) => number; ys: (v: number) => number;
+}) {
+  const yTicks = [0, 0.25, 0.5, 0.75, 1].map((f) => minV + f * (maxV - minV));
+  const xStep = maxMonth <= 24 ? 6 : maxMonth <= 60 ? 12 : 24;
+  const xTicks: number[] = [];
+  for (let m = 0; m <= maxMonth; m += xStep) xTicks.push(m);
+  return (
+    <g>
+      {yTicks.map((v, i) => (
+        <g key={"y" + i}>
+          <line x1={PL} x2={W - PR} y1={ys(v)} y2={ys(v)} stroke="rgba(0,0,0,.06)" />
+          <text x={PL - 6} y={ys(v) + 3} fontSize={10} textAnchor="end" fill="var(--muted)">
+            {fmtRk(v)}
+          </text>
+        </g>
+      ))}
+      <line x1={PL} x2={W - PR} y1={H - PB} y2={H - PB} stroke="rgba(0,0,0,.15)" />
+      <line x1={PL} x2={PL} y1={PT} y2={H - PB} stroke="rgba(0,0,0,.15)" />
+      {xTicks.map((m) => (
+        <g key={"x" + m}>
+          <line x1={xs(m)} x2={xs(m)} y1={H - PB} y2={H - PB + 3} stroke="rgba(0,0,0,.25)" />
+          <text x={xs(m)} y={H - PB + 14} fontSize={10} textAnchor="middle" fill="var(--muted)">
+            {m}m
+          </text>
+        </g>
+      ))}
+    </g>
+  );
+}
+
 // ---- Dados reais consolidados (Paulo, pré-carregado) --------------------
 const PAULO_DATA = {
   custo: 14698,
