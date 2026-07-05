@@ -10,7 +10,7 @@ function fmtR(n: number) {
 
 type Freq = "mensal" | "semestral" | "anual";
 const FREQS: { id: Freq; label: string; perYear: number; max: number; step: number }[] = [
-  { id: "mensal", label: "Mensal", perYear: 12, max: 10000, step: 100 },
+  { id: "mensal", label: "Mensal", perYear: 12, max: 35000, step: 500 },
   { id: "semestral", label: "Semestral", perYear: 2, max: 60000, step: 500 },
   { id: "anual", label: "Anual", perYear: 1, max: 120000, step: 1000 },
 ];
