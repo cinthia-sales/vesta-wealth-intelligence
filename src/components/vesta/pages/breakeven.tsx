@@ -573,6 +573,7 @@ function SimuladorTrocaBreakeven({
           </div>
           <div className="chart-c" style={{ height: 240 }}>
             <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "100%" }}>
+              <ChartAxes minV={minV} maxV={maxV} maxMonth={horizonte} W={W} H={H} PL={PL} PR={PR} PT={PT} PB={PB} xs={xs} ys={ys} />
               <path d={pathA} fill="none" stroke="#dc2626" strokeWidth={2} />
               <path d={pathB} fill="none" stroke="#4f8ef7" strokeWidth={2} />
               {pontoEncontro && pontoEncontro.meses <= horizonte && (
