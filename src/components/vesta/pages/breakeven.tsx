@@ -57,8 +57,6 @@ const PAULO_DATA = {
       capital: 112124,
       ganhoTaxa: "+3,05%/ano",
       ganhoMes: 285,
-      custoIsolado: 13648,   // deságio na venda das antigas
-      taxaReinvest: 0.1486,  // taxa contratada das novas debêntures (compõe o ganho)
     },
     {
       nome: "Renda fixa",
@@ -66,10 +64,23 @@ const PAULO_DATA = {
       capital: 267000,
       ganhoTaxa: "+1,83%/ano",
       ganhoMes: 407,
-      custoIsolado: 1050,    // IR na liquidação dos fundos
-      taxaReinvest: 0.1333,  // taxa média das LCAs/LCD (compõe o ganho)
     },
   ],
+  // Baldes interdependentes: A = tudo que saiu, B = tudo que entrou (mesmo dia)
+  baldes: {
+    A: {
+      nome: "Balde A — o que foi vendido",
+      composicao: "Debêntures antigas (Itapoá + Localiza) + Fundos liquidados",
+      capital: 393822,   // 125.772 (deb antigas) + 268.050 (fundos)
+      taxaAno: 0.1160,   // média ponderada das taxas antigas
+    },
+    B: {
+      nome: "Balde B — o que foi comprado",
+      composicao: "Debêntures novas (J&F + Jalles) + LCAs + LCD BRDE",
+      capital: 379124,   // 112.124 + 267.000 (já líquido do deságio e do IR)
+      taxaAno: 0.1378,   // média ponderada das taxas novas
+    },
+  },
   linhas: { tA: 0.1181, tB: 0.1486, cA: 125772, cB: 112124 },
   inicio: { ano: 2026, mes: 6 },
 };
