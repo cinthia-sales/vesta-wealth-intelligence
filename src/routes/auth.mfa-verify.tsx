@@ -65,7 +65,8 @@ function MfaVerify() {
   return (
     <div className="auth-wrap">
       <div className="auth-card">
-        <div className="auth-vesta">✦ Vesta ✦</div>
+        <img src={vestaLineart} alt="" className="auth-lineart" />
+        <div className="auth-vesta">Vesta</div>
         <div className="auth-title">Código do autenticador</div>
         <div className="auth-subtitle">
           Abra o app e digite os 6 dígitos
