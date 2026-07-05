@@ -77,6 +77,7 @@ function VestaApp() {
         if (allowed.length > 1) setProfile(null);
         else doLogout();
       }}
+      onLogout={doLogout}
     />
   );
 }
