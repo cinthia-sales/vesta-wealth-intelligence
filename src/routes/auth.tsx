@@ -77,7 +77,7 @@ function AuthPage() {
   return (
     <div className="auth-wrap">
       <div className="auth-card">
-        <img src={vestaLineart} alt="" className="auth-lineart" />
+        
         <div className="auth-vesta">Vesta</div>
         <div className="auth-title">
           {bootstrapMode ? "Fundar o Domus" : "Entrar no Domus"}
