@@ -35,9 +35,18 @@ export function DomusPage({
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["domus-admin"] }),
   });
 
-  const statusMutation = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: "aprovado" | "recusado" }) =>
-      updateJoinRequestStatus({ data: { id, status } }),
+  const [aprovado, setAprovado] = useState<{ email: string; senha: string } | null>(null);
+
+  const approveMutation = useMutation({
+    mutationFn: (id: string) => approveJoinRequest({ data: { id } }),
+    onSuccess: (res) => {
+      setAprovado({ email: res.email, senha: res.senha });
+      queryClient.invalidateQueries({ queryKey: ["domus-admin"] });
+    },
+  });
+
+  const recusaMutation = useMutation({
+    mutationFn: (id: string) => updateJoinRequestStatus({ data: { id, status: "recusado" } }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["domus-admin"] }),
   });
 
