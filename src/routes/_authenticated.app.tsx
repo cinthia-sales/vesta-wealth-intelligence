@@ -26,7 +26,12 @@ function VestaApp() {
 
   const { data: roleData, isLoading } = useQuery({
     queryKey: ["my-role"],
-    queryFn: () => getMyRole(),
+    queryFn: async () => {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session?.access_token) return { role: null };
+      return getMyRole();
+    },
+    retry: false,
   });
 
   useEffect(() => {
