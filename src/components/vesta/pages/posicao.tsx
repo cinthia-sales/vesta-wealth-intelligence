@@ -314,6 +314,24 @@ export function PosicaoPage({ profileId }: { profileId: ProfileId }) {
                           💰 provento
                         </span>
                       )}
+                      {r.come_cotas_aviso && (
+                        <span
+                          title="Come-cotas semestral (mai/nov)"
+                          style={{
+                            marginLeft: 6,
+                            fontSize: 10,
+                            padding: "1px 6px",
+                            borderRadius: 8,
+                            background: "rgba(216,179,106,.15)",
+                            color: "#B8734A",
+                            border: "1px solid rgba(216,179,106,.35)",
+                            fontWeight: 600,
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {r.come_cotas_aviso}
+                        </span>
+                      )}
                     </td>
                     <td className="r">{r.v}</td>
                     <td className="r">{r.pm}</td>
@@ -321,7 +339,16 @@ export function PosicaoPage({ profileId }: { profileId: ProfileId }) {
                       className={"r " + (r.rc === "muted" ? "" : r.rc)}
                       style={r.rc === "muted" ? { color: "var(--muted)" } : undefined}
                     >
-                      {r.r}
+                      {r.retorno_posicao && r.retorno_fundo_historico ? (
+                        <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
+                          <span style={{ color: "var(--danger)", fontWeight: 600, fontSize: 12 }}>
+                            Posição: {r.retorno_posicao}
+                          </span>
+                          <span style={{ color: "var(--muted)", fontSize: 11 }}>
+                            Fundo desde início: {r.retorno_fundo_historico}
+                          </span>
+                        </span>
+                      ) : r.r}
                     </td>
                     <td><span className={"sb " + r.sb}>{r.cls}</span></td>
                   </tr>

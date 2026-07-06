@@ -29,7 +29,18 @@ export type UserData = {
   donut_labels: string[];
   donut_colors: string[];
   rf_ativos: RFAtivo[];
-  rv_ativos?: { n: string; v: string; pm: string; r: string; rc: string; cls: string; sb: string }[];
+  rv_ativos?: {
+    n: string;
+    v: string;
+    pm: string;
+    r: string;
+    rc: string;
+    cls: string;
+    sb: string;
+    retorno_posicao?: string;
+    retorno_fundo_historico?: string;
+    come_cotas_aviso?: string;
+  }[];
   alertas_list: { cor: "r" | "w" | "g"; titulo: string; det: string }[];
   vencimentos: { icon: string; bg: string; nome: string; det: string; badge: string; bc: string }[];
   resumo: { dot: "r" | "w" | "g"; nome: string; det: string }[];
@@ -94,7 +105,7 @@ const PAULO: UserData = {
     { n: "RENT3", v: "R$ 1.735", pm: "R$40,89 · 42 ações", r: "+1,01%", rc: "good", cls: "ação", sb: "sb-g" },
     // FII / Fundos listados
     { n: "TGRE11 (TG Real Estate)", v: "R$ 44.156", pm: "Aplicado R$50.000", r: "-11,69% capital", rc: "bad", cls: "FII", sb: "sb-w" },
-    { n: "XPAG11 (XP Crédito Agro)", v: "R$ 61.373", pm: "Aplicado R$62.000", r: "+42,94% líq. hist.", rc: "good", cls: "FI", sb: "sb-a" },
+    { n: "XPAG11 (XP Crédito Agro)", v: "R$ 61.373", pm: "Aplicado R$62.000", r: "-1,01%", rc: "bad", cls: "FI", sb: "sb-a", retorno_posicao: "-1,01%", retorno_fundo_historico: "+42,94%", come_cotas_aviso: "⚠️ Come-cotas novembro" },
     // ETFs
     { n: "LFTB11 (ETF Tesouro)", v: "R$ 20.302", pm: "R$122,75 · 165 cotas", r: "+0,24%", rc: "good", cls: "ETF", sb: "sb-a" },
     { n: "IVVB11 (S&P 500)", v: "R$ 3.943", pm: "R$433,15 · 9 cotas", r: "+1,16%", rc: "good", cls: "ETF", sb: "sb-a" },
