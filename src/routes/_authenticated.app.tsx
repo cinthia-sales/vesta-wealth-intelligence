@@ -291,6 +291,7 @@ function VestaApp() {
         profileId={effectiveProfile}
         loggedAs={loggedAs}
         loggedName={loggedName}
+        loggedRole={sessionData?.role ?? null}
         scopes={scopes}
         onUpdateScopes={
           getPersonaInfo(loggedAs).role === "vesta" ? setScopes : undefined

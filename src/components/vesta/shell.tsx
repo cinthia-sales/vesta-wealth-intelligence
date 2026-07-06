@@ -1,4 +1,4 @@
-import { type ReactElement, type ReactNode, useEffect, useState } from "react";
+﻿import { type ReactElement, type ReactNode, useEffect, useState } from "react";
 
 import { HomePage } from "@/components/vesta/pages/home";
 import { PosicaoPage } from "@/components/vesta/pages/posicao";
@@ -130,7 +130,7 @@ export function ProfileSelector({
         <>
           {hasMaltaFurtadoCards && (
             <div style={{ width: "100%" }}>
-              <div className="ps-domus-header">{MALTA_FURTADO.toUpperCase()}</div>
+              <div className="ps-domus-header">DOMUS MALTA FURTADO</div>
               <div className="ps-profiles">
                 {canSee("familiar") && (
                   <div className="ps-card" onClick={() => onSelect("familiar")}>
@@ -225,7 +225,7 @@ export function ProfileSelector({
       )}
 
       <div className="ps-ornament">
-        Família Malta Furtado · 2026
+        Domus Malta Furtado · 2026
         {onLogout && (
           <>
             {" · "}
@@ -416,6 +416,7 @@ export function VestaShell({
   onSwitchProfile,
   loggedAs,
   loggedName,
+  loggedRole,
   scopes,
   onUpdateScopes,
   profileIdForScopeKey,
@@ -427,6 +428,7 @@ export function VestaShell({
   onSwitchProfile: () => void;
   loggedAs?: PersonaId;
   loggedName?: string;
+  loggedRole?: string | null;
   scopes?: ScopeMap;
   onUpdateScopes?: (next: ScopeMap) => void;
   profileIdForScopeKey?: (key: string) => string | null;
@@ -439,7 +441,7 @@ export function VestaShell({
   const meta = getProfileMeta(profileId, loggedName);
   const isFamily = profileId === "familiar";
   const loggedPersona = loggedAs ? getPersonaInfo(loggedAs) : null;
-  const isVesta = loggedPersona?.role === "vesta";
+  const isVesta = loggedRole === "vesta" || loggedPersona?.role === "vesta";
   const canManageDomus = isVesta && profileId !== "paulo";
   const isMember = profileId.startsWith("member:");
   // Nome de exibição: usa loggedName (real do banco) ou fallback para getPersonaInfo
@@ -557,18 +559,18 @@ export function VestaShell({
 
           {isFamily && (
             <>
-              <div className="nav-sec nav-sec-fam">Família</div>
+              <div className="nav-sec nav-sec-fam">Domus</div>
               <div className="nav-item" onClick={() => goTo("home")}>
                 {NAV_ICONS.consolidado}
-                Consolidado Familiar
+                Consolidado Domus
               </div>
             </>
           )}
 
           <div className="nav-sec">Principal</div>
           {item("home", "Visão geral")}
-          {item("posicao", "Posição atual")}
-          {item("rendimentos", "Rendimentos recorrentes", <span style={{ marginLeft: "auto", fontSize: 12 }}>💰</span>)}
+          {!isMember && item("posicao", "Posição atual")}
+          {!isMember && item("rendimentos", "Rendimentos recorrentes", <span style={{ marginLeft: "auto", fontSize: 12 }}>💰</span>)}
           {item(
             "alertas",
             "Alertas",
@@ -591,16 +593,20 @@ export function VestaShell({
             </span>,
           )}
 
-          <div className="nav-sec">Plano</div>
-          {item("equiv", "Equivalência de taxas")}
-          {!isMember && item("validador", "Validador de troca")}
-          {item("breakeven", "Breakeven")}
-          {item("aporte", "Acelerar breakeven")}
-          {item("projecao", "Projeção patrimônio")}
-          {!isMember && item("secundario", "Saída secundário")}
-          {item("regras", "Regras — não mexer")}
-          {item("upload", "Importar arquivos XP")}
-          {!isMember && item("drivers", "Influenciadores")}
+          {!isMember && (
+            <>
+              <div className="nav-sec">Plano</div>
+              {item("equiv", "Equivalência de taxas")}
+              {item("validador", "Validador de troca")}
+              {item("breakeven", "Breakeven")}
+              {item("aporte", "Acelerar breakeven")}
+              {item("projecao", "Projeção patrimônio")}
+              {item("secundario", "Saída secundário")}
+              {item("regras", "Regras — não mexer")}
+              {item("upload", "Importar arquivos XP")}
+              {item("drivers", "Influenciadores")}
+            </>
+          )}
 
           {canManageDomus && (
             <>
@@ -640,7 +646,7 @@ export function VestaShell({
             </div>
             <div className="topbar-sub" style={{ whiteSpace: "pre-line" }}>
               {isFamily 
-                ? "Visão familiar ·\u00A0\nCinthia VESTA como gestora\nPatrimonium Consolidatum" 
+                ? "Visão do Domus ·\u00A0\nCinthia VESTA como gestora\nPatrimonium Consolidatum" 
                 : `Carteira ${meta.name}\u00A0${
                     profileId === "paulo" ? "\nPost Reformam\u00A0·\u00A0MMXXVI\u00A0" : 
                     profileId === "cinthia" ? "\nCustos Ignis et Patrimonni" : ""
@@ -674,7 +680,7 @@ export function VestaShell({
 
         <div className="content">
           <div className="page on">
-            {page === "home" && <HomePage profileId={profileId} />}
+            {page === "home" && <HomePage profileId={profileId} overrideName={isMember ? loggedName : undefined} />}
             {page === "posicao" && <PosicaoPage profileId={profileId} />}
             {page === "breakeven" && <BreakevenPage profileId={profileId} />}
             {page === "equiv" && <EquivPage />}
@@ -707,3 +713,4 @@ export function VestaShell({
     </div>
   );
 }
+

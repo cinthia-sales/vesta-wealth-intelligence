@@ -14,9 +14,9 @@ function saudacaoPorHora(): string {
   return "Boa noite";
 }
 
-export function HomePage({ profileId }: { profileId: ProfileId }) {
+export function HomePage({ profileId, overrideName }: { profileId: ProfileId; overrideName?: string }) {
   const u = getUser(profileId);
-  const firstName = u.nome.split(" ")[0];
+  const firstName = (overrideName ?? u.nome).split(" ")[0];
   const saud = saudacaoPorHora();
 
   return (
