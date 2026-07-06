@@ -674,7 +674,7 @@ export function DomusPage({
             );
           })}
         </div>
-      </div>
+      </div>}
 
       {/* ── Escopos: Domus externo ativo (membros reais do banco) ─────────── */}
       {!isFurtadoDomus && activeExternalMembers.length > 0 && [(activeDomus?.nome ?? "Sem Domus")].map((domusNome) => (
