@@ -92,15 +92,26 @@ function allowedForSession(sessionData: any, scopes: ScopeMap): ProfileId[] {
   const scope = scopes[loggedAs] ?? { seeConsolidado: false, seePersonae: [] };
   const base = allowedProfiles(loggedAs, scope);
 
-  // Semi-Vesta: só pode ver membros do próprio Domus + o próprio "familiar" do Domus
-  if (sessionData.role === "vesta" && !isVestaSoberana(sessionData)) {
+  const hardcodedEmails = new Set(["cinthiavr@yahoo.com.br", "phfurtadovr@yahoo.com.br"]);
+  const memberProfiles: ProfileId[] = (sessionData.members ?? [])
+    .filter((m: any) => !hardcodedEmails.has((m.profile?.email ?? "").toLowerCase()))
+    .map((m: any) => `member:${m.profile_id}` as ProfileId);
+
+  // Soberana: vê todos os perfis hardcoded + todos os membros do banco
+  if (isVestaSoberana(sessionData)) {
+    return [...base, ...memberProfiles.filter((p) => !base.includes(p))];
+  }
+
+  // Semi-Vesta: só vê os membros do próprio Domus
+  if (sessionData.role === "vesta") {
     const myDomusId = sessionData.membership?.domus_id;
-    const domusMembers = membersForRole(sessionData);
-    const memberKeys: ProfileId[] = domusMembers
-      .filter((m: any) => !["cinthiavr@yahoo.com.br", "phfurtadovr@yahoo.com.br"].includes((m.profile?.email ?? "").toLowerCase()))
-      .map((m: any) => `member:${m.profile_id}` as ProfileId);
-    // Remove hardcoded cards; inclui só os do Domus e "familiar" se quiser
-    return [loggedAs, ...memberKeys.filter((k) => k !== loggedAs)];
+    const domusProfiles = memberProfiles.filter((p) => {
+      const m = (sessionData.members ?? []).find(
+        (m: any) => (`member:${m.profile_id}` as ProfileId) === p,
+      );
+      return m?.domus_id === myDomusId;
+    });
+    return [loggedAs, ...domusProfiles.filter((k) => k !== loggedAs)];
   }
 
   return base;

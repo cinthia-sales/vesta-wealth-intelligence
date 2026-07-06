@@ -174,7 +174,9 @@ export function ProfileSelector({
 
           {Array.from(extrasByDomus.entries()).map(([domusNome, members]) => (
             <div key={domusNome} style={{ width: "100%" }}>
-              <div className="ps-domus-header">{domusNome.toUpperCase()}</div>
+              <div className="ps-domus-header">
+                {domusNome.replace(/^fam[íi]lia\s+/i, "Domus ").toUpperCase()}
+              </div>
               <div className="ps-profiles">
                 {members.map((e) => <ExtraCard key={e.id} e={e} />)}
               </div>
