@@ -1,6 +1,6 @@
 import type { KnownProfileId, ProfileId } from "@/lib/profile-derive";
 
-type Status = "intocavel" | "urgente" | "monitorar";
+type Status = "intocavel" | "urgente" | "monitorar" | "estrategico" | "planejar";
 
 export type RFAtivo = {
   n: string;
@@ -33,6 +33,7 @@ export type UserData = {
   alertas_list: { cor: "r" | "w" | "g"; titulo: string; det: string }[];
   vencimentos: { icon: string; bg: string; nome: string; det: string; badge: string; bc: string }[];
   resumo: { dot: "r" | "w" | "g"; nome: string; det: string }[];
+  data_referencia: string;
 };
 
 // Fonte: PosicaoDetalhada_02-07.xlsx (conta 5296823) · Total R$712.325,21 em 02/07/2026
@@ -49,6 +50,7 @@ const PAULO: UserData = {
   kpi4_label: "Breakeven do plano",
   kpi4_val: "mai/2028",
   kpi4_sub: "22 meses · +R$ 692/mês",
+  data_referencia: "2026-07-02",
   // Donut por classe (fonte XP): Ações 122.980 · ETFs/Global/Alt 30.975 · XPAG 61.373 · TGRE 44.156 · RF Inflação 243.584 · RF Pós-fix 142.592 · RF Prefixado 94.830
   donut_data: [243584, 142592, 94830, 61373, 44156, 122980, 30975],
   donut_labels: [
@@ -65,11 +67,11 @@ const PAULO: UserData = {
     { n: "NTN-B AGO/2026 (IPCA+9,45%)", v: 96512, t: 15.47, cdi: 120.7, venc: "15/08/2026", s: "urgente" },
     { n: "DEB ER ATIVO J&F FEV/2028 (+15,15%)", v: 90662, t: 15.15, cdi: 118.4, venc: "21/02/2028", s: "intocavel", nota: "Lote principal · 87 debêntures" },
     { n: "DEB JALLES MACHADO DEZ/2031 (IPCA+8,5%)", v: 70642, t: 14.47, cdi: 113.0, venc: "15/12/2031", s: "intocavel" },
-    { n: "NTN-B AGO/2050 (IPCA+4,45%)", v: 53341, t: 8.55, cdi: 66.8, venc: "15/08/2050", s: "monitorar", nota: "Aplicada em 09/2021" },
+    { n: "NTN-B AGO/2050 (IPCA+4,45%)", v: 53341, t: 8.55, cdi: 66.8, venc: "15/08/2050", s: "estrategico", nota: "Aplicada em 09/2021 · nunca vender com deságio" },
     { n: "LCA SICOOB MAR/2030 (92% CDI)", v: 37750, t: 13.57, cdi: 106.1, venc: "21/03/2030", s: "intocavel" },
     { n: "LCA SICOOB ABR/2030 (92% CDI · 24 títulos)", v: 28390, t: 13.57, cdi: 106.1, venc: "04/04/2030", s: "intocavel" },
     { n: "LCA ORIGINAL DEZ/2028 (92,5% CDI)", v: 26700, t: 13.61, cdi: 106.5, venc: "18/12/2028", s: "intocavel" },
-    { n: "NTN-B AGO/2050 (IPCA+4,65%)", v: 23089, t: 8.74, cdi: 68.3, venc: "15/08/2050", s: "monitorar", nota: "Aplicada em 10/2021" },
+    { n: "NTN-B AGO/2050 (IPCA+4,65%)", v: 23089, t: 8.74, cdi: 68.3, venc: "15/08/2050", s: "estrategico", nota: "Aplicada em 10/2021 · nunca vender com deságio" },
     { n: "LCA SICOOB MAI/2030 (92% CDI)", v: 22492, t: 13.57, cdi: 106.1, venc: "10/05/2030", s: "intocavel" },
     { n: "LCA SICOOB ABR/2030 (92% CDI · 14 títulos)", v: 16842, t: 13.57, cdi: 106.1, venc: "15/04/2030", s: "intocavel" },
     { n: "LCA ORIGINAL MAR/2030 (94% CDI)", v: 10418, t: 13.87, cdi: 108.4, venc: "06/03/2030", s: "intocavel" },
@@ -128,6 +130,7 @@ const CINTHIA: UserData = {
   rv: 0,
   rf_pct: 100,
   rv_pct: 0,
+  data_referencia: "2026-06-30",
   saudacao: "Esta é a sua carteira, Cínthia. Posição em 30/06/2026.",
   topbar_sub: "Carteira Cínthia · Conta XP 6414212",
   kpi4_label: "LCI vence em",
@@ -143,7 +146,7 @@ const CINTHIA: UserData = {
   ],
   donut_colors: ["#A11D3E", "#C0392B", "#4E7A5C", "#B8546E", "#3E5E7A"],
   rf_ativos: [
-    { n: "LCI BANCO XP S.A. MAI/2027", v: 225494, t: 13.13, cdi: 89.0, venc: "13/05/2027", s: "urgente", nota: "89% CDI isento · aplicada em 13/05/2026 · vence em ~10 meses" },
+    { n: "LCI BANCO XP S.A. MAI/2027", v: 225494, t: 13.13, cdi: 89.0, venc: "13/05/2027", s: "planejar", nota: "89% CDI isento · vence mai/2027 · planejar reinvestimento nov/2026 · meta IPCA+8%+ ou pré 14%+ isento" },
     { n: "LCA BANCO BOCOM BBM OUT/2030", v: 86312, t: 13.68, cdi: 92.7, venc: "21/10/2030", s: "monitorar", nota: "92,7% CDI isento · banco menor, checar rating" },
     { n: "LCD BRDE FEV/2036 (lote 1 · 55 títulos)", v: 57675, t: 13.64, cdi: 92.5, venc: "11/02/2036", s: "monitorar", nota: "⚠️ Taxa flutuante trancada 10 anos" },
     { n: "LCD BRDE FEV/2036 (lote 2 · 47 títulos)", v: 49286, t: 13.64, cdi: 92.5, venc: "11/02/2036", s: "monitorar", nota: "⚠️ Taxa flutuante trancada 10 anos" },
@@ -217,6 +220,7 @@ function buildFamiliar(): UserData {
       { dot: "r", nome: "Cinthia: LCD BRDE FEV/2036", det: "R$106k a taxa flutuante trancada por 10 anos." },
       { dot: "g", nome: "4 blocos intocáveis (Paulo)", det: "J&F · Jalles · LCAs · NTN-B 2050 até mai/2028." },
     ],
+    data_referencia: "2026-07-02",
   };
 }
 
@@ -249,6 +253,7 @@ const EMPTY_MEMBER: UserData = {
       det: "A Vesta já aprovou esta persona. Importe extratos XP ou cadastre dados para materializar a carteira.",
     },
   ],
+  data_referencia: "",
 };
 
 export function isKnownProfileId(id: ProfileId): id is KnownProfileId {
