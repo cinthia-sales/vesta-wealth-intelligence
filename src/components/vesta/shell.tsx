@@ -97,7 +97,7 @@ export function ProfileSelector({
               <div className="ps-card-desc" style={{ margin: "6px 0 10px" }}>
                 Carteira XP 5296823<br />visão individual<br />&nbsp;
               </div>
-              <div className="ps-card-badge ps-badge-ind">Individual<br />&nbsp;Restrictus</div>
+              <div className="ps-card-badge ps-badge-ind">Individual Restrictus</div>
             </div>
           </div>
         )}
