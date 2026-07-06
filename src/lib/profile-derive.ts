@@ -9,7 +9,8 @@ import {
   type Holding,
 } from "@/data/profiles";
 
-export type ProfileId = "cinthia" | "paulo" | "familiar";
+export type KnownProfileId = "cinthia" | "paulo" | "familiar";
+export type ProfileId = KnownProfileId | `member:${string}`;
 
 export type ActiveProfileView = {
   id: ProfileId;
@@ -33,7 +34,7 @@ function tagHold(p: IndividualProfile): (Holding & { owner: string })[] {
   return p.holdings.map((h) => ({ ...h, owner: p.name }));
 }
 
-export function getProfileView(id: ProfileId): ActiveProfileView {
+export function getProfileView(id: KnownProfileId): ActiveProfileView {
   if (id === "familiar") {
     const tc = totalsOf(CINTHIA);
     const tp = totalsOf(PAULO);
