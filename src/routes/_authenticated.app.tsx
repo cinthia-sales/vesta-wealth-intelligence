@@ -69,7 +69,9 @@ function VestaApp() {
     queryKey: ["domus-session"],
     queryFn: async () => {
       const { data } = await supabase.auth.getSession();
-      if (!data.session?.access_token) return { role: null, members: [] };
+      if (!data.session?.access_token) {
+        return { role: null, profile: null, membership: null, members: [], scope: null };
+      }
       return getDomusSession();
     },
     retry: false,
@@ -179,7 +181,7 @@ function VestaApp() {
         onUpdateScopes={
           getPersonaInfo(loggedAs).role === "vesta" ? setScopes : undefined
         }
-        profileIdForScopeKey={(key) => profileIdForKey(key, sessionData)}
+        profileIdForScopeKey={(key: string) => profileIdForKey(key, sessionData)}
         onChangeProfile={setProfile}
         onSwitchProfile={() => {
           if (allowed.length > 1) setProfile(null);
