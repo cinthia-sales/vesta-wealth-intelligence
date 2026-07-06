@@ -13,7 +13,7 @@ export type RFAtivo = {
 };
 
 export type LocalSnapshot = {
-  profileId: "paulo" | "cinthia";
+  profileId: string; // "paulo" | "cinthia" | UUID para membros externos
   data_referencia: string; // "YYYY-MM-DD"
   saved_at: string;        // ISO timestamp
   total: number;
@@ -314,10 +314,22 @@ export function isKnownProfileId(id: ProfileId): id is KnownProfileId {
   return id === "paulo" || id === "cinthia" || id === "familiar";
 }
 
+function loadMemberFromStorage(uuid: string): UserData {
+  if (typeof window === "undefined") return EMPTY_MEMBER;
+  try {
+    const raw = window.localStorage.getItem("vesta_posicao_" + uuid);
+    if (!raw) return EMPTY_MEMBER;
+    const snap: LocalSnapshot = JSON.parse(raw);
+    return mergeSnapshot(EMPTY_MEMBER, snap);
+  } catch {
+    return EMPTY_MEMBER;
+  }
+}
+
 export function getUser(id: ProfileId): UserData {
   if (id === "paulo") return loadFromStorage("paulo", PAULO);
   if (id === "cinthia") return loadFromStorage("cinthia", CINTHIA);
-  if (id.startsWith("member:")) return EMPTY_MEMBER;
+  if (id.startsWith("member:")) return loadMemberFromStorage(id.slice("member:".length));
   return buildFamiliar(
     loadFromStorage("paulo", PAULO),
     loadFromStorage("cinthia", CINTHIA),

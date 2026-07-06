@@ -249,6 +249,35 @@ export const updateJoinRequestStatus = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const removeMember = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ profileId: z.string().uuid() }).parse(input))
+  .handler(async ({ context, data }) => {
+    await assertVesta(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error: scopeErr } = await supabaseAdmin
+      .from("domus_visibility_scopes")
+      .delete()
+      .eq("member_profile_id", data.profileId);
+    if (scopeErr) throw scopeErr;
+    const { error: memberErr } = await supabaseAdmin
+      .from("domus_members")
+      .delete()
+      .eq("profile_id", data.profileId);
+    if (memberErr) throw memberErr;
+    return { ok: true };
+  });
+
+export const deleteDomus = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ context, data }) => {
+    await assertVesta(context);
+    const { error } = await context.supabase.from("domus").delete().eq("id", data.id);
+    if (error) throw error;
+    return { ok: true };
+  });
+
 export const DEFAULT_MEMBER_PASSWORD = "VESTADECIDETUDO";
 
 export const approveJoinRequest = createServerFn({ method: "POST" })

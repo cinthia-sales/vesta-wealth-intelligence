@@ -1,18 +1,24 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { type LocalSnapshot, type RFAtivo, STORAGE_KEYS } from "@/data/vesta-users";
+import { supabase } from "@/integrations/supabase/client";
 
 type ParsedRow = { ativo: string; valor: number; taxa?: string; venc?: string };
-type AccountId = "paulo" | "cinthia";
+type AccountId = "paulo" | "cinthia" | string; // string = UUID de membro externo
 
 const ACCOUNT_MAP: Record<string, AccountId> = {
   "5296823": "paulo",
   "6414212": "cinthia",
 };
 
-const ACCOUNT_LABEL: Record<AccountId, string> = {
+const KNOWN_LABEL: Record<string, string> = {
   paulo: "Paulo (XP 5296823)",
   cinthia: "Cinthia (XP 6414212)",
 };
+
+function storageKey(accountId: AccountId): string {
+  if (accountId === "paulo" || accountId === "cinthia") return STORAGE_KEYS[accountId];
+  return "vesta_posicao_" + accountId;
+}
 
 function detectAccount(filename: string): AccountId | null {
   for (const [num, id] of Object.entries(ACCOUNT_MAP)) {
@@ -80,7 +86,25 @@ export function UploadPage() {
   const [drag, setDrag] = useState(false);
   const [account, setAccount] = useState<AccountId | null>(null);
   const [dataRef, setDataRef] = useState(todayISO());
-  const [aplicado, setAplicado] = useState<{ account: AccountId; data: string } | null>(null);
+  const [aplicado, setAplicado] = useState<{ label: string; data: string; key: string } | null>(null);
+
+  // Sessão do usuário logado
+  const [sessionUserId, setSessionUserId] = useState<string | null>(null);
+  const [sessionEmail, setSessionEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setSessionUserId(session.user.id);
+        setSessionEmail(session.user.email ?? null);
+        // Se não é paulo nem cinthia → auto-seleciona a própria conta
+        const emailLower = session.user.email?.toLowerCase() ?? "";
+        if (!emailLower.includes("phfurtadovr") && !emailLower.includes("cinthiavr")) {
+          setAccount(session.user.id);
+        }
+      }
+    });
+  }, []);
 
   async function handleFile(file: File) {
     setErro(null);
@@ -93,11 +117,20 @@ export function UploadPage() {
       const parsed = parseCsv(text);
       if (parsed.length === 0) throw new Error("Nenhuma linha válida encontrada.");
       setRows(parsed);
-      setAccount(detectAccount(file.name));
+      // Tenta detectar pelo nome do arquivo; se não detectar, mantém a sessão
+      const detected = detectAccount(file.name);
+      if (detected) setAccount(detected);
     } catch (e: unknown) {
       setRows([]);
       setErro(e instanceof Error ? e.message : "Erro ao ler o arquivo.");
     }
+  }
+
+  function accountLabel(id: AccountId): string {
+    if (id === "paulo") return KNOWN_LABEL.paulo;
+    if (id === "cinthia") return KNOWN_LABEL.cinthia;
+    if (id === sessionUserId && sessionEmail) return `Minha conta (${sessionEmail})`;
+    return `Conta ${id.slice(0, 8)}…`;
   }
 
   function aplicarAoPainel() {
@@ -115,8 +148,9 @@ export function UploadPage() {
       rv,
       rf_ativos: rfRows.map(toRFAtivo),
     };
-    window.localStorage.setItem(STORAGE_KEYS[account], JSON.stringify(snap));
-    setAplicado({ account, data: dataRef });
+    const key = storageKey(account);
+    window.localStorage.setItem(key, JSON.stringify(snap));
+    setAplicado({ label: accountLabel(account), data: dataRef, key });
   }
 
   const fmtR = (n: number) => "R$ " + Math.round(n).toLocaleString("pt-BR");
@@ -124,6 +158,12 @@ export function UploadPage() {
   const rvRows = rows.filter((r) => !isRF(r));
   const rfTotal = rfRows.reduce((s, r) => s + r.valor, 0);
   const rvTotal = rvRows.reduce((s, r) => s + r.valor, 0);
+
+  // Opções de conta disponíveis para seleção
+  const accountOptions: AccountId[] = ["paulo", "cinthia"];
+  if (sessionUserId && !accountOptions.includes(sessionUserId)) {
+    accountOptions.push(sessionUserId);
+  }
 
   return (
     <>
@@ -146,14 +186,14 @@ export function UploadPage() {
           }}
         >
           <div style={{ fontSize: 14, fontWeight: 600, color: "var(--good, #4E7A5C)", marginBottom: 4 }}>
-            ✓ Posição de {ACCOUNT_LABEL[aplicado.account]} atualizada em {fmtDateBR(aplicado.data)}
+            ✓ Posição de {aplicado.label} atualizada em {fmtDateBR(aplicado.data)}
           </div>
           <div style={{ fontSize: 12, color: "var(--muted)" }}>
             Abra qualquer página do painel — os números já refletem o arquivo importado.
           </div>
           <button
             onClick={() => {
-              window.localStorage.removeItem(STORAGE_KEYS[aplicado.account]);
+              window.localStorage.removeItem(aplicado.key);
               setAplicado(null);
             }}
             style={{
@@ -167,7 +207,7 @@ export function UploadPage() {
               cursor: "pointer",
             }}
           >
-            Desfazer (volta aos dados hardcoded)
+            Desfazer (volta aos dados anteriores)
           </button>
         </div>
       )}
@@ -238,8 +278,8 @@ export function UploadPage() {
                 <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8 }}>
                   Conta
                 </div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  {(["paulo", "cinthia"] as AccountId[]).map((id) => (
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {accountOptions.map((id) => (
                     <button
                       key={id}
                       onClick={() => setAccount(id)}
@@ -256,7 +296,7 @@ export function UploadPage() {
                         fontWeight: account === id ? 600 : 400,
                       }}
                     >
-                      {ACCOUNT_LABEL[id]}
+                      {accountLabel(id)}
                     </button>
                   ))}
                 </div>
@@ -309,7 +349,7 @@ export function UploadPage() {
 
           <div className="card">
             <div className="card-hdr">
-              Prévia <span>{rows.length} ativos · RF classificada por taxa+vencimento</span>
+              Prévia <span>{rows.length} ativos · RF = com taxa+vencimento</span>
             </div>
             <div style={{ overflowX: "auto" }}>
               <table className="tbl">
@@ -369,14 +409,14 @@ export function UploadPage() {
               <li><em>opcional:</em> Taxa / Indexador · Vencimento</li>
             </ul>
             <div style={{ marginTop: 10, fontSize: 12 }}>
-              Exemplo: <code>Ativo;Valor;Taxa;Vencimento</code>
-              <br />
-              <code>NTN-B AGO/2026;96512,10;IPCA+9,45%;15/08/2026</code>
-            </div>
-            <div style={{ marginTop: 10, fontSize: 12 }}>
               Contas reconhecidas pelo nome do arquivo:{" "}
               <strong>5296823</strong> → Paulo · <strong>6414212</strong> → Cinthia.
             </div>
+            {sessionEmail && (
+              <div style={{ marginTop: 6, fontSize: 12, color: "var(--accent)" }}>
+                Logado como <strong>{sessionEmail}</strong> — sua conta é selecionada automaticamente.
+              </div>
+            )}
           </div>
         </div>
       )}

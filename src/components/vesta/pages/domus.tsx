@@ -10,7 +10,9 @@ import {
   approveJoinRequest,
   createDomus,
   DEFAULT_MEMBER_PASSWORD,
+  deleteDomus,
   getDomusAdmin,
+  removeMember,
   saveMemberVisibilityScope,
   updateJoinRequestStatus,
 } from "@/lib/domus.functions";
@@ -62,6 +64,27 @@ export function DomusPage({
     mutationFn: (id: string) => updateJoinRequestStatus({ data: { id, status: "recusado" } }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["domus-admin"] }),
   });
+
+  const removeMemberMutation = useMutation({
+    mutationFn: (profileId: string) => removeMember({ data: { profileId } }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["domus-admin"] }),
+  });
+
+  const deleteDomusMutation = useMutation({
+    mutationFn: (id: string) => deleteDomus({ data: { id } }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["domus-admin"] }),
+  });
+
+  const handleRemoveMember = (m: any) => {
+    const nome = m.profile?.nome ?? m.profile?.email ?? "este membro";
+    if (!window.confirm(`Remover ${nome} do Domus? O acesso será revogado.`)) return;
+    removeMemberMutation.mutate(m.profile_id);
+  };
+
+  const handleDeleteDomus = (item: any) => {
+    if (!window.confirm(`Excluir o Domus "${item.nome}"?\nTodos os membros serão desvinculados.`)) return;
+    deleteDomusMutation.mutate(item.id);
+  };
 
   const [savedFlash, setSavedFlash] = useState(false);
   const flashSaved = () => {
@@ -229,9 +252,26 @@ export function DomusPage({
             <span className="aitem-det">Nenhum Domus criado ainda.</span>
           )}
           {domusList.map((item) => (
-            <div key={item.id} className="domus-pill">
+            <div key={item.id} className="domus-pill" style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <strong>{item.nome}</strong>
               <span>/{item.slug}</span>
+              <button
+                onClick={() => handleDeleteDomus(item)}
+                disabled={deleteDomusMutation.isPending}
+                title="Excluir Domus"
+                style={{
+                  marginLeft: "auto",
+                  background: "transparent",
+                  border: "1px solid rgba(161,29,62,.35)",
+                  color: "var(--accent)",
+                  borderRadius: 5,
+                  padding: "2px 8px",
+                  fontSize: 11,
+                  cursor: "pointer",
+                }}
+              >
+                excluir
+              </button>
             </div>
           ))}
         </div>
@@ -343,6 +383,25 @@ export function DomusPage({
                   <span className={`sb ${m.papel === "vesta" ? "sb-w" : "sb-g"}`}>
                     {m.papel}
                   </span>
+                  {m.papel !== "vesta" && (
+                    <button
+                      onClick={() => handleRemoveMember(m)}
+                      disabled={removeMemberMutation.isPending}
+                      title="Remover membro"
+                      style={{
+                        marginLeft: 8,
+                        background: "transparent",
+                        border: "1px solid rgba(161,29,62,.35)",
+                        color: "var(--accent)",
+                        borderRadius: 5,
+                        padding: "2px 8px",
+                        fontSize: 11,
+                        cursor: "pointer",
+                      }}
+                    >
+                      remover
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
