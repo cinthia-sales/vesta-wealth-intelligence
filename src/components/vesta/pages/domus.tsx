@@ -1,8 +1,10 @@
 import {
-  PERSONAE,
   DOMUS_NAME,
+  getPersonaInfo,
   type PersonaId,
+  type ProfileId,
   type Scope,
+  type ScopeMap,
 } from "@/state/session";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { approveJoinRequest, createDomus, DEFAULT_MEMBER_PASSWORD, getDomusAdmin, updateJoinRequestStatus } from "@/lib/domus.functions";
@@ -16,8 +18,8 @@ export function DomusPage({
   scopes,
   onUpdateScopes,
 }: {
-  scopes: Record<PersonaId, Scope>;
-  onUpdateScopes: (next: Record<PersonaId, Scope>) => void;
+  scopes: ScopeMap;
+  onUpdateScopes: (next: ScopeMap) => void;
 }) {
   const membros: PersonaId[] = ["cinthia", "paulo"];
   const queryClient = useQueryClient();
@@ -261,8 +263,8 @@ export function DomusPage({
         </div>
         <div style={{ padding: 16, display: "grid", gap: 14 }}>
           {membros.map((id) => {
-            const p = PERSONAE[id];
-            const scope = scopes[id];
+            const p = getPersonaInfo(id);
+            const scope = scopes[id] ?? { seeConsolidado: false, seePersonae: [] };
             const isVesta = p.role === "vesta";
             return (
               <div
@@ -337,7 +339,7 @@ export function DomusPage({
                             checked={scope.seePersonae.includes(other)}
                             onChange={() => togglePersona(id, other)}
                           />
-                          <span>Ver carteira de <strong>{PERSONAE[other].name}</strong></span>
+                          <span>Ver carteira de <strong>{getPersonaInfo(other).name}</strong></span>
                         </label>
                       ))}
                   </div>
