@@ -2,7 +2,6 @@ import {
   DOMUS_NAME,
   getPersonaInfo,
   type PersonaId,
-  type ProfileId,
   type Scope,
   type ScopeMap,
 } from "@/state/session";
