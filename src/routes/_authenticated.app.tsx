@@ -12,7 +12,6 @@ import {
   type PersonaId,
   type ScopeMap,
 } from "@/state/session";
-import { getDomusSession } from "@/lib/domus.functions";
 
 export const Route = createFileRoute("/_authenticated/app")({
   component: VestaApp,
@@ -125,13 +124,54 @@ function VestaApp() {
   const { data: sessionData, isLoading } = useQuery({
     queryKey: ["domus-session", userId],
     queryFn: async () => {
-      const { data } = await supabase.auth.getSession();
-      if (!data.session?.access_token) {
+      const { data: sessionResult } = await supabase.auth.getSession();
+      if (!sessionResult.session) {
         return { role: null, profile: null, membership: null, members: [], scope: null };
       }
-      return getDomusSession();
+      const uid = sessionResult.session.user.id;
+
+      const [roleRes, profileRes, membershipRes, allMembersRes] = await Promise.all([
+        supabase.from("user_roles").select("role").eq("user_id", uid).maybeSingle(),
+        supabase.from("profiles").select("id,nome,email,primeiro_acesso").eq("id", uid).maybeSingle(),
+        supabase.from("domus_members")
+          .select("id,domus_id,profile_id,papel,created_at,domus:domus_id(nome),profile:profile_id(nome,email)")
+          .eq("profile_id", uid)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+        supabase.from("domus_members")
+          .select("id,domus_id,profile_id,papel,created_at,domus:domus_id(nome),profile:profile_id(nome,email)")
+          .order("created_at", { ascending: false }),
+      ]);
+
+      let scope = null;
+      if (membershipRes.data) {
+        const { data: scopeData } = await supabase
+          .from("domus_visibility_scopes")
+          .select("id,domus_id,member_profile_id,can_see_consolidado,can_see_member_profile_ids,updated_at")
+          .eq("domus_id", membershipRes.data.domus_id)
+          .eq("member_profile_id", uid)
+          .maybeSingle();
+        scope = scopeData;
+      }
+
+      let members = allMembersRes.data ?? [];
+      if (roleRes.data?.role !== "vesta" && membershipRes.data) {
+        const visibleIds = new Set([uid, ...(scope?.can_see_member_profile_ids ?? [])]);
+        members = members.filter(
+          (m: any) => m.domus_id === membershipRes.data!.domus_id && visibleIds.has(m.profile_id),
+        );
+      }
+
+      return {
+        role: roleRes.data?.role ?? null,
+        profile: profileRes.data ?? null,
+        membership: membershipRes.data ?? null,
+        members,
+        scope,
+      };
     },
-    enabled: authUser !== undefined, // aguarda authUser resolver
+    enabled: authUser !== undefined,
     staleTime: 0,
     gcTime: 0,
     retry: false,

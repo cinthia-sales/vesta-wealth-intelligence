@@ -121,18 +121,16 @@ function DomusCard({ domus, onClick }: { domus: PublicDomus; onClick: () => void
       >
         {domus.nome}
       </div>
-      {domus.descricao && (
-        <div
-          style={{
-            fontSize: 13,
-            color: "var(--muted)",
-            marginBottom: 14,
-            lineHeight: 1.5,
-          }}
-        >
-          {domus.descricao}
-        </div>
-      )}
+      <div
+        style={{
+          fontSize: 13,
+          color: "var(--muted)",
+          marginBottom: 14,
+          lineHeight: 1.5,
+        }}
+      >
+        Entre com sua conta ou solicite acesso a este Domus.
+      </div>
       <div style={{ fontSize: 12, color: "var(--accent)", fontWeight: 600 }}>Entrar →</div>
     </button>
   );
