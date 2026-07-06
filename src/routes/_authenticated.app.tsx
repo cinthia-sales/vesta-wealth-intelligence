@@ -7,10 +7,11 @@ import { supabase } from "@/integrations/supabase/client";
 import type { ProfileId } from "@/lib/profile-derive";
 import {
   DEFAULT_SCOPES,
-  PERSONAE,
   allowedProfiles,
+  getPersonaInfo,
   type PersonaId,
   type Scope,
+  type ScopeMap,
 } from "@/state/session";
 import { getMyRole } from "@/lib/auth.functions";
 import { listDomusPersonae } from "@/lib/domus.functions";
@@ -21,7 +22,7 @@ export const Route = createFileRoute("/_authenticated/app")({
 
 const SCOPES_STORAGE_KEY = "vesta.scopes.v1";
 
-function loadScopes(): Record<PersonaId, Scope> {
+function loadScopes(): ScopeMap {
   if (typeof window === "undefined") return DEFAULT_SCOPES;
   try {
     const raw = window.localStorage.getItem(SCOPES_STORAGE_KEY);
@@ -34,8 +35,8 @@ function loadScopes(): Record<PersonaId, Scope> {
 
 function VestaApp() {
   const navigate = useNavigate();
-  const [scopes, setScopesState] = useState<Record<PersonaId, Scope>>(loadScopes);
-  const setScopes = (next: Record<PersonaId, Scope>) => {
+  const [scopes, setScopesState] = useState<ScopeMap>(loadScopes);
+  const setScopes = (next: ScopeMap) => {
     setScopesState(next);
     try {
       window.localStorage.setItem(SCOPES_STORAGE_KEY, JSON.stringify(next));
@@ -99,7 +100,7 @@ function VestaApp() {
   }
 
   const loggedAs: PersonaId = roleData?.role === "vesta" ? "cinthia" : "paulo";
-  const scope = scopes[loggedAs];
+  const scope = scopes[loggedAs] ?? { seeConsolidado: false, seePersonae: [] };
   const allowed = allowedProfiles(loggedAs, scope);
 
   const effectiveProfile: ProfileId | null =
@@ -153,7 +154,7 @@ function VestaApp() {
         loggedAs={loggedAs}
         scopes={scopes}
         onUpdateScopes={
-          PERSONAE[loggedAs].role === "vesta" ? setScopes : undefined
+          getPersonaInfo(loggedAs).role === "vesta" ? setScopes : undefined
         }
         onChangeProfile={setProfile}
         onSwitchProfile={() => {
