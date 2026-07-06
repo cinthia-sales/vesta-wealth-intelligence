@@ -56,7 +56,6 @@ export function ProfileSelector({
       (loggedPersona?.role === "vesta" || canSee(profileId))
     );
   });
-  );
 
   return (
     <div id="profile-screen">
