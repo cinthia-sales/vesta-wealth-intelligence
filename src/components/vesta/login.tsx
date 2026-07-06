@@ -1,11 +1,11 @@
-import { PERSONAE, type PersonaId, DOMUS_NAME } from "@/state/session";
+import { PERSONAE, type KnownPersonaId, type PersonaId, DOMUS_NAME } from "@/state/session";
 
 /* ============================================================
    LoginScreen — mock. Escolha de Persona para "entrar" no app.
    Reutiliza o visual do ProfileSelector.
    ============================================================ */
 export function LoginScreen({ onLogin }: { onLogin: (id: PersonaId) => void }) {
-  const list: PersonaId[] = ["cinthia", "paulo"];
+  const list: KnownPersonaId[] = ["cinthia", "paulo"];
   return (
     <div id="profile-screen">
       <div className="ps-vesta">✦ Vesta ✦</div>
