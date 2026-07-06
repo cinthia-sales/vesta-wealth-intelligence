@@ -1,6 +1,6 @@
 import type { KnownProfileId, ProfileId } from "@/lib/profile-derive";
 
-type Status = "intocavel" | "urgente" | "monitorar" | "estrategico" | "planejar";
+export type Status = "intocavel" | "urgente" | "monitorar" | "estrategico" | "planejar";
 
 export type RFAtivo = {
   n: string;
@@ -11,6 +11,21 @@ export type RFAtivo = {
   s: Status;
   nota?: string;
 };
+
+export type LocalSnapshot = {
+  profileId: "paulo" | "cinthia";
+  data_referencia: string; // "YYYY-MM-DD"
+  saved_at: string;        // ISO timestamp
+  total: number;
+  rf: number;
+  rv: number;
+  rf_ativos: RFAtivo[];
+};
+
+export const STORAGE_KEYS = {
+  paulo: "vesta_posicao_paulo",
+  cinthia: "vesta_posicao_cinthia",
+} as const;
 
 export type UserData = {
   nome: string;
@@ -184,18 +199,21 @@ const CINTHIA: UserData = {
 
 };
 
-function buildFamiliar(): UserData {
-  const total = PAULO.total + CINTHIA.total;
-  const rf = PAULO.rf + CINTHIA.rf;
-  const rv = PAULO.rv + CINTHIA.rv;
-  // Donut consolidado por classe estratégica
+function buildFamiliar(paulo: UserData = PAULO, cinthia: UserData = CINTHIA): UserData {
+  const total = paulo.total + cinthia.total;
+  const rf = paulo.rf + cinthia.rf;
+  const rv = paulo.rv + cinthia.rv;
   const donut_data = [
-    142000 + CINTHIA.rf_ativos.filter((x) => /LCI|LCA/.test(x.n)).reduce((s, x) => s + x.v, 0),
-    245000,
-    95000,
-    61000 + 106833, // XPAG + LCD BRDE
-    116000,
+    paulo.rf_ativos.filter((x) => /LCA|LCI/i.test(x.n) && !/LCD/i.test(x.n)).reduce((s, x) => s + x.v, 0)
+      + cinthia.rf_ativos.filter((x) => /LCI|LCA/i.test(x.n) && !/LCD/i.test(x.n)).reduce((s, x) => s + x.v, 0),
+    paulo.rf_ativos.filter((x) => /NTN-B|IPCA|Jalles/i.test(x.n)).reduce((s, x) => s + x.v, 0),
+    paulo.rf_ativos.filter((x) => /DEB|J&F/i.test(x.n) && !/Jalles/i.test(x.n)).reduce((s, x) => s + x.v, 0),
+    cinthia.rf_ativos.filter((x) => /LCD/i.test(x.n)).reduce((s, x) => s + x.v, 0) + 61000,
+    rv,
   ];
+  const dataRef = paulo.data_referencia >= cinthia.data_referencia
+    ? paulo.data_referencia
+    : cinthia.data_referencia;
   return {
     nome: "Família Furtado",
     conta: "Consolidado Paulo + Cinthia",
@@ -213,17 +231,17 @@ function buildFamiliar(): UserData {
     donut_labels: ["LCA/LCI pós-fix.", "Inflação IPCA+", "Prefixado isento", "Agro + LCD flut.", "Renda variável"],
     donut_colors: ["#A11D3E", "#4E7A5C", "#B8546E", "#D97706", "#3E5E7A"],
     rf_ativos: [
-      ...PAULO.rf_ativos.map((x) => ({ ...x, n: `[Paulo] ${x.n}` })),
-      ...CINTHIA.rf_ativos.map((x) => ({ ...x, n: `[Cinthia] ${x.n}` })),
+      ...paulo.rf_ativos.map((x) => ({ ...x, n: `[Paulo] ${x.n}` })),
+      ...cinthia.rf_ativos.map((x) => ({ ...x, n: `[Cinthia] ${x.n}` })),
     ],
-    rv_ativos: PAULO.rv_ativos,
+    rv_ativos: paulo.rv_ativos,
     alertas_list: [
-      ...PAULO.alertas_list.map((a) => ({ ...a, titulo: `[Paulo] ${a.titulo}` })),
-      ...CINTHIA.alertas_list.map((a) => ({ ...a, titulo: `[Cinthia] ${a.titulo}` })),
+      ...paulo.alertas_list.map((a) => ({ ...a, titulo: `[Paulo] ${a.titulo}` })),
+      ...cinthia.alertas_list.map((a) => ({ ...a, titulo: `[Cinthia] ${a.titulo}` })),
     ],
     vencimentos: [
-      ...PAULO.vencimentos.map((v) => ({ ...v, nome: `[Paulo] ${v.nome}` })),
-      ...CINTHIA.vencimentos.map((v) => ({ ...v, nome: `[Cinthia] ${v.nome}` })),
+      ...paulo.vencimentos.map((v) => ({ ...v, nome: `[Paulo] ${v.nome}` })),
+      ...cinthia.vencimentos.map((v) => ({ ...v, nome: `[Cinthia] ${v.nome}` })),
     ],
     resumo: [
       { dot: "w", nome: "Reestruturação jun/26 (Paulo)", det: "Custo R$14.698 · ganho +R$692/mês · recupera mai/2028" },
@@ -231,11 +249,36 @@ function buildFamiliar(): UserData {
       { dot: "r", nome: "Cinthia: LCD BRDE FEV/2036", det: "R$106k a taxa flutuante trancada por 10 anos." },
       { dot: "g", nome: "4 blocos intocáveis (Paulo)", det: "J&F · Jalles · LCAs · NTN-B 2050 até mai/2028." },
     ],
-    data_referencia: "2026-07-02",
+    data_referencia: dataRef,
   };
 }
 
-const FAMILIAR = buildFamiliar();
+function mergeSnapshot(base: UserData, snap: LocalSnapshot): UserData {
+  const { total, rf, rv } = snap;
+  return {
+    ...base,
+    total,
+    rf,
+    rv,
+    rf_pct: total > 0 ? (rf / total) * 100 : 0,
+    rv_pct: total > 0 ? (rv / total) * 100 : 0,
+    rf_ativos: snap.rf_ativos,
+    data_referencia: snap.data_referencia,
+  };
+}
+
+function loadFromStorage(id: "paulo" | "cinthia", base: UserData): UserData {
+  if (typeof window === "undefined") return base;
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEYS[id]);
+    if (!raw) return base;
+    const snap: LocalSnapshot = JSON.parse(raw);
+    if (!snap.data_referencia || snap.data_referencia < base.data_referencia) return base;
+    return mergeSnapshot(base, snap);
+  } catch {
+    return base;
+  }
+}
 
 const EMPTY_MEMBER: UserData = {
   nome: "Novo membro",
@@ -272,8 +315,11 @@ export function isKnownProfileId(id: ProfileId): id is KnownProfileId {
 }
 
 export function getUser(id: ProfileId): UserData {
-  if (id === "paulo") return PAULO;
-  if (id === "cinthia") return CINTHIA;
+  if (id === "paulo") return loadFromStorage("paulo", PAULO);
+  if (id === "cinthia") return loadFromStorage("cinthia", CINTHIA);
   if (id.startsWith("member:")) return EMPTY_MEMBER;
-  return FAMILIAR;
+  return buildFamiliar(
+    loadFromStorage("paulo", PAULO),
+    loadFromStorage("cinthia", CINTHIA),
+  );
 }
