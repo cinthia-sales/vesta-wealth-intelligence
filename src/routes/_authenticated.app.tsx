@@ -59,6 +59,54 @@ function buildScopes(sessionData: any): ScopeMap {
   return next;
 }
 
+// Vesta Soberana (Cinthia) vs Semi-Vesta (vesta de um Domus específico)
+function isVestaSoberana(sessionData: any): boolean {
+  return (
+    sessionData?.role === "vesta" &&
+    (sessionData?.profile?.email ?? "").toLowerCase() === CINTHIA_EMAIL
+  );
+}
+
+// Para Semi-Vesta: filtra membros pelo próprio Domus
+function membersForRole(sessionData: any): any[] {
+  const all = sessionData?.members ?? [];
+  if (sessionData?.role !== "vesta") return all;
+  if (isVestaSoberana(sessionData)) return all;
+  // Semi-Vesta: só vê membros do próprio Domus
+  const myDomusId = sessionData?.membership?.domus_id;
+  if (!myDomusId) return all;
+  return all.filter((m: any) => m.domus_id === myDomusId);
+}
+
+// Para Semi-Vesta: perfis que pode selecionar (só do próprio Domus)
+function allowedForSession(sessionData: any, scopes: ScopeMap): ProfileId[] {
+  if (!sessionData) return [];
+  const loggedAs: PersonaId =
+    sessionData.role === "vesta"
+      ? isVestaSoberana(sessionData)
+        ? "cinthia"
+        : (`member:${sessionData.profile?.id}` as PersonaId)
+      : sessionData.profile
+        ? keyForProfile(sessionData.profile.id, sessionData.profile.email)
+        : "paulo";
+
+  const scope = scopes[loggedAs] ?? { seeConsolidado: false, seePersonae: [] };
+  const base = allowedProfiles(loggedAs, scope);
+
+  // Semi-Vesta: só pode ver membros do próprio Domus + o próprio "familiar" do Domus
+  if (sessionData.role === "vesta" && !isVestaSoberana(sessionData)) {
+    const myDomusId = sessionData.membership?.domus_id;
+    const domusMembers = membersForRole(sessionData);
+    const memberKeys: ProfileId[] = domusMembers
+      .filter((m: any) => !["cinthiavr@yahoo.com.br", "phfurtadovr@yahoo.com.br"].includes((m.profile?.email ?? "").toLowerCase()))
+      .map((m: any) => `member:${m.profile_id}` as ProfileId);
+    // Remove hardcoded cards; inclui só os do Domus e "familiar" se quiser
+    return [loggedAs, ...memberKeys.filter((k) => k !== loggedAs)];
+  }
+
+  return base;
+}
+
 function VestaApp() {
   const navigate = useNavigate();
   const [scopes, setScopes] = useState<ScopeMap>(DEFAULT_SCOPES);
@@ -83,7 +131,7 @@ function VestaApp() {
 
   useEffect(() => {
     if (!sessionData) return;
-    if (sessionData.role === "vesta") return; // Vesta nunca é saudada — a Deusa não se cumprimenta
+    if (sessionData.role === "vesta") return;
     let ativo = true;
     (async () => {
       const { data: userData } = await supabase.auth.getUser();
@@ -119,15 +167,21 @@ function VestaApp() {
     );
   }
 
-  const loggedAs: PersonaId =
-    sessionData?.role === "vesta"
-      ? "cinthia"
+  const soberana = isVestaSoberana(sessionData);
+
+  const loggedAs: PersonaId = soberana
+    ? "cinthia"
+    : sessionData?.role === "vesta"
+      ? (`member:${sessionData?.profile?.id}` as PersonaId)
       : sessionData?.profile
         ? keyForProfile(sessionData.profile.id, sessionData.profile.email)
         : "paulo";
-  const scope = scopes[loggedAs] ?? { seeConsolidado: false, seePersonae: [] };
-  const allowed = allowedProfiles(loggedAs, scope);
 
+  const scope = scopes[loggedAs] ?? { seeConsolidado: false, seePersonae: [] };
+  const allowed = allowedForSession(sessionData, scopes);
+  const visibleMembers = membersForRole(sessionData);
+
+  // Membro com só uma visão disponível → pula o seletor, cai direto na carteira
   const effectiveProfile: ProfileId | null =
     profile ?? (allowed.length === 1 ? allowed[0] : null);
 
@@ -160,7 +214,8 @@ function VestaApp() {
           loggedAs={loggedAs}
           onSelect={setProfile}
           onLogout={doLogout}
-          extras={sessionData?.members ?? []}
+          extras={visibleMembers}
+          groupByDomus={soberana}
         />
       </>
     );

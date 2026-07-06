@@ -13,6 +13,7 @@ import { Route as McpRouteImport } from './routes/mcp'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as DomusSlugRouteImport } from './routes/domus.$slug'
 import { Route as AuthMfaVerifyRouteImport } from './routes/auth.mfa-verify'
 import { Route as AuthMfaSetupRouteImport } from './routes/auth.mfa-setup'
 import { Route as AuthenticatedAppRouteImport } from './routes/_authenticated.app'
@@ -37,6 +38,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DomusSlugRoute = DomusSlugRouteImport.update({
+  id: '/domus/$slug',
+  path: '/domus/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthMfaVerifyRoute = AuthMfaVerifyRouteImport.update({
@@ -82,6 +88,7 @@ export interface FileRoutesByFullPath {
   '/app': typeof AuthenticatedAppRoute
   '/auth/mfa-setup': typeof AuthMfaSetupRoute
   '/auth/mfa-verify': typeof AuthMfaVerifyRoute
+  '/domus/$slug': typeof DomusSlugRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
 }
 export interface FileRoutesByTo {
@@ -93,6 +100,7 @@ export interface FileRoutesByTo {
   '/app': typeof AuthenticatedAppRoute
   '/auth/mfa-setup': typeof AuthMfaSetupRoute
   '/auth/mfa-verify': typeof AuthMfaVerifyRoute
+  '/domus/$slug': typeof DomusSlugRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
 }
 export interface FileRoutesById {
@@ -106,6 +114,7 @@ export interface FileRoutesById {
   '/_authenticated/app': typeof AuthenticatedAppRoute
   '/auth/mfa-setup': typeof AuthMfaSetupRoute
   '/auth/mfa-verify': typeof AuthMfaVerifyRoute
+  '/domus/$slug': typeof DomusSlugRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
 }
 export interface FileRouteTypes {
@@ -119,6 +128,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/auth/mfa-setup'
     | '/auth/mfa-verify'
+    | '/domus/$slug'
     | '/.mcp/invoke-tool/$tool'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -130,6 +140,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/auth/mfa-setup'
     | '/auth/mfa-verify'
+    | '/domus/$slug'
     | '/.mcp/invoke-tool/$tool'
   id:
     | '__root__'
@@ -142,6 +153,7 @@ export interface FileRouteTypes {
     | '/_authenticated/app'
     | '/auth/mfa-setup'
     | '/auth/mfa-verify'
+    | '/domus/$slug'
     | '/.mcp/invoke-tool/$tool'
   fileRoutesById: FileRoutesById
 }
@@ -152,6 +164,7 @@ export interface RootRouteChildren {
   McpRoute: typeof McpRoute
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  DomusSlugRoute: typeof DomusSlugRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
 }
 
@@ -183,6 +196,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/domus/$slug': {
+      id: '/domus/$slug'
+      path: '/domus/$slug'
+      fullPath: '/domus/$slug'
+      preLoaderRoute: typeof DomusSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth/mfa-verify': {
@@ -261,6 +281,7 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
+  DomusSlugRoute: DomusSlugRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
 }
 export const routeTree = rootRouteImport

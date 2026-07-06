@@ -36,18 +36,21 @@ export function ProfileSelector({
   loggedAs,
   onLogout,
   extras = [],
+  groupByDomus = false,
 }: {
   onSelect: (id: ProfileId) => void;
   allowed?: ProfileId[];
   loggedAs?: PersonaId;
   onLogout?: () => void;
   extras?: ExtraPersona[];
+  groupByDomus?: boolean;
 }) {
   const canSee = (id: ProfileId) => !allowed || allowed.includes(id);
   const [waiting, setWaiting] = useState<ExtraPersona | null>(null);
 
-  // Nomes hardcoded que ja tem card proprio — evita duplicar.
+  const MALTA_FURTADO = "Família Malta Furtado";
   const hardcodedEmails = new Set(["cinthiavr@yahoo.com.br", "phfurtadovr@yahoo.com.br"]);
+
   const extraCards = extras.filter((e) => {
     const profileId = `member:${e.profile_id}` as ProfileId;
     const loggedPersona = loggedAs ? getPersonaInfo(loggedAs) : null;
@@ -56,6 +59,61 @@ export function ProfileSelector({
       (loggedPersona?.role === "vesta" || canSee(profileId))
     );
   });
+
+  // Para groupByDomus: agrupa extras por domus.nome excluindo Malta Furtado
+  const extrasByDomus = new Map<string, ExtraPersona[]>();
+  if (groupByDomus) {
+    for (const e of extraCards) {
+      const key = e.domus?.nome ?? "Sem Domus";
+      if (key === MALTA_FURTADO) continue; // esses já aparecem como hardcoded
+      if (!extrasByDomus.has(key)) extrasByDomus.set(key, []);
+      extrasByDomus.get(key)!.push(e);
+    }
+  }
+
+  const hasMaltaFurtadoCards =
+    canSee("familiar") || canSee("cinthia") || canSee("paulo");
+
+  function ExtraCard({ e }: { e: ExtraPersona }) {
+    const nome = e.profile?.nome ?? e.profile?.email ?? "Sem nome";
+    const inicial = nome.charAt(0).toUpperCase();
+    const primeiroNome = nome.split(" ")[0]?.toUpperCase() ?? nome.toUpperCase();
+    return (
+      <div
+        key={e.id}
+        className="ps-card ps-card-waiting"
+        onClick={() => onSelect(`member:${e.profile_id}` as ProfileId)}
+      >
+        <div
+          className="ps-avatar"
+          style={{
+            background: "rgba(120,110,95,.10)",
+            color: "var(--muted)",
+            border: "1px dashed rgba(120,110,95,.35)",
+          }}
+        >
+          {inicial}
+        </div>
+        <div>
+          <div className="ps-card-name">
+            {primeiroNome}
+            <br />NOVUS
+          </div>
+          <div className="ps-card-desc" style={{ margin: "6px 0 10px" }}>
+            {e.domus?.nome ?? "Domus"}
+            <br />visão individual
+            <br />&nbsp;
+          </div>
+          <div
+            className="ps-card-badge"
+            style={{ background: "rgba(120,110,95,.14)", color: "var(--muted)" }}
+          >
+            Aguardando<br />dados XP
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div id="profile-screen">
@@ -67,90 +125,104 @@ export function ProfileSelector({
           : "Selecione o perfil de acesso"}
       </div>
 
-      <div className="ps-profiles">
-        {canSee("familiar") && (
-          <div className="ps-card" onClick={() => onSelect("familiar")}>
-            <div className="ps-avatar ps-av-fam" style={{ fontSize: 20 }}>🏛</div>
-            <div>
-              <div className="ps-card-name">FAMILIAR DOMUS</div>
-              <div className="ps-card-desc" style={{ margin: "6px 0 10px" }}>
-                Visão consolidada&nbsp;das carteiras&nbsp;{"\n"}e todas as ferramentas
+      {groupByDomus ? (
+        /* Vesta Soberana: cards agrupados por Domus */
+        <>
+          {hasMaltaFurtadoCards && (
+            <div style={{ width: "100%" }}>
+              <div className="ps-domus-header">{MALTA_FURTADO.toUpperCase()}</div>
+              <div className="ps-profiles">
+                {canSee("familiar") && (
+                  <div className="ps-card" onClick={() => onSelect("familiar")}>
+                    <div className="ps-avatar ps-av-fam" style={{ fontSize: 20 }}>🏛</div>
+                    <div>
+                      <div className="ps-card-name">FAMILIAR DOMUS</div>
+                      <div className="ps-card-desc" style={{ margin: "6px 0 10px" }}>
+                        Visão consolidada das carteiras e todas as ferramentas
+                      </div>
+                      <div className="ps-card-badge ps-badge-fam">Acesso total · Vestæ Tantum</div>
+                    </div>
+                  </div>
+                )}
+                {canSee("cinthia") && (
+                  <div className="ps-card" onClick={() => onSelect("cinthia")}>
+                    <div className="ps-avatar ps-av-cinthia">C</div>
+                    <div>
+                      <div className="ps-card-name">CÍNTHIA&nbsp;VESTA</div>
+                      <div className="ps-card-desc" style={{ margin: "6px 0 10px" }}>
+                        Carteira XP 6414212<br />visão individual<br />&nbsp;
+                      </div>
+                      <div className="ps-card-badge ps-badge-ind">Individual&nbsp;Infinitus</div>
+                    </div>
+                  </div>
+                )}
+                {canSee("paulo") && (
+                  <div className="ps-card" onClick={() => onSelect("paulo")}>
+                    <div className="ps-avatar ps-av-paulo">P</div>
+                    <div>
+                      <div className="ps-card-name">PAULO EFFLUXUS</div>
+                      <div className="ps-card-desc" style={{ margin: "6px 0 10px" }}>
+                        Carteira XP 5296823<br />visão individual<br />&nbsp;
+                      </div>
+                      <div className="ps-card-badge ps-badge-ind">Individual Restrictus</div>
+                    </div>
+                  </div>
+                )}
               </div>
-              <div className="ps-card-badge ps-badge-fam">Acesso total -&nbsp;Vestæ Tantum</div>
             </div>
-          </div>
-        )}
+          )}
 
-        {canSee("cinthia") && (
-          <div className="ps-card" onClick={() => onSelect("cinthia")}>
-            <div className="ps-avatar ps-av-cinthia">C</div>
-            <div>
-              <div className="ps-card-name">CÍNTHIA&nbsp;VESTA</div>
-              <div className="ps-card-desc" style={{ margin: "6px 0 10px" }}>
-                Carteira XP 6414212<br />visão individual<br />&nbsp;
+          {Array.from(extrasByDomus.entries()).map(([domusNome, members]) => (
+            <div key={domusNome} style={{ width: "100%" }}>
+              <div className="ps-domus-header">{domusNome.toUpperCase()}</div>
+              <div className="ps-profiles">
+                {members.map((e) => <ExtraCard key={e.id} e={e} />)}
               </div>
-              <div className="ps-card-badge ps-badge-ind">Individual&nbsp;Infinitus</div>
             </div>
-          </div>
-        )}
-
-        {canSee("paulo") && (
-          <div className="ps-card" onClick={() => onSelect("paulo")}>
-            <div className="ps-avatar ps-av-paulo">P</div>
-            <div>
-              <div className="ps-card-name">PAULO EFFLUXUS</div>
-              <div className="ps-card-desc" style={{ margin: "6px 0 10px" }}>
-                Carteira XP 5296823<br />visão individual<br />&nbsp;
-              </div>
-              <div className="ps-card-badge ps-badge-ind">Individual Restrictus</div>
-            </div>
-          </div>
-        )}
-
-        {extraCards.map((e) => {
-          const nome = e.profile?.nome ?? e.profile?.email ?? "Sem nome";
-          const inicial = nome.charAt(0).toUpperCase();
-          const primeiroNome = nome.split(" ")[0]?.toUpperCase() ?? nome.toUpperCase();
-          return (
-            <div
-              key={e.id}
-              className="ps-card ps-card-waiting"
-              onClick={() => onSelect(`member:${e.profile_id}` as ProfileId)}
-            >
-              <div
-                className="ps-avatar"
-                style={{
-                  background: "rgba(120,110,95,.10)",
-                  color: "var(--muted)",
-                  border: "1px dashed rgba(120,110,95,.35)",
-                }}
-              >
-                {inicial}
-              </div>
+          ))}
+        </>
+      ) : (
+        /* Layout plano: Membro ou Semi-Vesta */
+        <div className="ps-profiles">
+          {canSee("familiar") && (
+            <div className="ps-card" onClick={() => onSelect("familiar")}>
+              <div className="ps-avatar ps-av-fam" style={{ fontSize: 20 }}>🏛</div>
               <div>
-                <div className="ps-card-name">
-                  {primeiroNome}
-                  <br />NOVUS
-                </div>
+                <div className="ps-card-name">FAMILIAR DOMUS</div>
                 <div className="ps-card-desc" style={{ margin: "6px 0 10px" }}>
-                  {e.domus?.nome ?? "Domus"}
-                  <br />visão individual
-                  <br />&nbsp;
+                  Visão consolidada&nbsp;das carteiras&nbsp;{"\n"}e todas as ferramentas
                 </div>
-                <div
-                  className="ps-card-badge"
-                  style={{
-                    background: "rgba(120,110,95,.14)",
-                    color: "var(--muted)",
-                  }}
-                >
-                  Aguardando<br />dados XP
-                </div>
+                <div className="ps-card-badge ps-badge-fam">Acesso total -&nbsp;Vestæ Tantum</div>
               </div>
             </div>
-          );
-        })}
-      </div>
+          )}
+          {canSee("cinthia") && (
+            <div className="ps-card" onClick={() => onSelect("cinthia")}>
+              <div className="ps-avatar ps-av-cinthia">C</div>
+              <div>
+                <div className="ps-card-name">CÍNTHIA&nbsp;VESTA</div>
+                <div className="ps-card-desc" style={{ margin: "6px 0 10px" }}>
+                  Carteira XP 6414212<br />visão individual<br />&nbsp;
+                </div>
+                <div className="ps-card-badge ps-badge-ind">Individual&nbsp;Infinitus</div>
+              </div>
+            </div>
+          )}
+          {canSee("paulo") && (
+            <div className="ps-card" onClick={() => onSelect("paulo")}>
+              <div className="ps-avatar ps-av-paulo">P</div>
+              <div>
+                <div className="ps-card-name">PAULO EFFLUXUS</div>
+                <div className="ps-card-desc" style={{ margin: "6px 0 10px" }}>
+                  Carteira XP 5296823<br />visão individual<br />&nbsp;
+                </div>
+                <div className="ps-card-badge ps-badge-ind">Individual Restrictus</div>
+              </div>
+            </div>
+          )}
+          {extraCards.map((e) => <ExtraCard key={e.id} e={e} />)}
+        </div>
+      )}
 
       <div className="ps-ornament">
         Família Malta Furtado · 2026
