@@ -370,6 +370,28 @@ export function DomusPage({
         </div>
       )}
 
+      {savedFlash && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: 20,
+            left: "50%",
+            transform: "translateX(-50%)",
+            padding: "10px 18px",
+            background: "rgba(216,179,106,.95)",
+            color: "#3a2a10",
+            borderRadius: 20,
+            fontSize: 13,
+            fontWeight: 600,
+            boxShadow: "0 6px 20px rgba(0,0,0,.15)",
+            zIndex: 9999,
+            letterSpacing: ".02em",
+          }}
+        >
+          ✓ escopo salvo
+        </div>
+      )}
+
       {aprovado && (
         <div className="domus-approved-overlay" onClick={() => setAprovado(null)}>
           <div className="domus-approved-card" onClick={(e) => e.stopPropagation()}>
