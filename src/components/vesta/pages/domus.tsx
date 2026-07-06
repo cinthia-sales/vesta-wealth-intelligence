@@ -57,11 +57,18 @@ export function DomusPage({
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["domus-admin"] }),
   });
 
+  const [savedFlash, setSavedFlash] = useState(false);
+  const flashSaved = () => {
+    setSavedFlash(true);
+    window.setTimeout(() => setSavedFlash(false), 1600);
+  };
+
   const toggleConsolidado = (id: PersonaId) => {
     onUpdateScopes({
       ...scopes,
       [id]: { ...scopes[id], seeConsolidado: !scopes[id].seeConsolidado },
     });
+    flashSaved();
   };
 
   const togglePersona = (owner: PersonaId, target: PersonaId) => {
@@ -73,6 +80,7 @@ export function DomusPage({
       ...scopes,
       [owner]: { ...scopes[owner], seePersonae: next },
     });
+    flashSaved();
   };
 
   const domusList = adminData?.domus ?? [];
