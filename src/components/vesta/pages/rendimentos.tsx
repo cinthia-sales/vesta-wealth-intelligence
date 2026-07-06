@@ -33,9 +33,10 @@ function raioX(p: Provento) {
   const aj = AJUSTES[p.ticker] ?? {};
   const dy = p.dy_pct;
   const come = aj.come_cotas ?? 0;
-  // Perda por não reinvestimento automático: aprox. (dy/2) × (CDI_liq/2) — meio ano parado em média
-  const perda_reinv = +(dy * 0.04).toFixed(2); // ~4% do DY vira "custo de oportunidade" médio
-  const cash_yield = +(dy - come - perda_reinv).toFixed(2);
+  // Perda por não reinvestir: gap vs benchmark LCA 92% CDI (13,57%) — se DY líq. já bate, perda = 0
+  const dy_liq = dy - come;
+  const perda_reinv = +Math.max(0, LCA_BENCH - dy_liq).toFixed(2);
+  const cash_yield = +(dy_liq - perda_reinv).toFixed(2);
   const aprec = aj.aprec_hist ?? null;
   // Delta vs LCA considerando SÓ o cash yield (sem apreciação — a apreciação é o "extra" para vencer)
   const delta_taxa = +(cash_yield - LCA_BENCH).toFixed(2);
