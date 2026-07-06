@@ -168,6 +168,18 @@ export function DriversPage() {
         </div>
       </div>
 
+      <div style={{
+        padding: "10px 14px",
+        marginBottom: 14,
+        background: "rgba(216,179,106,.10)",
+        border: "1px solid rgba(216,179,106,.30)",
+        borderRadius: "var(--radius)",
+        fontSize: 12,
+        color: "var(--muted)",
+      }}>
+        ⚠️ <strong>Modelo linear de 1ª ordem</strong> — coeficientes estimados. Use como orientação direcional, não como previsão. Impactos reais dependem de prazo, correlações e regime de mercado.
+      </div>
+
       <div className="card">
         <div className="card-hdr">Matriz de sensibilidade <span>como cada classe reage</span></div>
         <div style={{ overflowX: "auto" }}>
