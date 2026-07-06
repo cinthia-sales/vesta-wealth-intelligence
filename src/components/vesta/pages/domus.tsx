@@ -173,18 +173,6 @@ export function DomusPage({
   );
 
 
-  // Todos os membros agrupados por Domus (para a lista de pessoas)
-  const membersByDomus = (adminData?.members ?? []).reduce(
-    (acc: Record<string, any[]>, m: any) => {
-      const key = m.domus?.nome ?? "Sem Domus";
-      acc[key] = acc[key] ?? [];
-      acc[key].push(m);
-      return acc;
-    },
-    {},
-  );
-  // ─────────────────────────────────────────────────────────────────────────
-
   const saveScopeMutation = useMutation({
     mutationFn: ({ id, scope }: { id: PersonaId; scope: Scope }) => {
       const memberProfileId = profileIdForScopeKey?.(id);
