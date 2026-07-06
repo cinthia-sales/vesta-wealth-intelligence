@@ -113,8 +113,17 @@ function VestaApp() {
   const [profile, setProfile] = useState<ProfileId | null>(null);
   const [saudacao, setSaudacao] = useState(false);
 
+  // Inclui o userId na key — cada usuário tem seu próprio cache, sem flash de sessão anterior
+  const { data: authUser } = useQuery({
+    queryKey: ["auth-user"],
+    queryFn: () => supabase.auth.getUser(),
+    staleTime: 0,
+    gcTime: 0,
+  });
+  const userId = authUser?.data?.user?.id ?? null;
+
   const { data: sessionData, isLoading } = useQuery({
-    queryKey: ["domus-session"],
+    queryKey: ["domus-session", userId],
     queryFn: async () => {
       const { data } = await supabase.auth.getSession();
       if (!data.session?.access_token) {
@@ -122,6 +131,9 @@ function VestaApp() {
       }
       return getDomusSession();
     },
+    enabled: authUser !== undefined, // aguarda authUser resolver
+    staleTime: 0,
+    gcTime: 0,
     retry: false,
   });
 
@@ -205,6 +217,12 @@ function VestaApp() {
     </div>
   ) : null;
 
+  // Nome real do usuário logado para exibição no sidebar
+  const loggedName: string | undefined =
+    sessionData?.profile?.nome ??
+    sessionData?.profile?.email ??
+    undefined;
+
   if (!effectiveProfile) {
     return (
       <>
@@ -232,6 +250,7 @@ function VestaApp() {
       <VestaShell
         profileId={effectiveProfile}
         loggedAs={loggedAs}
+        loggedName={loggedName}
         scopes={scopes}
         onUpdateScopes={
           getPersonaInfo(loggedAs).role === "vesta" ? setScopes : undefined

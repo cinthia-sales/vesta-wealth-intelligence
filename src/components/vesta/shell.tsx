@@ -393,16 +393,18 @@ const PROFILE_META: Record<"familiar" | "cinthia" | "paulo", { name: string; sub
   },
 };
 
-function getProfileMeta(profileId: ProfileId) {
+function getProfileMeta(profileId: ProfileId, overrideName?: string) {
   if (profileId === "familiar" || profileId === "cinthia" || profileId === "paulo") {
     return PROFILE_META[profileId];
   }
+  const name = overrideName?.split(" ")[0]?.toUpperCase() ?? "NOVUS";
+  const inicial = overrideName?.charAt(0)?.toUpperCase() ?? "N";
   return {
-    name: "PERSONA NOVUS",
+    name,
     sub: "Dados a importar",
     avatarBg: "rgba(120,110,95,.10)",
     avatarColor: "var(--muted)",
-    content: <>N</>,
+    content: <>{inicial}</>,
   };
 }
 
@@ -413,6 +415,7 @@ export function VestaShell({
   profileId,
   onSwitchProfile,
   loggedAs,
+  loggedName,
   scopes,
   onUpdateScopes,
   profileIdForScopeKey,
@@ -423,6 +426,7 @@ export function VestaShell({
   onChangeProfile?: (id: ProfileId) => void;
   onSwitchProfile: () => void;
   loggedAs?: PersonaId;
+  loggedName?: string;
   scopes?: ScopeMap;
   onUpdateScopes?: (next: ScopeMap) => void;
   profileIdForScopeKey?: (key: string) => string | null;
@@ -432,11 +436,14 @@ export function VestaShell({
   const [page, setPage] = useState<PageKey>("home");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const goTo = (k: PageKey) => { setPage(k); setSidebarOpen(false); };
-  const meta = getProfileMeta(profileId);
+  const meta = getProfileMeta(profileId, loggedName);
   const isFamily = profileId === "familiar";
   const loggedPersona = loggedAs ? getPersonaInfo(loggedAs) : null;
   const isVesta = loggedPersona?.role === "vesta";
   const canManageDomus = isVesta && profileId !== "paulo";
+  const isMember = profileId.startsWith("member:");
+  // Nome de exibição: usa loggedName (real do banco) ou fallback para getPersonaInfo
+  const displayName = loggedName ?? getPersonaInfo(loggedAs ?? "paulo").name;
   const alertas = getUser(profileId).alertas_list;
   const alertaCounts = {
     r: alertas.filter((a) => a.cor === "r").length,
@@ -513,7 +520,7 @@ export function VestaShell({
                 lineHeight: 1.4,
               }}
             >
-              Logada como <strong style={{ color: "var(--accent)" }}>{getPersonaInfo(loggedAs).name}</strong>
+              Logada como <strong style={{ color: "var(--accent)" }}>{displayName}</strong>
               {getPersonaInfo(loggedAs).role === "vesta" && (
                 <span style={{
                   marginLeft: 6, fontSize: 9, fontWeight: 700, letterSpacing: ".08em",
@@ -586,14 +593,14 @@ export function VestaShell({
 
           <div className="nav-sec">Plano</div>
           {item("equiv", "Equivalência de taxas")}
-          {item("validador", "Validador de troca")}
+          {!isMember && item("validador", "Validador de troca")}
           {item("breakeven", "Breakeven")}
           {item("aporte", "Acelerar breakeven")}
           {item("projecao", "Projeção patrimônio")}
-          {item("secundario", "Saída secundário")}
+          {!isMember && item("secundario", "Saída secundário")}
           {item("regras", "Regras — não mexer")}
           {item("upload", "Importar arquivos XP")}
-          {item("drivers", "Influenciadores")}
+          {!isMember && item("drivers", "Influenciadores")}
 
           {canManageDomus && (
             <>
@@ -652,10 +659,15 @@ export function VestaShell({
           <span>
             IPCA <b>5,50%</b>
           </span>
-          <span>·</span>
-          <span>
-            Patrimônio projetado <b>R$ 648k</b>
-          </span>
+          {(() => {
+            const total = getUser(profileId).total;
+            return total > 0 ? (
+              <>
+                <span>·</span>
+                <span>Patrimônio projetado <b>R$ {(total / 1000).toFixed(0)}k</b></span>
+              </>
+            ) : null;
+          })()}
           <span style={{ marginLeft: "auto", fontSize: 10 }} />
           <button className="upd-btn">↻ atualizar</button>
         </div>
