@@ -418,6 +418,7 @@ export function VestaShell({
   onSwitchProfile,
   loggedAs,
   loggedName,
+  profileName,
   loggedRole,
   scopes,
   onUpdateScopes,
@@ -430,6 +431,7 @@ export function VestaShell({
   onSwitchProfile: () => void;
   loggedAs?: PersonaId;
   loggedName?: string;
+  profileName?: string;
   loggedRole?: string | null;
   scopes?: ScopeMap;
   onUpdateScopes?: (next: ScopeMap) => void;
@@ -440,7 +442,8 @@ export function VestaShell({
   const [page, setPage] = useState<PageKey>("home");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const goTo = (k: PageKey) => { setPage(k); setSidebarOpen(false); };
-  const meta = getProfileMeta(profileId, loggedName);
+  // profileName = nome do perfil visualizado (pode ser membro diferente do logado)
+  const meta = getProfileMeta(profileId, profileName ?? loggedName);
   const isFamily = profileId === "familiar";
   const loggedPersona = loggedAs ? getPersonaInfo(loggedAs) : null;
   const isVesta = loggedRole === "vesta" || loggedPersona?.role === "vesta";
@@ -492,7 +495,7 @@ export function VestaShell({
           <div className="logo-icon" style={{ fontSize: 18 }}>✦</div>
           <div>
             <div className="logo-name">Vesta</div>
-            <div className="logo-sub">Sitema de Gestão Patrimonial Familiar</div>
+            <div className="logo-sub">Sistema de Gestão Patrimonial Familiar</div>
           </div>
         </div>
 
@@ -682,7 +685,7 @@ export function VestaShell({
 
         <div className="content">
           <div className="page on">
-            {page === "home" && <HomePage profileId={profileId} overrideName={isMember ? loggedName : undefined} />}
+            {page === "home" && <HomePage profileId={profileId} overrideName={isMember ? (profileName ?? loggedName) : undefined} />}
             {page === "posicao" && <PosicaoPage profileId={profileId} />}
             {page === "breakeven" && <BreakevenPage profileId={profileId} />}
             {page === "equiv" && <EquivPage />}

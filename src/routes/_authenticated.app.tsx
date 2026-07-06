@@ -268,11 +268,20 @@ function VestaApp() {
     </div>
   ) : null;
 
-  // Nome real do usuário logado para exibição no sidebar
+  // Nome do usuário LOGADO (para "Logada como")
   const loggedName: string | undefined =
     sessionData?.profile?.nome ??
     sessionData?.profile?.email ??
     undefined;
+
+  // Nome do PERFIL SELECIONADO (pode ser um membro diferente do logado)
+  const profileName: string | undefined = (() => {
+    if (!effectiveProfile) return loggedName;
+    if (effectiveProfile === "cinthia" || effectiveProfile === "paulo" || effectiveProfile === "familiar") return undefined;
+    const uuid = effectiveProfile.replace("member:", "");
+    const found = (sessionData?.members ?? []).find((m: any) => m.profile_id === uuid);
+    return found?.profile?.nome ?? found?.profile?.email ?? undefined;
+  })();
 
   if (!effectiveProfile) {
     return (
@@ -302,10 +311,11 @@ function VestaApp() {
         profileId={effectiveProfile}
         loggedAs={loggedAs}
         loggedName={loggedName}
+        profileName={profileName}
         loggedRole={sessionData?.role ?? null}
         scopes={scopes}
         onUpdateScopes={
-          getPersonaInfo(loggedAs).role === "vesta" ? setScopes : undefined
+          sessionData?.role === "vesta" ? setScopes : undefined
         }
         profileIdForScopeKey={(key: string) => profileIdForKey(key, sessionData)}
         onChangeProfile={setProfile}

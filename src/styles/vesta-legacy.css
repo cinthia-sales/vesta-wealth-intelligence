@@ -316,8 +316,8 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 #profile-screen{
   position:fixed;inset:0;z-index:9999;
   background:linear-gradient(180deg,#FBF5F3 0%,#F3E7E4 100%);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:0;
+  display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
+  gap:0;overflow-y:auto;padding:48px 24px 40px;
 }
 .ps-vesta{
   font-family:var(--font-display);
@@ -335,7 +335,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
   font-family:var(--font-display);
   text-transform:uppercase;
 }
-.ps-profiles{display:flex;gap:24px;align-items:stretch}
+.ps-profiles{display:flex;gap:24px;align-items:stretch;justify-content:center;flex-wrap:wrap}
 .ps-card{
   width:180px;padding:28px 20px 24px;
   border:1px solid var(--border);
