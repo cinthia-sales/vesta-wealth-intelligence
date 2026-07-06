@@ -17,7 +17,7 @@ import { DomusPage } from "@/components/vesta/pages/domus";
 
 import type { ProfileId } from "@/lib/profile-derive";
 import { getUser } from "@/data/vesta-users";
-import { PERSONAE, type PersonaId, type Scope } from "@/state/session";
+import { PERSONAE, getPersonaInfo, type PersonaId, type ScopeMap } from "@/state/session";
 
 /* ============================================================
    ProfileSelector — replica exata de #profile-screen do vesta.html
@@ -58,7 +58,7 @@ export function ProfileSelector({
       <div className="ps-title">Guardiã do Patrimônio</div>
       <div className="ps-subtitle">
         {loggedAs
-          ? `Entrou como ${PERSONAE[loggedAs].name} · selecione a visão`
+          ? `Entrou como ${getPersonaInfo(loggedAs).name} · selecione a visão`
           : "Selecione o perfil de acesso"}
       </div>
 
@@ -332,8 +332,8 @@ export function VestaShell({
   onChangeProfile?: (id: ProfileId) => void;
   onSwitchProfile: () => void;
   loggedAs?: PersonaId;
-  scopes?: Record<PersonaId, Scope>;
-  onUpdateScopes?: (next: Record<PersonaId, Scope>) => void;
+  scopes?: ScopeMap;
+  onUpdateScopes?: (next: ScopeMap) => void;
   onLogout?: () => void;
   children?: ReactNode;
 }) {
@@ -342,7 +342,8 @@ export function VestaShell({
   const goTo = (k: PageKey) => { setPage(k); setSidebarOpen(false); };
   const meta = PROFILE_META[profileId];
   const isFamily = profileId === "familiar";
-  const isVesta = loggedAs ? PERSONAE[loggedAs].role === "vesta" : false;
+  const loggedPersona = loggedAs ? getPersonaInfo(loggedAs) : null;
+  const isVesta = loggedPersona?.role === "vesta";
   const canManageDomus = isVesta && profileId !== "paulo";
   const alertas = getUser(profileId).alertas_list;
   const alertaCounts = {
@@ -420,8 +421,8 @@ export function VestaShell({
                 lineHeight: 1.4,
               }}
             >
-              Logada como <strong style={{ color: "var(--accent)" }}>{PERSONAE[loggedAs].name}</strong>
-              {PERSONAE[loggedAs].role === "vesta" && (
+              Logada como <strong style={{ color: "var(--accent)" }}>{getPersonaInfo(loggedAs).name}</strong>
+              {getPersonaInfo(loggedAs).role === "vesta" && (
                 <span style={{
                   marginLeft: 6, fontSize: 9, fontWeight: 700, letterSpacing: ".08em",
                   padding: "1px 6px", borderRadius: 8,
