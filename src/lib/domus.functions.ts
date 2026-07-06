@@ -131,11 +131,27 @@ export const getDomusSession = createServerFn({ method: "GET" })
       scope = data;
     }
 
+    let members = membersResult.data ?? [];
+    if (roleResult.data?.role !== "vesta" && membershipResult.data) {
+      const visibleProfileIds = Array.from(
+        new Set([context.userId, ...(scope?.can_see_member_profile_ids ?? [])]),
+      );
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data, error } = await supabaseAdmin
+        .from("domus_members")
+        .select("id,domus_id,profile_id,papel,created_at,domus:domus_id(nome),profile:profile_id(nome,email)")
+        .eq("domus_id", membershipResult.data.domus_id)
+        .in("profile_id", visibleProfileIds)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      members = data ?? [];
+    }
+
     return {
       role: roleResult.data?.role ?? null,
       profile: profileResult.data ?? null,
       membership: membershipResult.data ?? null,
-      members: membersResult.data ?? [],
+      members,
       scope,
     };
   });
