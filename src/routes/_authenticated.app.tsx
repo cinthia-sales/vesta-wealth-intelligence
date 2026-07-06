@@ -19,9 +19,28 @@ export const Route = createFileRoute("/_authenticated/app")({
   component: VestaApp,
 });
 
+const SCOPES_STORAGE_KEY = "vesta.scopes.v1";
+
+function loadScopes(): Record<PersonaId, Scope> {
+  if (typeof window === "undefined") return DEFAULT_SCOPES;
+  try {
+    const raw = window.localStorage.getItem(SCOPES_STORAGE_KEY);
+    if (!raw) return DEFAULT_SCOPES;
+    const parsed = JSON.parse(raw);
+    if (parsed && parsed.cinthia && parsed.paulo) return parsed;
+  } catch {}
+  return DEFAULT_SCOPES;
+}
+
 function VestaApp() {
   const navigate = useNavigate();
-  const [scopes, setScopes] = useState<Record<PersonaId, Scope>>(DEFAULT_SCOPES);
+  const [scopes, setScopesState] = useState<Record<PersonaId, Scope>>(loadScopes);
+  const setScopes = (next: Record<PersonaId, Scope>) => {
+    setScopesState(next);
+    try {
+      window.localStorage.setItem(SCOPES_STORAGE_KEY, JSON.stringify(next));
+    } catch {}
+  };
   const [profile, setProfile] = useState<ProfileId | null>(null);
   const [saudacao, setSaudacao] = useState(false);
 

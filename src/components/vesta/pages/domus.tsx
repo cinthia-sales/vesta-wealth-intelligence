@@ -57,11 +57,18 @@ export function DomusPage({
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["domus-admin"] }),
   });
 
+  const [savedFlash, setSavedFlash] = useState(false);
+  const flashSaved = () => {
+    setSavedFlash(true);
+    window.setTimeout(() => setSavedFlash(false), 1600);
+  };
+
   const toggleConsolidado = (id: PersonaId) => {
     onUpdateScopes({
       ...scopes,
       [id]: { ...scopes[id], seeConsolidado: !scopes[id].seeConsolidado },
     });
+    flashSaved();
   };
 
   const togglePersona = (owner: PersonaId, target: PersonaId) => {
@@ -73,6 +80,7 @@ export function DomusPage({
       ...scopes,
       [owner]: { ...scopes[owner], seePersonae: next },
     });
+    flashSaved();
   };
 
   const domusList = adminData?.domus ?? [];
@@ -359,6 +367,28 @@ export function DomusPage({
       {approveMutation.error && (
         <div className="auth-error" style={{ marginTop: 10 }}>
           {(approveMutation.error as Error).message}
+        </div>
+      )}
+
+      {savedFlash && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: 20,
+            left: "50%",
+            transform: "translateX(-50%)",
+            padding: "10px 18px",
+            background: "rgba(216,179,106,.95)",
+            color: "#3a2a10",
+            borderRadius: 20,
+            fontSize: 13,
+            fontWeight: 600,
+            boxShadow: "0 6px 20px rgba(0,0,0,.15)",
+            zIndex: 9999,
+            letterSpacing: ".02em",
+          }}
+        >
+          ✓ escopo salvo
         </div>
       )}
 
