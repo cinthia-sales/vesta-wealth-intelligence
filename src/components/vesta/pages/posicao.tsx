@@ -5,10 +5,10 @@ import { DIVIDEND_TICKERS } from "@/data/dividendos";
 import { getSensibilidade, type Sensibilidade } from "@/data/sensibilidade";
 import type { ProfileId } from "@/lib/profile-derive";
 
-type Filter = "todos" | "intocavel" | "urgente" | "monitorar";
+type Filter = "todos" | "intocavel" | "urgente" | "monitorar" | "estrategico" | "planejar";
 
-const SL = { intocavel: "sb-a", urgente: "sb-r", monitorar: "sb-w" } as const;
-const ST = { intocavel: "intocável", urgente: "urgente", monitorar: "monitorar" } as const;
+const SL = { intocavel: "sb-a", urgente: "sb-r", monitorar: "sb-w", estrategico: "sb-a", planejar: "sb-w" } as const;
+const ST = { intocavel: "intocável", urgente: "urgente", monitorar: "monitorar", estrategico: "estratégico", planejar: "planejar" } as const;
 
 const IMPACTO_COR = {
   alto: { bg: "rgba(161,29,62,.12)", fg: "var(--accent)" },
