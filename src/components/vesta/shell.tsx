@@ -343,6 +343,7 @@ export function VestaShell({
   loggedAs,
   scopes,
   onUpdateScopes,
+  profileIdForScopeKey,
   onLogout,
   children,
 }: {
@@ -352,6 +353,7 @@ export function VestaShell({
   loggedAs?: PersonaId;
   scopes?: ScopeMap;
   onUpdateScopes?: (next: ScopeMap) => void;
+  profileIdForScopeKey?: (key: string) => string | null;
   onLogout?: () => void;
   children?: ReactNode;
 }) {
@@ -602,7 +604,11 @@ export function VestaShell({
             {page === "aporte" && <AportePage />}
             {page === "rendimentos" && <RendimentosPage profileId={profileId} />}
             {page === "domus" && canManageDomus && scopes && onUpdateScopes && (
-              <DomusPage scopes={scopes} onUpdateScopes={onUpdateScopes} />
+              <DomusPage
+                scopes={scopes}
+                onUpdateScopes={onUpdateScopes}
+                profileIdForScopeKey={profileIdForScopeKey}
+              />
             )}
             {!["home", "posicao", "breakeven", "equiv", "validador", "projecao", "secundario", "alertas", "regras", "upload", "drivers", "aporte", "rendimentos", "domus"].includes(page) && (
               <div className="ph">
