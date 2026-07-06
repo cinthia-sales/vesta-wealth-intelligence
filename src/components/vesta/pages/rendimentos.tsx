@@ -58,7 +58,7 @@ const VERDICT_COLOR: Record<"verde" | "amarelo" | "vermelho", { bg: string; fg: 
 
 export function RendimentosPage({ profileId }: { profileId: ProfileId }) {
   // Cinthia = só RF isento, sem proventos de RV. Familiar/Paulo = usa PROVENTOS do Paulo.
-  const list = profileId === "cinthia"
+  const list = profileId === "cinthia" || profileId.startsWith("member:")
     ? []
     : PROVENTOS.filter((p) => p.provento_ano > 0);
 
