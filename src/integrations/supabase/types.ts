@@ -148,6 +148,51 @@ export type Database = {
           },
         ]
       }
+      domus_visibility_scopes: {
+        Row: {
+          can_see_consolidado: boolean
+          can_see_member_profile_ids: string[]
+          created_at: string
+          domus_id: string
+          id: string
+          member_profile_id: string
+          updated_at: string
+        }
+        Insert: {
+          can_see_consolidado?: boolean
+          can_see_member_profile_ids?: string[]
+          created_at?: string
+          domus_id: string
+          id?: string
+          member_profile_id: string
+          updated_at?: string
+        }
+        Update: {
+          can_see_consolidado?: boolean
+          can_see_member_profile_ids?: string[]
+          created_at?: string
+          domus_id?: string
+          id?: string
+          member_profile_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "domus_visibility_scopes_domus_id_fkey"
+            columns: ["domus_id"]
+            isOneToOne: false
+            referencedRelation: "domus"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "domus_visibility_scopes_member_profile_id_fkey"
+            columns: ["member_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
