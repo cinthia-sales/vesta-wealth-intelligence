@@ -249,6 +249,21 @@ export const updateJoinRequestStatus = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const removeJoinRequest = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ context, data }) => {
+    await assertVesta(context);
+    // Só pode remover pedidos já decididos (não pendentes)
+    const { error } = await context.supabase
+      .from("domus_join_requests")
+      .delete()
+      .eq("id", data.id)
+      .in("status", ["aprovado", "recusado"]);
+    if (error) throw error;
+    return { ok: true };
+  });
+
 export const removeMember = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ profileId: z.string().uuid() }).parse(input))

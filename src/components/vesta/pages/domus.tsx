@@ -13,6 +13,7 @@ import {
   deleteDomus,
   getDomusAdmin,
   removeMember,
+  removeJoinRequest,
   saveMemberVisibilityScope,
   updateJoinRequestStatus,
 } from "@/lib/domus.functions";
@@ -29,6 +30,7 @@ export function DomusPage({
 }) {
   const membros: PersonaId[] = ["cinthia", "paulo"];
   const queryClient = useQueryClient();
+  const [selectedDomusId, setSelectedDomusId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [novoNome, setNovoNome] = useState("");
   const [novoSlug, setNovoSlug] = useState("");
@@ -85,6 +87,11 @@ export function DomusPage({
     if (!window.confirm(`Excluir o Domus "${item.nome}"?\nTodos os membros serão desvinculados.`)) return;
     deleteDomusMutation.mutate(item.id);
   };
+
+  const removeRequestMutation = useMutation({
+    mutationFn: (id: string) => removeJoinRequest({ data: { id } }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["domus-admin"] }),
+  });
 
   const [savedFlash, setSavedFlash] = useState(false);
   const flashSaved = () => {
@@ -165,15 +172,6 @@ export function DomusPage({
     (m: any) => !knownUUIDs.has(m.profile_id),
   );
 
-  const externalByDomus = externalMembers.reduce(
-    (acc: Record<string, any[]>, m: any) => {
-      const key = m.domus?.nome ?? "Sem Domus";
-      acc[key] = acc[key] ?? [];
-      acc[key].push(m);
-      return acc;
-    },
-    {},
-  );
 
   // Todos os membros agrupados por Domus (para a lista de pessoas)
   const membersByDomus = (adminData?.members ?? []).reduce(
@@ -228,18 +226,96 @@ export function DomusPage({
   const domusList = adminData?.domus ?? [];
   const vestaNome = adminData?.vesta?.nome ?? "Cínthia";
 
+  // Domus ativo
+  const activeDomusId = selectedDomusId ?? domusList[0]?.id ?? null;
+  const activeDomus = domusList.find((d) => d.id === activeDomusId) ?? domusList[0] ?? null;
+  const isFurtadoDomus =
+    !activeDomus ||
+    activeDomus.nome === DOMUS_NAME ||
+    activeDomus.slug?.includes("furtado") ||
+    activeDomus.slug?.includes("malta");
+
+  // Membros e pedidos filtrados pelo Domus ativo
+  const activeMembers = (adminData?.members ?? []).filter(
+    (m: any) => m.domus_id === activeDomusId || m.domus?.nome === activeDomus?.nome,
+  );
+
+  const allRequests: any[] = adminData?.requests ?? [];
+  const domusRequests = allRequests.filter((r: any) => {
+    const reqNome: string | undefined = r.domus?.nome;
+    const reqId: string | undefined = r.domus_id;
+    if (!reqNome && !reqId) return isFurtadoDomus;
+    return reqNome === activeDomus?.nome || reqId === activeDomusId;
+  });
+  // Deduplica por email: aprovado > pendente > recusado; desempata pelo mais recente
+  const deduplicatedRequests = domusRequests.reduce((acc: any[], r: any) => {
+    const idx = acc.findIndex(
+      (x) => (x.email ?? "").toLowerCase() === (r.email ?? "").toLowerCase(),
+    );
+    if (idx === -1) {
+      acc.push(r);
+    } else {
+      const prio = (s: string) => (s === "aprovado" ? 2 : s === "pendente" ? 1 : 0);
+      if (prio(r.status) > prio(acc[idx].status)) acc[idx] = r;
+    }
+    return acc;
+  }, []);
+
+  const activeExternalMembers = externalMembers.filter(
+    (m: any) => m.domus_id === activeDomusId || m.domus?.nome === activeDomus?.nome,
+  );
+
+  const membersByDomus = activeMembers.reduce(
+    (acc: Record<string, any[]>, m: any) => {
+      const key = m.domus?.nome ?? "Sem Domus";
+      acc[key] = acc[key] ?? [];
+      acc[key].push(m);
+      return acc;
+    },
+    {},
+  );
+
   return (
     <>
       <div className="ph">
         <h1>🏛 Gestão do Domus</h1>
         <p className="domus-supervisao">
-          Todos os Domus · sob supervisão da Vesta {vestaNome}
+          {activeDomus ? `Domus ${activeDomus.nome}` : "Todos os Domus"} · sob supervisão da Vesta {vestaNome}
         </p>
         <p>
           Como Vesta, você é soberana sobre quem vê o quê. Cada membro sempre vê
           a própria carteira; o resto é você quem libera.
         </p>
       </div>
+
+      {/* Seletor de Domus */}
+      {domusList.length > 0 && (
+        <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
+          {domusList.map((d) => (
+            <button
+              key={d.id}
+              onClick={() => setSelectedDomusId(d.id)}
+              style={{
+                padding: "8px 18px",
+                borderRadius: 20,
+                border: activeDomusId === d.id
+                  ? "1px solid var(--accent)"
+                  : "1px solid rgba(255,255,255,.15)",
+                background: activeDomusId === d.id
+                  ? "rgba(161,29,62,.18)"
+                  : "rgba(255,255,255,.03)",
+                color: activeDomusId === d.id ? "var(--accent)" : "var(--muted)",
+                cursor: "pointer",
+                fontWeight: activeDomusId === d.id ? 700 : 400,
+                fontSize: 13,
+                letterSpacing: ".02em",
+              }}
+            >
+              {d.nome}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* ── Domus cadastrados ─────────────────────────────────────────────── */}
       <div className="card" style={{ marginBottom: 14 }}>
@@ -414,15 +490,15 @@ export function DomusPage({
         <div className="card-hdr">
           Pedidos de entrada{" "}
           <span>
-            {adminData?.requests?.filter((r: any) => r.status === "pendente").length ?? 0} pendentes
+            {deduplicatedRequests.filter((r: any) => r.status === "pendente").length} pendentes
           </span>
         </div>
         <div className="domus-requests">
           {isLoading && <div className="aitem-det">Carregando pedidos…</div>}
-          {adminData?.requests?.length === 0 && (
-            <div className="aitem-det">Nenhum pedido ainda.</div>
+          {!isLoading && deduplicatedRequests.length === 0 && (
+            <div className="aitem-det">Nenhum pedido para este Domus.</div>
           )}
-          {adminData?.requests?.map((pedido: any) => (
+          {deduplicatedRequests.map((pedido: any) => (
             <div key={pedido.id} className="domus-request">
               <div>
                 <div className="aitem-name">{pedido.nome}</div>
@@ -442,7 +518,7 @@ export function DomusPage({
               >
                 {pedido.status}
               </span>
-              {pedido.status === "pendente" && (
+              {pedido.status === "pendente" ? (
                 <div className="domus-request-actions">
                   <button
                     onClick={() => approveMutation.mutate(pedido.id)}
@@ -457,14 +533,30 @@ export function DomusPage({
                     recusar
                   </button>
                 </div>
+              ) : (
+                <button
+                  onClick={() => removeRequestMutation.mutate(pedido.id)}
+                  disabled={removeRequestMutation.isPending}
+                  style={{
+                    background: "transparent",
+                    border: "1px solid rgba(255,255,255,.15)",
+                    color: "var(--muted)",
+                    borderRadius: 5,
+                    padding: "2px 8px",
+                    fontSize: 11,
+                    cursor: "pointer",
+                  }}
+                >
+                  remover
+                </button>
               )}
             </div>
           ))}
         </div>
       </div>
 
-      {/* ── Escopos: Família Malta Furtado (hardcoded) ────────────────────── */}
-      <div className="card" style={{ marginBottom: 14 }}>
+      {/* ── Escopos: Família Malta Furtado (hardcoded) — só quando Furtado ativo ── */}
+      {isFurtadoDomus && <div className="card" style={{ marginBottom: 14 }}>
         <div className="card-hdr">
           Escopos · {DOMUS_NAME} <span>{membros.length} personae</span>
         </div>
@@ -584,21 +676,21 @@ export function DomusPage({
         </div>
       </div>
 
-      {/* ── Escopos: outros Domus (membros reais do banco) ────────────────── */}
-      {Object.entries(externalByDomus).map(([domusNome, domusMembers]) => (
+      {/* ── Escopos: Domus externo ativo (membros reais do banco) ─────────── */}
+      {!isFurtadoDomus && activeExternalMembers.length > 0 && [(activeDomus?.nome ?? "Sem Domus")].map((domusNome) => (
         <div key={domusNome} className="card" style={{ marginBottom: 14 }}>
           <div className="card-hdr">
             Escopos · {domusNome}{" "}
-            <span>{(domusMembers as any[]).length} membros</span>
+            <span>{activeExternalMembers.length} membros</span>
           </div>
           <div style={{ padding: 16, display: "grid", gap: 14 }}>
-            {(domusMembers as any[]).map((m: any) => {
+            {activeExternalMembers.map((m: any) => {
               const isVesta = m.papel === "vesta";
               const extScope = extScopes[m.profile_id] ?? {
                 seeConsolidado: false,
                 seePersonae: [],
               };
-              const otherMembers = (domusMembers as any[]).filter(
+              const otherMembers = activeExternalMembers.filter(
                 (o: any) => o.profile_id !== m.profile_id,
               );
               const displayName = m.profile?.nome ?? m.profile?.email ?? "Membro";
