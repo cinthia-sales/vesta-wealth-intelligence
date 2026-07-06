@@ -10,60 +10,78 @@ import {
   allowedProfiles,
   getPersonaInfo,
   type PersonaId,
-  type Scope,
   type ScopeMap,
 } from "@/state/session";
-import { getMyRole } from "@/lib/auth.functions";
-import { listDomusPersonae } from "@/lib/domus.functions";
+import { getDomusSession } from "@/lib/domus.functions";
 
 export const Route = createFileRoute("/_authenticated/app")({
   component: VestaApp,
 });
 
-const SCOPES_STORAGE_KEY = "vesta.scopes.v1";
+const CINTHIA_EMAIL = "cinthiavr@yahoo.com.br";
+const PAULO_EMAIL = "phfurtadovr@yahoo.com.br";
 
-function loadScopes(): ScopeMap {
-  if (typeof window === "undefined") return DEFAULT_SCOPES;
-  try {
-    const raw = window.localStorage.getItem(SCOPES_STORAGE_KEY);
-    if (!raw) return DEFAULT_SCOPES;
-    const parsed = JSON.parse(raw);
-    if (parsed && parsed.cinthia && parsed.paulo) return parsed;
-  } catch {}
-  return DEFAULT_SCOPES;
+function keyForProfile(profileId: string, email?: string | null): PersonaId {
+  const lower = (email ?? "").toLowerCase();
+  if (lower === CINTHIA_EMAIL) return "cinthia";
+  if (lower === PAULO_EMAIL) return "paulo";
+  return `member:${profileId}`;
+}
+
+function profileIdForKey(key: string, sessionData: any): string | null {
+  if (key === "cinthia") return sessionData.profile?.id ?? null;
+  const member = (sessionData.members ?? []).find(
+    (m: any) => keyForProfile(m.profile_id, m.profile?.email) === key,
+  );
+  return member?.profile_id ?? null;
+}
+
+function buildScopes(sessionData: any): ScopeMap {
+  const next: ScopeMap = { ...DEFAULT_SCOPES };
+  const memberKey = sessionData.profile
+    ? keyForProfile(sessionData.profile.id, sessionData.profile.email)
+    : "paulo";
+  const visible = (sessionData.scope?.can_see_member_profile_ids ?? [])
+    .map((id: string) => {
+      const found = (sessionData.members ?? []).find((m: any) => m.profile_id === id);
+      if (found) return keyForProfile(found.profile_id, found.profile?.email);
+      if (id === sessionData.profile?.id) return memberKey;
+      return null;
+    })
+    .filter(Boolean) as PersonaId[];
+
+  if (sessionData.role !== "vesta") {
+    next[memberKey] = {
+      seeConsolidado: !!sessionData.scope?.can_see_consolidado,
+      seePersonae: visible,
+    };
+  }
+  return next;
 }
 
 function VestaApp() {
   const navigate = useNavigate();
-  const [scopes, setScopesState] = useState<ScopeMap>(loadScopes);
-  const setScopes = (next: ScopeMap) => {
-    setScopesState(next);
-    try {
-      window.localStorage.setItem(SCOPES_STORAGE_KEY, JSON.stringify(next));
-    } catch {}
-  };
+  const [scopes, setScopes] = useState<ScopeMap>(DEFAULT_SCOPES);
   const [profile, setProfile] = useState<ProfileId | null>(null);
   const [saudacao, setSaudacao] = useState(false);
 
-  const { data: roleData, isLoading } = useQuery({
-    queryKey: ["my-role"],
+  const { data: sessionData, isLoading } = useQuery({
+    queryKey: ["domus-session"],
     queryFn: async () => {
       const { data } = await supabase.auth.getSession();
-      if (!data.session?.access_token) return { role: null };
-      return getMyRole();
+      if (!data.session?.access_token) return { role: null, members: [] };
+      return getDomusSession();
     },
     retry: false,
   });
 
-  const { data: extraPersonae } = useQuery({
-    queryKey: ["domus-personae"],
-    queryFn: () => listDomusPersonae(),
-    enabled: !!roleData,
-  });
+  useEffect(() => {
+    if (sessionData) setScopes(buildScopes(sessionData));
+  }, [sessionData]);
 
   useEffect(() => {
-    if (!roleData) return;
-    if (roleData.role === "vesta") return; // Vesta nunca é saudada — a Deusa não se cumprimenta
+    if (!sessionData) return;
+    if (sessionData.role === "vesta") return; // Vesta nunca é saudada — a Deusa não se cumprimenta
     let ativo = true;
     (async () => {
       const { data: userData } = await supabase.auth.getUser();
@@ -79,7 +97,7 @@ function VestaApp() {
     return () => {
       ativo = false;
     };
-  }, [roleData]);
+  }, [sessionData]);
 
   const dispensarSaudacao = async () => {
     setSaudacao(false);
@@ -99,7 +117,12 @@ function VestaApp() {
     );
   }
 
-  const loggedAs: PersonaId = roleData?.role === "vesta" ? "cinthia" : "paulo";
+  const loggedAs: PersonaId =
+    sessionData?.role === "vesta"
+      ? "cinthia"
+      : sessionData?.profile
+        ? keyForProfile(sessionData.profile.id, sessionData.profile.email)
+        : "paulo";
   const scope = scopes[loggedAs] ?? { seeConsolidado: false, seePersonae: [] };
   const allowed = allowedProfiles(loggedAs, scope);
 
@@ -135,7 +158,7 @@ function VestaApp() {
           loggedAs={loggedAs}
           onSelect={setProfile}
           onLogout={doLogout}
-          extras={extraPersonae ?? []}
+          extras={sessionData?.members ?? []}
         />
       </>
     );
@@ -156,6 +179,7 @@ function VestaApp() {
         onUpdateScopes={
           getPersonaInfo(loggedAs).role === "vesta" ? setScopes : undefined
         }
+        profileIdForScopeKey={(key) => profileIdForKey(key, sessionData)}
         onChangeProfile={setProfile}
         onSwitchProfile={() => {
           if (allowed.length > 1) setProfile(null);
