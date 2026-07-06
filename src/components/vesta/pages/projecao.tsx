@@ -9,6 +9,11 @@ function fmtR(n: number) {
 function fmtRk(n: number) {
   return "R$ " + Math.round(n / 1000).toLocaleString("pt-BR") + "k";
 }
+function fmtDate(iso: string) {
+  if (!iso) return "—";
+  const [y, m, d] = iso.split("-");
+  return `${d}/${m}/${y}`;
+}
 
 type Cenario = "otimista" | "base" | "pessimista";
 type Freq = "mensal" | "semestral" | "anual";
@@ -33,6 +38,13 @@ const IPCA: Record<Cenario, number[]> = {
   pessimista:[5.5, 5.8, 5.5, 5.2, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0],
 };
 
+// Taxa de crescimento anual de RV por cenário
+const RV_RATES: Record<Cenario, number> = {
+  otimista:   0.15,  // +15% a.a.
+  base:        0.08,  // +8% a.a.
+  pessimista: -0.05, // -5% a.a.
+};
+
 // Classificação simplificada dos ativos por tipo de indexador
 type Bucket = "posfix" | "inflacao" | "prefix" | "rv";
 function classify(nome: string): Bucket {
@@ -54,6 +66,7 @@ function taxaAno(b: Bucket, cdi: number, ipca: number, cdiPct: number, cupomIpca
 export function ProjecaoPage({ profileId }: { profileId: ProfileId }) {
   const u = getUser(profileId);
   const [cenario, setCenario] = useState<Cenario>("base");
+  const [rvCenario, setRvCenario] = useState<Cenario>("base");
   const [freq, setFreq] = useState<Freq>("mensal");
   const [aporte, setAporte] = useState(0);
   const [bonus, setBonus] = useState(0); // aporte pontual único (PLR, férias)
@@ -94,7 +107,7 @@ export function ProjecaoPage({ profileId }: { profileId: ProfileId }) {
         const t = taxaAno(p.bucket, cdi, ipca, p.cdiPct, p.cupomIpca, p.cupomPre);
         p.v = p.v * (1 + t / 100);
       });
-      rvVal = rvVal * 1.1; // 10% aa
+      rvVal = rvVal * (1 + RV_RATES[rvCenario]);
       // bônus pontual: entra uma única vez no ano escolhido e depois rende
       if (anoAtual === bonusAno) bonusAcum += bonus;
       bonusAcum = bonusAcum * (1 + (cdi * 0.9) / 100);
@@ -109,7 +122,7 @@ export function ProjecaoPage({ profileId }: { profileId: ProfileId }) {
     posEvol.forEach((p) => { breakdown[p.bucket] += p.v; });
 
     return { serie, breakdown };
-  }, [u, cenario, aporteMensalEq, bonus, bonusAno]);
+  }, [u, cenario, rvCenario, aporteMensalEq, bonus, bonusAno]);
 
   const maxV = Math.max(...serie.map((s) => s.total));
   const minV = Math.min(...serie.map((s) => s.total));
@@ -142,7 +155,7 @@ export function ProjecaoPage({ profileId }: { profileId: ProfileId }) {
         <div className="kpi">
           <div className="kpi-l">Hoje</div>
           <div className="kpi-v blue">{fmtR(u.total)}</div>
-          <div className="kpi-s">02/07/2026</div>
+          <div className="kpi-s">Posição em {fmtDate(u.data_referencia)}</div>
         </div>
         <div className="kpi">
           <div className="kpi-l">Em 2036 (10 anos)</div>
@@ -183,6 +196,25 @@ export function ProjecaoPage({ profileId }: { profileId: ProfileId }) {
             </button>
           ))}
         </div>
+        {u.rv > 0 && (
+          <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px dashed var(--border)" }}>
+            <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 6 }}>
+              Renda variável — crescimento anual estimado:
+            </div>
+            <div className="filter-row">
+              {(["pessimista", "base", "otimista"] as Cenario[]).map((c) => (
+                <button
+                  key={c}
+                  className={"fbtn" + (rvCenario === c ? " on" : "")}
+                  onClick={() => setRvCenario(c)}
+                >
+                  {c === "pessimista" ? "Pessimista (−5%)" : c === "base" ? "Base (+8%)" : "Otimista (+15%)"}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 8, fontSize: 13 }}>
           <label>Aporte adicional ({freqCfg.sufixo}):</label>
           <input
@@ -293,8 +325,14 @@ export function ProjecaoPage({ profileId }: { profileId: ProfileId }) {
                 <td>Renda variável (ações + ETFs)</td>
                 <td className="r">{fmtR(u.rv)}</td>
                 <td className="r">{fmtR(breakdown.rv)}</td>
-                <td className="r good">+{Math.round(((breakdown.rv / u.rv) - 1) * 100)}%</td>
-                <td><span style={{ color: "var(--muted)", fontSize: 12 }}>10% a.a. simplificado</span></td>
+                <td className={"r " + (breakdown.rv >= u.rv ? "good" : "bad")}>
+                  {breakdown.rv >= u.rv ? "+" : ""}{Math.round(((breakdown.rv / u.rv) - 1) * 100)}%
+                </td>
+                <td>
+                  <span style={{ color: "var(--muted)", fontSize: 12 }}>
+                    {(RV_RATES[rvCenario] * 100 > 0 ? "+" : "")}{(RV_RATES[rvCenario] * 100).toFixed(0)}% a.a. ({rvCenario})
+                  </span>
+                </td>
               </tr>
             )}
           </tbody>
@@ -316,8 +354,9 @@ export function ProjecaoPage({ profileId }: { profileId: ProfileId }) {
           </p>
           <p style={{ marginTop: 8, color: "var(--muted)", fontSize: 12 }}>
             Premissas: pós-fixado usa %CDI de cada título; inflação usa cupom do próprio título +
-            IPCA da curva; prefixado é vitalício até o vencimento. RV projetada a 10% a.a.
-            simplificado (não substitui análise de ações).
+            IPCA da curva; prefixado é vitalício até o vencimento. RV projetada a{" "}
+            {(RV_RATES[rvCenario] * 100 > 0 ? "+" : "")}{(RV_RATES[rvCenario] * 100).toFixed(0)}% a.a.
+            (cenário {rvCenario} — não substitui análise de ações).
           </p>
         </div>
       </div>
