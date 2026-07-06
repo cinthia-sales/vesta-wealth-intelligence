@@ -1,4 +1,4 @@
-import type { ProfileId } from "@/lib/profile-derive";
+import type { KnownProfileId, ProfileId } from "@/lib/profile-derive";
 
 type Status = "intocavel" | "urgente" | "monitorar";
 
@@ -222,8 +222,42 @@ function buildFamiliar(): UserData {
 
 const FAMILIAR = buildFamiliar();
 
+const EMPTY_MEMBER: UserData = {
+  nome: "Novo membro",
+  conta: "Dados a importar",
+  total: 0,
+  rf: 0,
+  rv: 0,
+  rf_pct: 0,
+  rv_pct: 0,
+  saudacao: "Acesso concedido. A carteira fica em branco até os extratos ou dados serem importados.",
+  topbar_sub: "Persona aprovada · aguardando dados",
+  kpi4_label: "Status",
+  kpi4_val: "em branco",
+  kpi4_sub: "aguardando importação",
+  donut_data: [1],
+  donut_labels: ["Sem dados importados"],
+  donut_colors: ["#C8BFB0"],
+  rf_ativos: [],
+  rv_ativos: [],
+  alertas_list: [],
+  vencimentos: [],
+  resumo: [
+    {
+      dot: "w",
+      nome: "Carteira ainda sem dados",
+      det: "A Vesta já aprovou esta persona. Importe extratos XP ou cadastre dados para materializar a carteira.",
+    },
+  ],
+};
+
+export function isKnownProfileId(id: ProfileId): id is KnownProfileId {
+  return id === "paulo" || id === "cinthia" || id === "familiar";
+}
+
 export function getUser(id: ProfileId): UserData {
   if (id === "paulo") return PAULO;
   if (id === "cinthia") return CINTHIA;
+  if (id.startsWith("member:")) return EMPTY_MEMBER;
   return FAMILIAR;
 }

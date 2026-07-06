@@ -1,11 +1,19 @@
 import {
-  PERSONAE,
   DOMUS_NAME,
+  getPersonaInfo,
   type PersonaId,
   type Scope,
+  type ScopeMap,
 } from "@/state/session";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { approveJoinRequest, createDomus, DEFAULT_MEMBER_PASSWORD, getDomusAdmin, updateJoinRequestStatus } from "@/lib/domus.functions";
+import {
+  approveJoinRequest,
+  createDomus,
+  DEFAULT_MEMBER_PASSWORD,
+  getDomusAdmin,
+  saveMemberVisibilityScope,
+  updateJoinRequestStatus,
+} from "@/lib/domus.functions";
 import { useState } from "react";
 
 /* ============================================================
@@ -15,9 +23,11 @@ import { useState } from "react";
 export function DomusPage({
   scopes,
   onUpdateScopes,
+  profileIdForScopeKey,
 }: {
-  scopes: Record<PersonaId, Scope>;
-  onUpdateScopes: (next: Record<PersonaId, Scope>) => void;
+  scopes: ScopeMap;
+  onUpdateScopes: (next: ScopeMap) => void;
+  profileIdForScopeKey?: (key: string) => string | null;
 }) {
   const membros: PersonaId[] = ["cinthia", "paulo"];
   const queryClient = useQueryClient();
@@ -63,24 +73,50 @@ export function DomusPage({
     window.setTimeout(() => setSavedFlash(false), 1600);
   };
 
+  const saveScopeMutation = useMutation({
+    mutationFn: ({ id, scope }: { id: PersonaId; scope: Scope }) => {
+      const memberProfileId = profileIdForScopeKey?.(id);
+      if (!memberProfileId) throw new Error("Não encontrei esse membro no backend.");
+      const visibleIds = scope.seePersonae
+        .map((personaId) => profileIdForScopeKey?.(personaId))
+        .filter((value): value is string => Boolean(value));
+      return saveMemberVisibilityScope({
+        data: {
+          memberProfileId,
+          canSeeConsolidado: scope.seeConsolidado,
+          canSeeMemberProfileIds: visibleIds,
+        },
+      });
+    },
+    onSuccess: () => {
+      flashSaved();
+      queryClient.invalidateQueries({ queryKey: ["domus-admin"] });
+      queryClient.invalidateQueries({ queryKey: ["domus-session"] });
+    },
+  });
+
   const toggleConsolidado = (id: PersonaId) => {
+    const current = scopes[id] ?? { seeConsolidado: false, seePersonae: [] };
+    const nextScope = { ...current, seeConsolidado: !current.seeConsolidado };
     onUpdateScopes({
       ...scopes,
-      [id]: { ...scopes[id], seeConsolidado: !scopes[id].seeConsolidado },
+      [id]: nextScope,
     });
-    flashSaved();
+    saveScopeMutation.mutate({ id, scope: nextScope });
   };
 
   const togglePersona = (owner: PersonaId, target: PersonaId) => {
-    const cur = scopes[owner].seePersonae;
+    const current = scopes[owner] ?? { seeConsolidado: false, seePersonae: [] };
+    const cur = current.seePersonae;
     const next = cur.includes(target)
       ? cur.filter((p) => p !== target)
       : [...cur, target];
+    const nextScope = { ...current, seePersonae: next };
     onUpdateScopes({
       ...scopes,
-      [owner]: { ...scopes[owner], seePersonae: next },
+      [owner]: nextScope,
     });
-    flashSaved();
+    saveScopeMutation.mutate({ id: owner, scope: nextScope });
   };
 
   const domusList = adminData?.domus ?? [];
@@ -261,8 +297,8 @@ export function DomusPage({
         </div>
         <div style={{ padding: 16, display: "grid", gap: 14 }}>
           {membros.map((id) => {
-            const p = PERSONAE[id];
-            const scope = scopes[id];
+            const p = getPersonaInfo(id);
+            const scope = scopes[id] ?? { seeConsolidado: false, seePersonae: [] };
             const isVesta = p.role === "vesta";
             return (
               <div
@@ -337,7 +373,7 @@ export function DomusPage({
                             checked={scope.seePersonae.includes(other)}
                             onChange={() => togglePersona(id, other)}
                           />
-                          <span>Ver carteira de <strong>{PERSONAE[other].name}</strong></span>
+                          <span>Ver carteira de <strong>{getPersonaInfo(other).name}</strong></span>
                         </label>
                       ))}
                   </div>
@@ -367,6 +403,12 @@ export function DomusPage({
       {approveMutation.error && (
         <div className="auth-error" style={{ marginTop: 10 }}>
           {(approveMutation.error as Error).message}
+        </div>
+      )}
+
+      {saveScopeMutation.error && (
+        <div className="auth-error" style={{ marginTop: 10 }}>
+          {(saveScopeMutation.error as Error).message}
         </div>
       )}
 

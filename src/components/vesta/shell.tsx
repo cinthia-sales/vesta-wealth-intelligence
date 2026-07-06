@@ -17,7 +17,7 @@ import { DomusPage } from "@/components/vesta/pages/domus";
 
 import type { ProfileId } from "@/lib/profile-derive";
 import { getUser } from "@/data/vesta-users";
-import { PERSONAE, type PersonaId, type Scope } from "@/state/session";
+import { getPersonaInfo, type PersonaId, type ScopeMap } from "@/state/session";
 
 /* ============================================================
    ProfileSelector — replica exata de #profile-screen do vesta.html
@@ -48,9 +48,14 @@ export function ProfileSelector({
 
   // Nomes hardcoded que ja tem card proprio — evita duplicar.
   const hardcodedEmails = new Set(["cinthiavr@yahoo.com.br", "phfurtadovr@yahoo.com.br"]);
-  const extraCards = extras.filter(
-    (e) => !hardcodedEmails.has((e.profile?.email ?? "").toLowerCase()),
-  );
+  const extraCards = extras.filter((e) => {
+    const profileId = `member:${e.profile_id}` as ProfileId;
+    const loggedPersona = loggedAs ? getPersonaInfo(loggedAs) : null;
+    return (
+      !hardcodedEmails.has((e.profile?.email ?? "").toLowerCase()) &&
+      (loggedPersona?.role === "vesta" || canSee(profileId))
+    );
+  });
 
   return (
     <div id="profile-screen">
@@ -58,7 +63,7 @@ export function ProfileSelector({
       <div className="ps-title">Guardiã do Patrimônio</div>
       <div className="ps-subtitle">
         {loggedAs
-          ? `Entrou como ${PERSONAE[loggedAs].name} · selecione a visão`
+          ? `Entrou como ${getPersonaInfo(loggedAs).name} · selecione a visão`
           : "Selecione o perfil de acesso"}
       </div>
 
@@ -110,7 +115,7 @@ export function ProfileSelector({
             <div
               key={e.id}
               className="ps-card ps-card-waiting"
-              onClick={() => setWaiting(e)}
+              onClick={() => onSelect(`member:${e.profile_id}` as ProfileId)}
             >
               <div
                 className="ps-avatar"
@@ -292,7 +297,7 @@ type PageKey =
   | "rendimentos"
   | "domus";
 
-const PROFILE_META: Record<ProfileId, { name: string; sub: string; avatarBg: string; avatarColor: string; content: ReactNode }> = {
+const PROFILE_META: Record<"familiar" | "cinthia" | "paulo", { name: string; sub: string; avatarBg: string; avatarColor: string; content: ReactNode }> = {
   familiar: {
     name: "FAMILIAR - DOMUS",
     sub: "Todas as carteiras",
@@ -316,6 +321,19 @@ const PROFILE_META: Record<ProfileId, { name: string; sub: string; avatarBg: str
   },
 };
 
+function getProfileMeta(profileId: ProfileId) {
+  if (profileId === "familiar" || profileId === "cinthia" || profileId === "paulo") {
+    return PROFILE_META[profileId];
+  }
+  return {
+    name: "PERSONA NOVUS",
+    sub: "Dados a importar",
+    avatarBg: "rgba(120,110,95,.10)",
+    avatarColor: "var(--muted)",
+    content: <>N</>,
+  };
+}
+
 /* ============================================================
    VestaShell — sidebar + topbar + update bar + slot para page
    ============================================================ */
@@ -325,6 +343,7 @@ export function VestaShell({
   loggedAs,
   scopes,
   onUpdateScopes,
+  profileIdForScopeKey,
   onLogout,
   children,
 }: {
@@ -332,17 +351,19 @@ export function VestaShell({
   onChangeProfile?: (id: ProfileId) => void;
   onSwitchProfile: () => void;
   loggedAs?: PersonaId;
-  scopes?: Record<PersonaId, Scope>;
-  onUpdateScopes?: (next: Record<PersonaId, Scope>) => void;
+  scopes?: ScopeMap;
+  onUpdateScopes?: (next: ScopeMap) => void;
+  profileIdForScopeKey?: (key: string) => string | null;
   onLogout?: () => void;
   children?: ReactNode;
 }) {
   const [page, setPage] = useState<PageKey>("home");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const goTo = (k: PageKey) => { setPage(k); setSidebarOpen(false); };
-  const meta = PROFILE_META[profileId];
+  const meta = getProfileMeta(profileId);
   const isFamily = profileId === "familiar";
-  const isVesta = loggedAs ? PERSONAE[loggedAs].role === "vesta" : false;
+  const loggedPersona = loggedAs ? getPersonaInfo(loggedAs) : null;
+  const isVesta = loggedPersona?.role === "vesta";
   const canManageDomus = isVesta && profileId !== "paulo";
   const alertas = getUser(profileId).alertas_list;
   const alertaCounts = {
@@ -420,8 +441,8 @@ export function VestaShell({
                 lineHeight: 1.4,
               }}
             >
-              Logada como <strong style={{ color: "var(--accent)" }}>{PERSONAE[loggedAs].name}</strong>
-              {PERSONAE[loggedAs].role === "vesta" && (
+              Logada como <strong style={{ color: "var(--accent)" }}>{getPersonaInfo(loggedAs).name}</strong>
+              {getPersonaInfo(loggedAs).role === "vesta" && (
                 <span style={{
                   marginLeft: 6, fontSize: 9, fontWeight: 700, letterSpacing: ".08em",
                   padding: "1px 6px", borderRadius: 8,
@@ -583,7 +604,11 @@ export function VestaShell({
             {page === "aporte" && <AportePage />}
             {page === "rendimentos" && <RendimentosPage profileId={profileId} />}
             {page === "domus" && canManageDomus && scopes && onUpdateScopes && (
-              <DomusPage scopes={scopes} onUpdateScopes={onUpdateScopes} />
+              <DomusPage
+                scopes={scopes}
+                onUpdateScopes={onUpdateScopes}
+                profileIdForScopeKey={profileIdForScopeKey}
+              />
             )}
             {!["home", "posicao", "breakeven", "equiv", "validador", "projecao", "secundario", "alertas", "regras", "upload", "drivers", "aporte", "rendimentos", "domus"].includes(page) && (
               <div className="ph">
