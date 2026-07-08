@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import vestaHero from "@/assets/vesta-lineart.png";
@@ -11,6 +11,11 @@ type DomusPublic = {
 };
 
 export const Route = createFileRoute("/")({
+  beforeLoad: async () => {
+    const { data } = await supabase.auth.getUser();
+    if (data.user) throw redirect({ to: "/app" });
+    throw redirect({ to: "/auth", search: { next: "/app" } });
+  },
   head: () => ({
     meta: [
       { title: "Vesta · Escolha o Domus" },

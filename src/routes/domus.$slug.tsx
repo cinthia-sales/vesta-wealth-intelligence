@@ -52,7 +52,7 @@ function DomusEntradaPage() {
     e.preventDefault();
     setError(null);
     setBusy(true);
-    const { error: signInErr, data: signInData } = await supabase.auth.signInWithPassword({
+    const { error: signInErr } = await supabase.auth.signInWithPassword({
       email: email.trim(),
       password,
     });
@@ -62,31 +62,7 @@ function DomusEntradaPage() {
       return;
     }
 
-    // Vesta Soberana pode entrar em qualquer Domus
-    const userEmail = (signInData.user?.email ?? "").toLowerCase();
-    if (userEmail === "cinthiavr@yahoo.com.br") {
-      navigate({ to: "/app" });
-      return;
-    }
-
-    // Verifica se o usuário pertence a este Domus
-    if (domus?.id) {
-      const uid = signInData.user?.id;
-      const { data: membership } = await supabase
-        .from("domus_members")
-        .select("id")
-        .eq("domus_id", domus.id)
-        .eq("profile_id", uid)
-        .maybeSingle();
-
-      if (!membership) {
-        await supabase.auth.signOut();
-        setBusy(false);
-        setError("Você não pertence a este Domus. Escolha o Domus correto ou solicite acesso.");
-        return;
-      }
-    }
-
+    // A área privada resolve os Domus e as visões permitidas após o login.
     navigate({ to: "/app" });
   }
 

@@ -477,6 +477,31 @@ type BreakevenReal = {
   nome: string;
 };
 
+const DEMO_BREAKEVENS: Record<string, BreakevenReal> = {
+  "member:demo-cornelia": {
+    confirmadoEm: "2026-06-18T12:00:00.000Z",
+    custo: 14100,
+    nome: "Rebalanceamento de crédito privado",
+    grupoA: [
+      { id: "cornelia-a", desc: "Fundo de crédito com taxa antiga", capital: 260000, taxaMercado: 10.9, taxaCurva: 11.2, duration: 2.1, prazoMeses: 30 },
+    ],
+    grupoB: [
+      { id: "cornelia-b", desc: "Debênture Exemplum + LCA Aurora", capital: 260000, taxaMercado: 14.1, taxaCurva: 14.4, duration: 2.6, prazoMeses: 40 },
+    ],
+  },
+  "member:demo-marcus": {
+    confirmadoEm: "2026-06-24T12:00:00.000Z",
+    custo: 13500,
+    nome: "Troca de pós-fixado e reforço de duration",
+    grupoA: [
+      { id: "marcus-a", desc: "CDB de liquidez a 98% do CDI", capital: 210000, taxaMercado: 12.4, taxaCurva: 12.6, duration: 0.5, prazoMeses: 12 },
+    ],
+    grupoB: [
+      { id: "marcus-b", desc: "CDB Roma + Tesouro Prefixado", capital: 210000, taxaMercado: 15.8, taxaCurva: 15.5, duration: 2.8, prazoMeses: 36 },
+    ],
+  },
+};
+
 function novaLinha(): LinhaGrupo {
   return {
     id: Math.random().toString(36).slice(2, 9),
@@ -503,7 +528,7 @@ function carregarBreakeven(profileId: ProfileId): BreakevenReal | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = window.localStorage.getItem(storageKey(profileId));
-    if (!raw) return null;
+    if (!raw) return DEMO_BREAKEVENS[profileId] ?? null;
     return JSON.parse(raw) as BreakevenReal;
   } catch {
     return null;
@@ -1524,6 +1549,27 @@ export function BreakevenPage({ profileId }: { profileId: ProfileId }) {
   // Visão familiar: consolida todos os breakevens em andamento nas duas carteiras
   if (profileId === "familiar") {
     return <BreakevenFamiliarPanel />;
+  }
+
+  if (profileId === "domus:demo-exemplum") {
+    return (
+      <>
+        <div className="ph">
+          <h1>Breakevens · Domus Exemplum</h1>
+          <p>Consolidação demonstrativa dos planos de Cornelia e Marcus.</p>
+        </div>
+        <div className="kpi-row">
+          <div className="kpi"><div className="kpi-l">Custo total das trocas</div><div className="kpi-v">R$ 27.600</div><div className="kpi-s">dados fictícios</div></div>
+          <div className="kpi"><div className="kpi-l">Ganho mensal estimado</div><div className="kpi-v blue">R$ 1.650</div><div className="kpi-s">Cornelia + Marcus</div></div>
+          <div className="kpi"><div className="kpi-l">Prazo consolidado</div><div className="kpi-v">17 meses</div><div className="kpi-s">estimativa ponderada</div></div>
+          <div className="kpi"><div className="kpi-l">Conclusão prevista</div><div className="kpi-v blue">nov/2027</div><div className="kpi-s">cenário-base</div></div>
+        </div>
+        <div className="g2">
+          <div className="card"><div className="card-hdr">Cornelia</div><div className="aitem"><div className="dot dw" /><div><div className="aitem-name">Rebalanceamento de crédito privado</div><div className="aitem-det">Custo R$ 14.100 · ganho R$ 940/mês · breakeven out/2027</div></div></div></div>
+          <div className="card"><div className="card-hdr">Marcus</div><div className="aitem"><div className="dot dg" /><div><div className="aitem-name">Troca de pós-fixado e reforço de duration</div><div className="aitem-det">Custo R$ 13.500 · ganho R$ 710/mês · breakeven fev/2028</div></div></div></div>
+        </div>
+      </>
+    );
   }
 
 

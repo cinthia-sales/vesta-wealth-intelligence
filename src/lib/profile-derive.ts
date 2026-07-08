@@ -10,7 +10,7 @@ import {
 } from "@/data/profiles";
 
 export type KnownProfileId = "cinthia" | "paulo" | "familiar";
-export type ProfileId = KnownProfileId | `member:${string}`;
+export type ProfileId = KnownProfileId | `member:${string}` | `domus:${string}`;
 
 export type ActiveProfileView = {
   id: ProfileId;

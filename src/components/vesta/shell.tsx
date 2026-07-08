@@ -415,7 +415,9 @@ function getProfileMeta(profileId: ProfileId, overrideName?: string) {
    ============================================================ */
 export function VestaShell({
   profileId,
+  initialPage = "home",
   onSwitchProfile,
+  onBackToHall,
   loggedAs,
   loggedName,
   profileName,
@@ -423,12 +425,15 @@ export function VestaShell({
   scopes,
   onUpdateScopes,
   profileIdForScopeKey,
+  activeDomusId,
   onLogout,
   children,
 }: {
   profileId: ProfileId;
+  initialPage?: PageKey;
   onChangeProfile?: (id: ProfileId) => void;
   onSwitchProfile: () => void;
+  onBackToHall?: () => void;
   loggedAs?: PersonaId;
   loggedName?: string;
   profileName?: string;
@@ -436,28 +441,33 @@ export function VestaShell({
   scopes?: ScopeMap;
   onUpdateScopes?: (next: ScopeMap) => void;
   profileIdForScopeKey?: (key: string) => string | null;
+  activeDomusId?: string | null;
   onLogout?: () => void;
   children?: ReactNode;
 }) {
-  const [page, setPage] = useState<PageKey>("home");
+  const [page, setPage] = useState<PageKey>(initialPage);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const goTo = (k: PageKey) => { setPage(k); setSidebarOpen(false); };
   // profileName = nome do perfil visualizado (pode ser membro diferente do logado)
   const meta = getProfileMeta(profileId, profileName ?? loggedName);
-  const isFamily = profileId === "familiar";
+  const isFamily = profileId === "familiar" || profileId.startsWith("domus:");
   const loggedPersona = loggedAs ? getPersonaInfo(loggedAs) : null;
   const isVesta = loggedRole === "vesta" || loggedPersona?.role === "vesta";
   const canManageDomus = isVesta && profileId !== "paulo";
   const isMember = profileId.startsWith("member:");
+  const hasFullPortfolio = !isMember || profileId.startsWith("member:demo-");
   // Nome de exibição: usa loggedName (real do banco) ou fallback para getPersonaInfo
-  const displayName = loggedName ?? getPersonaInfo(loggedAs ?? "paulo").name;
-  const alertas = getUser(profileId).alertas_list;
+  const displayName = loggedName ?? (loggedAs ? getPersonaInfo(loggedAs).name : "Membro");
+  const userData = getUser(profileId);
+  const alertas = userData.alertas_list;
   const alertaCounts = {
     r: alertas.filter((a) => a.cor === "r").length,
     w: alertas.filter((a) => a.cor === "w").length,
     g: alertas.filter((a) => a.cor === "g").length,
   };
   const totalAlertas = alertas.length;
+
+  useEffect(() => setPage(initialPage), [initialPage, profileId]);
   const alertaLabel =
     totalAlertas === 0
       ? "sem alertas"
@@ -487,8 +497,12 @@ export function VestaShell({
     </div>
   );
 
+  const topItem = (key: PageKey, label: string) => (
+    <button className={page === key ? "on" : ""} onClick={() => goTo(key)}>{label}</button>
+  );
+
   return (
-    <div className={"app" + (sidebarOpen ? " sidebar-open" : "")}>
+    <div className={"app" + (sidebarOpen ? " sidebar-open" : "") + (page === "domus" ? " managing-domus" : "")}>
       <div className={"mob-backdrop" + (sidebarOpen ? " open" : "")} onClick={() => setSidebarOpen(false)} />
       <nav className={"sidebar" + (sidebarOpen ? " open" : "")}>
         <div className="logo">
@@ -574,8 +588,8 @@ export function VestaShell({
 
           <div className="nav-sec">Principal</div>
           {item("home", "Visão geral")}
-          {!isMember && item("posicao", "Posição atual")}
-          {!isMember && item("rendimentos", "Rendimentos recorrentes", <span style={{ marginLeft: "auto", fontSize: 12 }}>💰</span>)}
+          {hasFullPortfolio && item("posicao", "Posição atual")}
+          {hasFullPortfolio && item("rendimentos", "Rendimentos recorrentes", <span style={{ marginLeft: "auto", fontSize: 12 }}>💰</span>)}
           {item(
             "alertas",
             "Alertas",
@@ -598,7 +612,7 @@ export function VestaShell({
             </span>,
           )}
 
-          {!isMember && (
+          {hasFullPortfolio && (
             <>
               <div className="nav-sec">Plano</div>
               {item("equiv", "Equivalência de taxas")}
@@ -630,6 +644,14 @@ export function VestaShell({
       </nav>
 
       <div className="main">
+        {page === "domus" && (
+          <nav className="management-header">
+            <button onClick={onBackToHall ?? onSwitchProfile}>← Hall</button>
+            <strong>Vesta · Gestão do Domus</strong>
+            <span />
+            {onLogout && <button onClick={onLogout}>Sair</button>}
+          </nav>
+        )}
         <div className="topbar">
           <button className="mob-menu-btn" aria-label="Abrir menu" onClick={() => setSidebarOpen(true)}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
@@ -661,6 +683,31 @@ export function VestaShell({
           <div className="badge-alert">{alertaLabel}</div>
         </div>
 
+        <nav className="context-nav" aria-label="Navegação da carteira">
+          <button className="context-nav__back" onClick={onBackToHall ?? onSwitchProfile}>← Hall</button>
+          {topItem("home", "Visão geral")}
+          {hasFullPortfolio && topItem("posicao", "Posição")}
+          {hasFullPortfolio && topItem("breakeven", "Breakeven")}
+          {hasFullPortfolio && topItem("equiv", "Equivalência")}
+          {hasFullPortfolio && topItem("validador", "Validador")}
+          {hasFullPortfolio && topItem("projecao", "Projeção")}
+          {!isFamily && topItem("upload", "Importar posição mensal")}
+          <details className="context-nav__more">
+            <summary>Mais</summary>
+            <div className="context-nav__menu">
+              {topItem("alertas", `Alertas (${totalAlertas})`)}
+              {hasFullPortfolio && topItem("rendimentos", "Rendimentos")}
+              {hasFullPortfolio && topItem("aporte", "Acelerar breakeven")}
+              {hasFullPortfolio && topItem("secundario", "Mercado secundário")}
+              {hasFullPortfolio && topItem("regras", "Regras")}
+              {hasFullPortfolio && topItem("drivers", "Influenciadores")}
+              {canManageDomus && topItem("domus", "Gerir Domus")}
+            </div>
+          </details>
+          <span className="context-nav__spacer" />
+          {onLogout && <button onClick={onLogout}>Sair</button>}
+        </nav>
+
         <div className="update-bar">
           <div className="upd-dot off" />
           <span>
@@ -671,7 +718,7 @@ export function VestaShell({
             IPCA <b>5,50%</b>
           </span>
           {(() => {
-            const total = getUser(profileId).total;
+            const total = userData.total;
             return total > 0 ? (
               <>
                 <span>·</span>
@@ -685,7 +732,9 @@ export function VestaShell({
 
         <div className="content">
           <div className="page on">
-            {page === "home" && <HomePage profileId={profileId} overrideName={isMember ? (profileName ?? loggedName) : undefined} />}
+            {page === "home" && (
+              <HomePage profileId={profileId} overrideName={profileName ?? loggedName} />
+            )}
             {page === "posicao" && <PosicaoPage profileId={profileId} />}
             {page === "breakeven" && <BreakevenPage profileId={profileId} />}
             {page === "equiv" && <EquivPage />}
@@ -694,7 +743,12 @@ export function VestaShell({
             {page === "secundario" && <SecundarioPage />}
             {page === "alertas" && <AlertasPage profileId={profileId} />}
             {page === "regras" && <RegrasPage profileId={profileId} />}
-            {page === "upload" && <UploadPage />}
+            {page === "upload" && (
+              <UploadPage
+                targetAccountId={profileId.startsWith("member:") ? profileId.slice(7) : profileId}
+                targetAccountName={profileName ?? meta.name}
+              />
+            )}
             {page === "drivers" && <DriversPage />}
             {page === "aporte" && <AportePage />}
             {page === "rendimentos" && <RendimentosPage profileId={profileId} />}
@@ -703,6 +757,7 @@ export function VestaShell({
                 scopes={scopes}
                 onUpdateScopes={onUpdateScopes}
                 profileIdForScopeKey={profileIdForScopeKey}
+                initialDomusId={activeDomusId}
               />
             )}
             {!["home", "posicao", "breakeven", "equiv", "validador", "projecao", "secundario", "alertas", "regras", "upload", "drivers", "aporte", "rendimentos", "domus"].includes(page) && (

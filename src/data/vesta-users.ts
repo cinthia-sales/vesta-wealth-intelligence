@@ -310,6 +310,90 @@ const EMPTY_MEMBER: UserData = {
   data_referencia: "",
 };
 
+// Portfólios inteiramente fictícios para demonstrações do Domus Exemplum.
+const CORNELIA_DEMO: UserData = {
+  ...EMPTY_MEMBER,
+  nome: "Cornelia",
+  conta: "Carteira demonstrativa",
+  total: 835000,
+  rf: 610000,
+  rv: 225000,
+  rf_pct: 73.1,
+  rv_pct: 26.9,
+  saudacao: "Carteira demonstrativa de Cornelia · nenhum dado pertence a uma pessoa real.",
+  topbar_sub: "Demonstração · Domus Exemplum",
+  kpi4_label: "Breakeven do plano",
+  kpi4_val: "out/2027",
+  kpi4_sub: "16 meses · ganho estimado de R$ 940/mês",
+  donut_data: [260000, 190000, 160000, 125000, 100000],
+  donut_labels: ["Crédito privado", "Pós-fixados", "Inflação", "Ações Brasil", "ETFs globais"],
+  donut_colors: ["#A11D3E", "#4E7A5C", "#D97706", "#3E5E7A", "#5C2B4E"],
+  rf_ativos: [
+    { n: "DEB EXEMPLAR ENERGIA 2030 (IPCA+7,8%)", v: 210000, t: 13.4, cdi: 105, venc: "15/09/2030", s: "intocavel", nota: "Ativo fictício para demonstração" },
+    { n: "LCA BANCO AURORA 2029 (94% CDI)", v: 190000, t: 13.8, cdi: 108, venc: "21/11/2029", s: "monitorar" },
+    { n: "NTN-B 2035 (IPCA+6,2%)", v: 160000, t: 11.7, cdi: 92, venc: "15/05/2035", s: "estrategico" },
+    { n: "CDB BANCO EXEMPLUM 2027 (112% CDI)", v: 50000, t: 16.5, cdi: 112, venc: "10/10/2027", s: "planejar" },
+  ],
+  rv_ativos: [
+    { n: "AÇÕES BRASIL — cesta demonstrativa", v: "R$ 125.000", pm: "diversificada", r: "+12,4%", rc: "good", cls: "ações", sb: "sb-g" },
+    { n: "ETF GLOBAL EXEMPLUM", v: "R$ 100.000", pm: "exposição internacional", r: "+8,1%", rc: "good", cls: "ETF", sb: "sb-a" },
+  ],
+  alertas_list: [
+    { cor: "w", titulo: "CDB demonstrativo vence em out/2027", det: "R$ 50.000 · planejar o reinvestimento com antecedência." },
+    { cor: "g", titulo: "Diversificação internacional dentro da meta", det: "ETF global representa 12% do patrimônio demonstrativo." },
+  ],
+  vencimentos: [
+    { icon: "📅", bg: "var(--warning-bg)", nome: "CDB BANCO EXEMPLUM 2027", det: "R$ 50.000 · 10/10/2027 · 112% CDI", badge: "planejar", bc: "sb-w" },
+    { icon: "🔒", bg: "rgba(74,124,89,.12)", nome: "LCA BANCO AURORA 2029", det: "R$ 190.000 · 21/11/2029 · 94% CDI", badge: "monitorar", bc: "sb-g" },
+  ],
+  resumo: [
+    { dot: "g", nome: "Patrimônio demonstrativo equilibrado", det: "73,1% em renda fixa e 26,9% em renda variável." },
+    { dot: "w", nome: "Breakeven projetado para out/2027", det: "Custo fictício de R$ 14.100 compensado por ganho estimado de R$ 940/mês." },
+  ],
+  data_referencia: "2026-06-30",
+};
+
+const MARCUS_DEMO: UserData = {
+  ...EMPTY_MEMBER,
+  nome: "Marcus",
+  conta: "Carteira demonstrativa",
+  total: 560000,
+  rf: 310000,
+  rv: 250000,
+  rf_pct: 55.4,
+  rv_pct: 44.6,
+  saudacao: "Carteira demonstrativa de Marcus · nenhum dado pertence a uma pessoa real.",
+  topbar_sub: "Demonstração · Domus Exemplum",
+  kpi4_label: "Breakeven do plano",
+  kpi4_val: "fev/2028",
+  kpi4_sub: "20 meses · ganho estimado de R$ 710/mês",
+  donut_data: [140000, 100000, 70000, 150000, 100000],
+  donut_labels: ["Pós-fixados", "Prefixados", "Inflação", "Ações Brasil", "Fundos imobiliários"],
+  donut_colors: ["#4E7A5C", "#A11D3E", "#D97706", "#3E5E7A", "#B8546E"],
+  rf_ativos: [
+    { n: "CDB BANCO ROMA 2028 (115% CDI)", v: 140000, t: 16.9, cdi: 115, venc: "18/02/2028", s: "monitorar" },
+    { n: "TESOURO PREFIXADO 2031 (13,2%)", v: 100000, t: 13.2, cdi: 103, venc: "01/01/2031", s: "estrategico" },
+    { n: "NTN-B 2040 (IPCA+6,0%)", v: 70000, t: 11.5, cdi: 90, venc: "15/08/2040", s: "intocavel" },
+  ],
+  rv_ativos: [
+    { n: "AÇÕES DIVIDENDOS — cesta demonstrativa", v: "R$ 150.000", pm: "8 empresas", r: "+10,8%", rc: "good", cls: "ações", sb: "sb-g" },
+    { n: "FIIs — cesta demonstrativa", v: "R$ 100.000", pm: "5 fundos", r: "+5,6%", rc: "good", cls: "FII", sb: "sb-a" },
+  ],
+  alertas_list: [
+    { cor: "w", titulo: "Renda variável acima do perfil-base", det: "44,6% do patrimônio demonstrativo; avaliar rebalanceamento gradual." },
+    { cor: "g", titulo: "Fluxo de dividendos diversificado", det: "Cesta fictícia distribuída entre ações e fundos imobiliários." },
+  ],
+  vencimentos: [
+    { icon: "📅", bg: "var(--warning-bg)", nome: "CDB BANCO ROMA 2028", det: "R$ 140.000 · 18/02/2028 · 115% CDI", badge: "monitorar", bc: "sb-w" },
+    { icon: "🔒", bg: "rgba(74,124,89,.12)", nome: "TESOURO PREFIXADO 2031", det: "R$ 100.000 · 01/01/2031 · 13,2%", badge: "estratégico", bc: "sb-g" },
+  ],
+  resumo: [
+    { dot: "w", nome: "Carteira demonstrativa mais arrojada", det: "44,6% em renda variável, com foco em dividendos." },
+    { dot: "g", nome: "Breakeven projetado para fev/2028", det: "Custo fictício de R$ 13.500 compensado por ganho estimado de R$ 710/mês." },
+  ],
+  data_referencia: "2026-06-30",
+};
+
 export function isKnownProfileId(id: ProfileId): id is KnownProfileId {
   return id === "paulo" || id === "cinthia" || id === "familiar";
 }
@@ -326,10 +410,61 @@ function loadMemberFromStorage(uuid: string): UserData {
   }
 }
 
+const DOMUS_PROFILES = new Map<string, { name: string; profiles: ProfileId[] }>();
+
+export function registerDomusProfiles(domusId: string, name: string, profiles: ProfileId[]) {
+  DOMUS_PROFILES.set(domusId, { name, profiles: profiles.filter((id) => !id.startsWith("domus:")) });
+}
+
+function buildDomusConsolidated(domusId: string): UserData {
+  const registered = DOMUS_PROFILES.get(domusId);
+  if (!registered) return EMPTY_MEMBER;
+  const users = registered.profiles.map(getUser);
+  const total = users.reduce((sum, user) => sum + user.total, 0);
+  const rf = users.reduce((sum, user) => sum + user.rf, 0);
+  const rv = users.reduce((sum, user) => sum + user.rv, 0);
+  const labels = users.map((user) => user.nome || "Membro");
+  return {
+    ...EMPTY_MEMBER,
+    nome: registered.name,
+    conta: "Consolidado do Domus",
+    total,
+    rf,
+    rv,
+    rf_pct: total > 0 ? (rf / total) * 100 : 0,
+    rv_pct: total > 0 ? (rv / total) * 100 : 0,
+    saudacao: `Visão consolidada do ${registered.name}.`,
+    topbar_sub: `Consolidado · ${registered.name}`,
+    kpi4_label: "Membros com dados",
+    kpi4_val: String(users.filter((user) => user.total > 0).length),
+    kpi4_sub: `${users.length} perfis autorizados`,
+    donut_data: total > 0 ? [rf, rv] : [1],
+    donut_labels: total > 0 ? ["Renda fixa", "Renda variável"] : ["Sem dados importados"],
+    donut_colors: total > 0 ? ["#A11D3E", "#3E5E7A"] : ["#C8BFB0"],
+    rf_ativos: users.flatMap((user, index) =>
+      user.rf_ativos.map((asset) => ({ ...asset, n: `[${labels[index]}] ${asset.n}` })),
+    ),
+    rv_ativos: users.flatMap((user) => user.rv_ativos ?? []),
+    alertas_list: users.flatMap((user, index) =>
+      user.alertas_list.map((alert) => ({ ...alert, titulo: `[${labels[index]}] ${alert.titulo}` })),
+    ),
+    vencimentos: users.flatMap((user, index) =>
+      user.vencimentos.map((item) => ({ ...item, nome: `[${labels[index]}] ${item.nome}` })),
+    ),
+    resumo: total > 0
+      ? users.flatMap((user, index) => user.resumo.map((item) => ({ ...item, nome: `[${labels[index]}] ${item.nome}` })))
+      : EMPTY_MEMBER.resumo,
+    data_referencia: users.reduce((latest, user) => user.data_referencia > latest ? user.data_referencia : latest, ""),
+  };
+}
+
 export function getUser(id: ProfileId): UserData {
+  if (id === "member:demo-cornelia") return CORNELIA_DEMO;
+  if (id === "member:demo-marcus") return MARCUS_DEMO;
   if (id === "paulo") return loadFromStorage("paulo", PAULO);
   if (id === "cinthia") return loadFromStorage("cinthia", CINTHIA);
   if (id.startsWith("member:")) return loadMemberFromStorage(id.slice("member:".length));
+  if (id.startsWith("domus:")) return buildDomusConsolidated(id.slice("domus:".length));
   return buildFamiliar(
     loadFromStorage("paulo", PAULO),
     loadFromStorage("cinthia", CINTHIA),

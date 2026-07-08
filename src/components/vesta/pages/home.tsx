@@ -19,6 +19,36 @@ export function HomePage({ profileId, overrideName }: { profileId: ProfileId; ov
   const firstName = (overrideName ?? u.nome).split(" ")[0];
   const saud = saudacaoPorHora();
 
+  if (u.total <= 0) {
+    const consolidated = profileId === "familiar" || profileId.startsWith("domus:");
+    return (
+      <>
+        <div className="ph">
+          <h1>{consolidated ? `Visão geral · ${overrideName ?? u.nome}` : `${saud}, ${firstName}`}</h1>
+          <p>
+            {consolidated
+              ? "O consolidado será formado automaticamente pelas carteiras deste Domus."
+              : "Esta carteira ainda não possui uma posição importada."}
+          </p>
+        </div>
+        <div className="kpi-row">
+          <div className="kpi"><div className="kpi-l">Patrimônio total</div><div className="kpi-v">R$ 0</div><div className="kpi-s">aguardando posição</div></div>
+          <div className="kpi"><div className="kpi-l">Renda fixa</div><div className="kpi-v blue">R$ 0</div><div className="kpi-s">sem dados</div></div>
+          <div className="kpi"><div className="kpi-l">Renda variável</div><div className="kpi-v">R$ 0</div><div className="kpi-s">sem dados</div></div>
+          <div className="kpi"><div className="kpi-l">Status</div><div className="kpi-v blue">Em branco</div><div className="kpi-s">nenhum arquivo aplicado</div></div>
+        </div>
+        <div className="card empty-overview-card">
+          <div className="card-hdr">Primeira posição</div>
+          <p>
+            {consolidated
+              ? "Importe a posição mensal nas carteiras de cada pessoa. Esta visão será atualizada sem uma importação própria."
+              : "Quando quiser preencher esta carteira, use “Importar posição mensal” no menu superior."}
+          </p>
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       <div className="ph">

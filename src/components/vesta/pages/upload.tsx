@@ -1,30 +1,12 @@
 import { useState, useEffect } from "react";
 import { type LocalSnapshot, type RFAtivo, STORAGE_KEYS } from "@/data/vesta-users";
-import { supabase } from "@/integrations/supabase/client";
 
 type ParsedRow = { ativo: string; valor: number; taxa?: string; venc?: string };
-type AccountId = "paulo" | "cinthia" | string; // string = UUID de membro externo
-
-const ACCOUNT_MAP: Record<string, AccountId> = {
-  "5296823": "paulo",
-  "6414212": "cinthia",
-};
-
-const KNOWN_LABEL: Record<string, string> = {
-  paulo: "Paulo (XP 5296823)",
-  cinthia: "Cinthia (XP 6414212)",
-};
+type AccountId = string;
 
 function storageKey(accountId: AccountId): string {
   if (accountId === "paulo" || accountId === "cinthia") return STORAGE_KEYS[accountId];
   return "vesta_posicao_" + accountId;
-}
-
-function detectAccount(filename: string): AccountId | null {
-  for (const [num, id] of Object.entries(ACCOUNT_MAP)) {
-    if (filename.includes(num)) return id;
-  }
-  return null;
 }
 
 function parseCsv(text: string): ParsedRow[] {
@@ -79,7 +61,13 @@ function fmtDateBR(iso: string): string {
   return `${d}/${m}/${y}`;
 }
 
-export function UploadPage() {
+export function UploadPage({
+  targetAccountId,
+  targetAccountName,
+}: {
+  targetAccountId?: AccountId;
+  targetAccountName?: string;
+} = {}) {
   const [rows, setRows] = useState<ParsedRow[]>([]);
   const [nomeArquivo, setNomeArquivo] = useState("");
   const [erro, setErro] = useState<string | null>(null);
@@ -88,23 +76,9 @@ export function UploadPage() {
   const [dataRef, setDataRef] = useState(todayISO());
   const [aplicado, setAplicado] = useState<{ label: string; data: string; key: string } | null>(null);
 
-  // Sessão do usuário logado
-  const [sessionUserId, setSessionUserId] = useState<string | null>(null);
-  const [sessionEmail, setSessionEmail] = useState<string | null>(null);
-
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setSessionUserId(session.user.id);
-        setSessionEmail(session.user.email ?? null);
-        // Se não é paulo nem cinthia → auto-seleciona a própria conta
-        const emailLower = session.user.email?.toLowerCase() ?? "";
-        if (!emailLower.includes("phfurtadovr") && !emailLower.includes("cinthiavr")) {
-          setAccount(session.user.id);
-        }
-      }
-    });
-  }, []);
+    setAccount(targetAccountId ?? null);
+  }, [targetAccountId]);
 
   async function handleFile(file: File) {
     setErro(null);
@@ -117,9 +91,6 @@ export function UploadPage() {
       const parsed = parseCsv(text);
       if (parsed.length === 0) throw new Error("Nenhuma linha válida encontrada.");
       setRows(parsed);
-      // Tenta detectar pelo nome do arquivo; se não detectar, mantém a sessão
-      const detected = detectAccount(file.name);
-      if (detected) setAccount(detected);
     } catch (e: unknown) {
       setRows([]);
       setErro(e instanceof Error ? e.message : "Erro ao ler o arquivo.");
@@ -127,10 +98,8 @@ export function UploadPage() {
   }
 
   function accountLabel(id: AccountId): string {
-    if (id === "paulo") return KNOWN_LABEL.paulo;
-    if (id === "cinthia") return KNOWN_LABEL.cinthia;
-    if (id === sessionUserId && sessionEmail) return `Minha conta (${sessionEmail})`;
-    return `Conta ${id.slice(0, 8)}…`;
+    if (id === targetAccountId && targetAccountName) return targetAccountName;
+    return "Carteira selecionada";
   }
 
   function aplicarAoPainel() {
@@ -160,10 +129,7 @@ export function UploadPage() {
   const rvTotal = rvRows.reduce((s, r) => s + r.valor, 0);
 
   // Opções de conta disponíveis para seleção
-  const accountOptions: AccountId[] = ["paulo", "cinthia"];
-  if (sessionUserId && !accountOptions.includes(sessionUserId)) {
-    accountOptions.push(sessionUserId);
-  }
+  const accountOptions: AccountId[] = targetAccountId ? [targetAccountId] : [];
 
   return (
     <>
@@ -409,14 +375,8 @@ export function UploadPage() {
               <li><em>opcional:</em> Taxa / Indexador · Vencimento</li>
             </ul>
             <div style={{ marginTop: 10, fontSize: 12 }}>
-              Contas reconhecidas pelo nome do arquivo:{" "}
-              <strong>5296823</strong> → Paulo · <strong>6414212</strong> → Cinthia.
+              O arquivo será aplicado somente à carteira aberta: <strong>{targetAccountName ?? "carteira selecionada"}</strong>.
             </div>
-            {sessionEmail && (
-              <div style={{ marginTop: 6, fontSize: 12, color: "var(--accent)" }}>
-                Logado como <strong>{sessionEmail}</strong> — sua conta é selecionada automaticamente.
-              </div>
-            )}
           </div>
         </div>
       )}

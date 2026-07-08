@@ -3,11 +3,12 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { ProfileSelector, VestaShell } from "@/components/vesta/shell";
+import { EntryHall, type HallDomus, type HallPending } from "@/components/vesta/entry-hall";
+import { getUser, registerDomusProfiles } from "@/data/vesta-users";
 import { supabase } from "@/integrations/supabase/client";
 import type { ProfileId } from "@/lib/profile-derive";
 import {
   DEFAULT_SCOPES,
-  allowedProfiles,
   getPersonaInfo,
   type PersonaId,
   type ScopeMap,
@@ -19,6 +20,16 @@ export const Route = createFileRoute("/_authenticated/app")({
 
 const CINTHIA_EMAIL = "cinthiavr@yahoo.com.br";
 const PAULO_EMAIL = "phfurtadovr@yahoo.com.br";
+const DEMO_DOMUS_ID = "demo-exemplum";
+const DEMO_CORNELIA = "member:demo-cornelia" as ProfileId;
+const DEMO_MARCUS = "member:demo-marcus" as ProfileId;
+const DEMO_CONSOLIDATED = `domus:${DEMO_DOMUS_ID}` as ProfileId;
+const DEMO_VIEWS: ProfileId[] = [DEMO_CONSOLIDATED, DEMO_CORNELIA, DEMO_MARCUS];
+
+function displayDomusName(name: string): string {
+  if (/malta[\s-]*furtado/i.test(name)) return "Domus Malta-Furtado";
+  return name.replace(/^fam[íi]lia\s+/i, "Domus ");
+}
 
 function keyForProfile(profileId: string, email?: string | null): PersonaId {
   const lower = (email ?? "").toLowerCase();
@@ -37,9 +48,8 @@ function profileIdForKey(key: string, sessionData: any): string | null {
 
 function buildScopes(sessionData: any): ScopeMap {
   const next: ScopeMap = { ...DEFAULT_SCOPES };
-  const memberKey = sessionData.profile
-    ? keyForProfile(sessionData.profile.id, sessionData.profile.email)
-    : "paulo";
+  if (!sessionData.profile) return next;
+  const memberKey = keyForProfile(sessionData.profile.id, sessionData.profile.email);
   const visible = (sessionData.scope?.can_see_member_profile_ids ?? [])
     .map((id: string) => {
       const found = (sessionData.members ?? []).find((m: any) => m.profile_id === id);
@@ -79,39 +89,52 @@ function membersForRole(sessionData: any): any[] {
 
 // Para Semi-Vesta: perfis que pode selecionar (só do próprio Domus)
 function allowedForSession(sessionData: any, scopes: ScopeMap): ProfileId[] {
-  if (!sessionData) return [];
+  if (!sessionData?.profile) return [];
   const loggedAs: PersonaId =
     sessionData.role === "vesta"
       ? isVestaSoberana(sessionData)
         ? "cinthia"
         : (`member:${sessionData.profile?.id}` as PersonaId)
-      : sessionData.profile
-        ? keyForProfile(sessionData.profile.id, sessionData.profile.email)
-        : "paulo";
+      : keyForProfile(sessionData.profile.id, sessionData.profile.email);
 
   const scope = scopes[loggedAs] ?? { seeConsolidado: false, seePersonae: [] };
-  const base = allowedProfiles(loggedAs, scope);
+  const base: ProfileId[] = [loggedAs as ProfileId];
+  for (const candidate of scope.seePersonae) {
+    if (!base.includes(candidate)) base.push(candidate);
+  }
+  if (scope.seeConsolidado && sessionData.membership?.domus_id) {
+    const domusName = sessionData.membership?.domus?.nome ?? "";
+    const consolidatedId = (/malta|furtado/i.test(domusName)
+      ? "familiar"
+      : `domus:${sessionData.membership.domus_id}`) as ProfileId;
+    if (!base.includes(consolidatedId)) base.push(consolidatedId);
+  }
 
   const hardcodedEmails = new Set(["cinthiavr@yahoo.com.br", "phfurtadovr@yahoo.com.br"]);
   const memberProfiles: ProfileId[] = (sessionData.members ?? [])
-    .filter((m: any) => !hardcodedEmails.has((m.profile?.email ?? "").toLowerCase()))
+    .filter((m: any) => m.profile && !hardcodedEmails.has((m.profile.email ?? "").toLowerCase()))
     .map((m: any) => `member:${m.profile_id}` as ProfileId);
 
   // Soberana: vê todos os perfis hardcoded + todos os membros do banco
   if (isVestaSoberana(sessionData)) {
-    return [...base, ...memberProfiles.filter((p) => !base.includes(p))];
+    const domusName = sessionData.membership?.domus?.nome ?? "";
+    const isMaltaFurtado = /malta|furtado/i.test(domusName);
+    if (!isMaltaFurtado) return [`domus:${sessionData.membership.domus_id}`, ...memberProfiles];
+    const sovereignViews: ProfileId[] = ["familiar", "cinthia", "paulo"];
+    return [...sovereignViews, ...memberProfiles.filter((p) => !sovereignViews.includes(p))];
   }
 
   // Semi-Vesta: só vê os membros do próprio Domus
   if (sessionData.role === "vesta") {
     const myDomusId = sessionData.membership?.domus_id;
+    if (!myDomusId) return [loggedAs];
     const domusProfiles = memberProfiles.filter((p) => {
       const m = (sessionData.members ?? []).find(
         (m: any) => (`member:${m.profile_id}` as ProfileId) === p,
       );
       return m?.domus_id === myDomusId;
     });
-    return [loggedAs, ...domusProfiles.filter((k) => k !== loggedAs)];
+    return [`domus:${myDomusId}`, loggedAs, ...domusProfiles.filter((k) => k !== loggedAs)];
   }
 
   return base;
@@ -121,6 +144,10 @@ function VestaApp() {
   const navigate = useNavigate();
   const [scopes, setScopes] = useState<ScopeMap>(DEFAULT_SCOPES);
   const [profile, setProfile] = useState<ProfileId | null>(null);
+  const [selectingProfile, setSelectingProfile] = useState(false);
+  const [selectedDomusId, setSelectedDomusId] = useState<string | null>(null);
+  const [showHall, setShowHall] = useState(true);
+  const [initialPage, setInitialPage] = useState<"home" | "domus" | "upload">("home");
   const [saudacao, setSaudacao] = useState(false);
 
   // Inclui o userId na key — cada usuário tem seu próprio cache, sem flash de sessão anterior
@@ -137,49 +164,40 @@ function VestaApp() {
     queryFn: async () => {
       const { data: sessionResult } = await supabase.auth.getSession();
       if (!sessionResult.session) {
-        return { role: null, profile: null, membership: null, members: [], scope: null };
+        return { role: null, profile: null, memberships: [], members: [], scopes: [] };
       }
       const uid = sessionResult.session.user.id;
 
-      const [roleRes, profileRes, membershipRes, allMembersRes] = await Promise.all([
+      const [roleRes, profileRes, membershipRes, allMembersRes, allDomusRes, requestsRes] = await Promise.all([
         supabase.from("user_roles").select("role").eq("user_id", uid).maybeSingle(),
         supabase.from("profiles").select("id,nome,email,primeiro_acesso").eq("id", uid).maybeSingle(),
         supabase.from("domus_members")
           .select("id,domus_id,profile_id,papel,created_at,domus:domus_id(nome),profile:profile_id(nome,email)")
           .eq("profile_id", uid)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle(),
+          .order("created_at", { ascending: true }),
         supabase.from("domus_members")
           .select("id,domus_id,profile_id,papel,created_at,domus:domus_id(nome),profile:profile_id(nome,email)")
           .order("created_at", { ascending: false }),
+        supabase.from("domus").select("id,nome").order("created_at", { ascending: true }),
+        supabase.from("domus_join_requests")
+          .select("id,domus_id,nome,email,mensagem,status,created_at")
+          .eq("status", "pendente")
+          .order("created_at", { ascending: false }),
       ]);
 
-      let scope = null;
-      if (membershipRes.data) {
-        const { data: scopeData } = await supabase
-          .from("domus_visibility_scopes")
-          .select("id,domus_id,member_profile_id,can_see_consolidado,can_see_member_profile_ids,updated_at")
-          .eq("domus_id", membershipRes.data.domus_id)
-          .eq("member_profile_id", uid)
-          .maybeSingle();
-        scope = scopeData;
-      }
-
-      let members = allMembersRes.data ?? [];
-      if (roleRes.data?.role !== "vesta" && membershipRes.data) {
-        const visibleIds = new Set([uid, ...(scope?.can_see_member_profile_ids ?? [])]);
-        members = members.filter(
-          (m: any) => m.domus_id === membershipRes.data!.domus_id && visibleIds.has(m.profile_id),
-        );
-      }
+      const { data: scopesData } = await supabase
+        .from("domus_visibility_scopes")
+        .select("id,domus_id,member_profile_id,can_see_consolidado,can_see_member_profile_ids,updated_at")
+        .eq("member_profile_id", uid);
 
       return {
         role: roleRes.data?.role ?? null,
         profile: profileRes.data ?? null,
-        membership: membershipRes.data ?? null,
-        members,
-        scope,
+        memberships: membershipRes.data ?? [],
+        members: allMembersRes.data ?? [],
+        domus: allDomusRes.data ?? [],
+        requests: requestsRes.data ?? [],
+        scopes: scopesData ?? [],
       };
     },
     enabled: authUser !== undefined,
@@ -188,9 +206,51 @@ function VestaApp() {
     retry: false,
   });
 
+  const soberana = isVestaSoberana(sessionData);
+  const domusOptions: Array<{ id: string; nome: string }> = (() => {
+    const options = soberana ? (sessionData?.domus ?? []).map((domus: any) => ({
+      ...domus,
+      nome: displayDomusName(domus.nome),
+    })) : (() => {
+      const unique = new Map<string, string>();
+      for (const row of sessionData?.memberships ?? []) {
+        if (row.domus_id && row.domus?.nome) unique.set(row.domus_id, row.domus.nome);
+      }
+      return Array.from(unique, ([id, nome]) => ({ id, nome: displayDomusName(nome) }));
+    })();
+    if (sessionData?.role === "vesta") {
+      options.push({ id: DEMO_DOMUS_ID, nome: "Domus Exemplum" });
+    }
+    return options.sort((a: any, b: any) => {
+      const aMalta = /malta.*furtado/i.test(a.nome) ? 0 : 1;
+      const bMalta = /malta.*furtado/i.test(b.nome) ? 0 : 1;
+      return aMalta - bMalta || a.nome.localeCompare(b.nome, "pt-BR");
+    });
+  })();
+
+  const activeDomusId = selectedDomusId ?? (domusOptions.length === 1 ? domusOptions[0].id : null);
+  const activeMembership = activeDomusId
+    ? (sessionData?.memberships ?? []).find((m: any) => m.domus_id === activeDomusId) ?? {
+        domus_id: activeDomusId,
+        domus: { nome: domusOptions.find((d) => d.id === activeDomusId)?.nome },
+      }
+    : null;
+  const activeScope = activeDomusId
+    ? (sessionData?.scopes ?? []).find((s: any) => s.domus_id === activeDomusId) ?? null
+    : null;
+  const activeMembers = activeDomusId
+    ? (sessionData?.members ?? []).filter((m: any) => m.domus_id === activeDomusId)
+    : [];
+  const activeSession = sessionData && activeDomusId
+    ? { ...sessionData, membership: activeMembership, scope: activeScope, members: activeMembers }
+    : null;
+
   useEffect(() => {
-    if (sessionData) setScopes(buildScopes(sessionData));
-  }, [sessionData]);
+    if (activeSession) {
+      setScopes(buildScopes(activeSession));
+      setSelectingProfile(false);
+    }
+  }, [activeDomusId, sessionData]);
 
   useEffect(() => {
     if (!sessionData) return;
@@ -230,21 +290,21 @@ function VestaApp() {
     );
   }
 
-  const soberana = isVestaSoberana(sessionData);
-
   const loggedAs: PersonaId = soberana
     ? "cinthia"
     : sessionData?.role === "vesta"
       ? (`member:${sessionData?.profile?.id}` as PersonaId)
       : sessionData?.profile
         ? keyForProfile(sessionData.profile.id, sessionData.profile.email)
-        : "paulo";
+        : (`member:${userId ?? "unknown"}` as PersonaId);
 
   const scope = scopes[loggedAs] ?? { seeConsolidado: false, seePersonae: [] };
-  const allowed = allowedForSession(sessionData, scopes);
-  const visibleMembers = membersForRole(sessionData);
+  const allowed = activeDomusId === DEMO_DOMUS_ID
+    ? DEMO_VIEWS
+    : allowedForSession(activeSession, scopes);
+  const visibleMembers = membersForRole(activeSession);
 
-  // Membro com só uma visão disponível → pula o seletor, cai direto na carteira
+  // Uma única visão é aberta automaticamente; múltiplas exigem escolha explícita.
   const effectiveProfile: ProfileId | null =
     profile ?? (allowed.length === 1 ? allowed[0] : null);
 
@@ -274,34 +334,213 @@ function VestaApp() {
     sessionData?.profile?.email ??
     undefined;
 
+  const sessionForDomus = (domusId: string) => {
+    const membership = (sessionData?.memberships ?? []).find((m: any) => m.domus_id === domusId) ?? {
+      domus_id: domusId,
+      domus: { nome: domusOptions.find((d) => d.id === domusId)?.nome },
+    };
+    const domusScope = (sessionData?.scopes ?? []).find((s: any) => s.domus_id === domusId) ?? null;
+    const members = (sessionData?.members ?? []).filter((m: any) => m.domus_id === domusId);
+    return { ...sessionData, membership, scope: domusScope, members };
+  };
+
+  const hallDomus: HallDomus[] = domusOptions.map((domus) => {
+    if (domus.id === DEMO_DOMUS_ID) {
+      registerDomusProfiles(DEMO_DOMUS_ID, "Domus Exemplum", [DEMO_CORNELIA, DEMO_MARCUS]);
+      return {
+        id: DEMO_DOMUS_ID,
+        name: "Domus Exemplum",
+        vestaName: "Cornelia",
+        memberCount: 2,
+        canManage: false,
+        views: [
+          { id: DEMO_CONSOLIDATED, name: "Consolidado", subtitle: "Visão consolidada demonstrativa", initials: "🏛", consolidated: true },
+          { id: DEMO_CORNELIA, name: "Cornelia", subtitle: "Vesta · carteira demonstrativa", initials: "C" },
+          { id: DEMO_MARCUS, name: "Marcus", subtitle: "Persona · carteira demonstrativa", initials: "M" },
+        ],
+      };
+    }
+    const domusSession = sessionForDomus(domus.id);
+    const registeredProfiles = Array.from(new Set(
+      domusSession.members
+        .filter((member: any) => member.profile)
+        .map((member: any) => keyForProfile(member.profile_id, member.profile?.email) as ProfileId),
+    ));
+    registerDomusProfiles(domus.id, domus.nome, registeredProfiles);
+    const domusScopes = buildScopes(domusSession);
+    const views = allowedForSession(domusSession, domusScopes).map((id) => {
+      if (id === "familiar" || id.startsWith("domus:")) {
+        return {
+          id,
+          name: "Consolidado",
+          subtitle: "Visão familiar do Domus",
+          initials: "🏛",
+          consolidated: true,
+          waitingForData: getUser(id).total <= 0,
+        };
+      }
+      const knownName = id === "cinthia" ? "Cínthia" : id === "paulo" ? "Paulo" : null;
+      const uuid = id.startsWith("member:") ? id.slice(7) : null;
+      const member = uuid ? domusSession.members.find((m: any) => m.profile_id === uuid) : null;
+      const name = knownName ?? member?.profile?.nome ?? member?.profile?.email;
+      return {
+        id,
+        name: name ?? "Perfil indisponível",
+        subtitle: "Visão individual",
+        initials: (name ?? "V").charAt(0).toUpperCase(),
+        waitingForData: getUser(id).total <= 0,
+      };
+    });
+    const vestaMember = domusSession.members.find((m: any) => m.papel === "vesta");
+    const ownMembership = (sessionData?.memberships ?? []).find((m: any) => m.domus_id === domus.id);
+    return {
+      id: domus.id,
+      name: domus.nome,
+      vestaName: vestaMember?.profile?.nome ?? vestaMember?.profile?.email ??
+        (/malta|furtado/i.test(domus.nome) && soberana ? (sessionData?.profile?.nome ?? undefined) : undefined),
+      memberCount: views.filter((view) => !view.consolidated).length,
+      canManage: sessionData?.role === "vesta" && (soberana || ownMembership?.papel === "vesta"),
+      views,
+    };
+  });
+
+  const allowedDomusIds = new Set(domusOptions.map((d) => d.id));
+  const hallPending: HallPending[] = sessionData?.role === "vesta"
+    ? (sessionData?.requests ?? [])
+        .filter((request: any) => allowedDomusIds.has(request.domus_id))
+        .map((request: any) => ({
+          id: `request:${request.id}`,
+          domusId: request.domus_id,
+          label: request.nome,
+          detail: `${request.email}${request.mensagem ? ` · ${request.mensagem}` : ""}`,
+          kind: "request" as const,
+        }))
+    : [];
+
   // Nome do PERFIL SELECIONADO (pode ser um membro diferente do logado)
   const profileName: string | undefined = (() => {
     if (!effectiveProfile) return loggedName;
+    if (effectiveProfile === DEMO_CORNELIA) return "Cornelia";
+    if (effectiveProfile === DEMO_MARCUS) return "Marcus";
+    if (effectiveProfile === DEMO_CONSOLIDATED) return "Domus Exemplum";
     if (effectiveProfile === "cinthia" || effectiveProfile === "paulo" || effectiveProfile === "familiar") return undefined;
+    if (effectiveProfile.startsWith("domus:")) {
+      return domusOptions.find((domus) => domus.id === effectiveProfile.slice(6))?.nome;
+    }
     const uuid = effectiveProfile.replace("member:", "");
     const found = (sessionData?.members ?? []).find((m: any) => m.profile_id === uuid);
     return found?.profile?.nome ?? found?.profile?.email ?? undefined;
   })();
 
-  if (!effectiveProfile) {
+  if (!sessionData?.profile) {
+    return (
+      <div id="profile-screen">
+        <div className="ps-vesta">✦ Vesta ✦</div>
+        <div className="ps-title">Perfil não encontrado</div>
+        <div className="ps-subtitle">Não foi possível localizar um perfil para esta conta.</div>
+        <button className="ps-logout" onClick={doLogout}>Sair</button>
+      </div>
+    );
+  }
+
+  if (domusOptions.length === 0) {
+    return (
+      <div id="profile-screen">
+        <div className="ps-vesta">✦ Vesta ✦</div>
+        <div className="ps-title">Acesso não concedido</div>
+        <div className="ps-subtitle">Sua conta ainda não possui acesso a nenhum Domus.</div>
+        <button className="ps-logout" onClick={doLogout}>Sair</button>
+      </div>
+    );
+  }
+
+  if (showHall) {
     return (
       <>
         {saudacaoOverlay}
-        <ProfileSelector
-          allowed={allowed}
-          loggedAs={loggedAs}
-          onSelect={setProfile}
+        <EntryHall
+          name={(loggedName ?? "Membro").split(" ")[0]}
+          domus={hallDomus}
+          pending={hallPending}
+          onOpenView={(domusId, profileId) => {
+            setSelectedDomusId(domusId);
+            setProfile(profileId);
+            setInitialPage("home");
+            setShowHall(false);
+          }}
+          onManageDomus={(domusId) => {
+            const domusSession = sessionForDomus(domusId);
+            const permitted = allowedForSession(domusSession, buildScopes(domusSession));
+            const ownKey = keyForProfile(sessionData.profile!.id, sessionData.profile!.email) as ProfileId;
+            const managementProfile = permitted.includes(ownKey) ? ownKey : permitted[0];
+            if (!managementProfile) return;
+            setSelectedDomusId(domusId);
+            setProfile(managementProfile);
+            setInitialPage("domus");
+            setShowHall(false);
+          }}
+          onReviewPending={(domusId) => {
+            const domusSession = sessionForDomus(domusId);
+            const permitted = allowedForSession(domusSession, buildScopes(domusSession));
+            const ownKey = keyForProfile(sessionData.profile!.id, sessionData.profile!.email) as ProfileId;
+            const managementProfile = permitted.includes(ownKey) ? ownKey : permitted[0];
+            if (!managementProfile) return;
+            setSelectedDomusId(domusId);
+            setProfile(managementProfile);
+            setInitialPage("domus");
+            setShowHall(false);
+          }}
           onLogout={doLogout}
-          extras={visibleMembers}
-          groupByDomus={soberana}
         />
       </>
     );
   }
 
-  if (!allowed.includes(effectiveProfile)) {
-    setProfile(null);
-    return null;
+  if (!activeDomusId) {
+    return (
+      <div id="profile-screen">
+        <div className="ps-vesta">✦ Vesta ✦</div>
+        <div className="ps-title">Escolha o seu Domus</div>
+        <div className="ps-subtitle">{loggedName} · selecione onde deseja entrar</div>
+        <div className="ps-profiles">
+          {domusOptions.map((domus) => (
+            <button key={domus.id} className="ps-card" onClick={() => setSelectedDomusId(domus.id)}>
+              <div className="ps-avatar ps-av-fam">⌂</div>
+              <div>
+                <div className="ps-card-name">{domus.nome.toUpperCase()}</div>
+                <div className="ps-card-desc">Acessar visões permitidas neste Domus</div>
+                <div className="ps-card-badge ps-badge-fam">Acesso autorizado</div>
+              </div>
+            </button>
+          ))}
+        </div>
+        <button className="ps-logout" onClick={doLogout}>Sair</button>
+      </div>
+    );
+  }
+
+  if (selectingProfile || (!effectiveProfile && allowed.length > 1)) {
+    return (
+      <ProfileSelector
+        allowed={allowed}
+        loggedAs={loggedAs}
+        onSelect={(next) => { setProfile(next); setSelectingProfile(false); }}
+        onLogout={doLogout}
+        extras={visibleMembers}
+        groupByDomus={soberana}
+      />
+    );
+  }
+
+  if (!effectiveProfile || !allowed.includes(effectiveProfile)) {
+    return (
+      <div id="profile-screen">
+        <div className="ps-vesta">✦ Vesta ✦</div>
+        <div className="ps-title">Acesso negado</div>
+        <div className="ps-subtitle">Nenhuma visão permitida está disponível neste Domus.</div>
+        <button className="ps-logout" onClick={doLogout}>Sair</button>
+      </div>
+    );
   }
 
   return (
@@ -309,6 +548,7 @@ function VestaApp() {
       {saudacaoOverlay}
       <VestaShell
         profileId={effectiveProfile}
+        initialPage={initialPage}
         loggedAs={loggedAs}
         loggedName={loggedName}
         profileName={profileName}
@@ -318,11 +558,13 @@ function VestaApp() {
           sessionData?.role === "vesta" ? setScopes : undefined
         }
         profileIdForScopeKey={(key: string) => profileIdForKey(key, sessionData)}
+        activeDomusId={activeDomusId}
         onChangeProfile={setProfile}
         onSwitchProfile={() => {
-          if (allowed.length > 1) setProfile(null);
-          else doLogout();
+          setShowHall(true);
+          setProfile(null);
         }}
+        onBackToHall={() => { setShowHall(true); setProfile(null); }}
         onLogout={doLogout}
       />
     </>
