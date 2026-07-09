@@ -82,7 +82,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "description",
         content:
-          "Vesta — Guardiã do Patrimônio: gestão familiar de investimentos, alertas, vencimentos e simuladores.",
+          "Vesta — Guardiã do Patrimônio: Gestão Familiar de Investimentos",
       },
       { name: "author", content: "Vesta" },
       { property: "og:title", content: "Vesta ✦ Guardiã do Patrimônio" },
