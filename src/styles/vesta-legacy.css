@@ -885,7 +885,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
   position: relative;
 }
 
-.context-nav__more[open] .context-nav__menu {
+.context-nav__more.open .context-nav__menu {
   display: grid;
   position: absolute;
   top: calc(100% + 8px);
@@ -898,7 +898,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 }
 
 @media (max-width: 768px) {
-  .context-nav__more[open] .context-nav__menu {
+  .context-nav__more.open .context-nav__menu {
     position: fixed;
     top: 128px;
     left: 16px;
