@@ -1,4 +1,4 @@
-﻿import { type ReactElement, type ReactNode, useEffect, useState } from "react";
+import { type ReactElement, type ReactNode, useEffect, useState } from "react";
 
 import { HomePage } from "@/components/vesta/pages/home";
 import { PosicaoPage } from "@/components/vesta/pages/posicao";
@@ -692,7 +692,7 @@ export function VestaShell({
           {hasFullPortfolio && topItem("validador", "Validador")}
           {hasFullPortfolio && topItem("projecao", "Projeção")}
           {!isFamily && topItem("upload", "Importar posição mensal")}
-          <details className="context-nav__more">
+          <details className="context-nav__more"open>
             <summary>Mais</summary>
             <div className="context-nav__menu">
               {topItem("alertas", `Alertas (${totalAlertas})`)}
