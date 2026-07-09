@@ -216,7 +216,7 @@ function AuthPage() {
               ? "Use a senha atual para escolher uma nova"
               : bootstrapMode
                 ? "Primeira Vesta — defina email e senha"
-                : "Identifique-se para acessar seus Domus"}
+                : "Identifique-se para acessar seu Domus"}
         </div>
 
         <form onSubmit={formHandler} className="auth-form">
