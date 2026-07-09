@@ -95,14 +95,15 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 
   .context-nav__more.open .context-nav__menu{
     position:fixed;
-    left:16px!important;
-    right:16px!important;
-    top:118px!important;
+    left:50%!important;
+    right:auto!important;
+    top:96px!important;
     bottom:auto!important;
-    width:auto!important;
+    transform:translateX(-50%)!important;
+    width:min(320px, calc(100vw - 32px))!important;
     min-width:0!important;
     max-width:calc(100vw - 32px)!important;
-    max-height:calc(100vh - 180px);
+    max-height:calc(100vh - 160px);
     overflow-y:auto;
     z-index:99999;
   }
@@ -912,14 +913,15 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 
   .context-nav__more.open .context-nav__menu {
     position: fixed;
-    top: 118px !important;
-    left: 16px !important;
-    right: 16px !important;
+    top: 96px !important;
+    left: 50% !important;
+    right: auto !important;
     bottom: auto !important;
-    width: auto !important;
+    transform: translateX(-50%) !important;
+    width: min(320px, calc(100vw - 32px)) !important;
     min-width: 0 !important;
     max-width: calc(100vw - 32px) !important;
-    max-height: calc(100vh - 180px);
+    max-height: calc(100vh - 160px);
     overflow-y: auto;
   }
   .context-nav__more.open .context-nav__menu button {
