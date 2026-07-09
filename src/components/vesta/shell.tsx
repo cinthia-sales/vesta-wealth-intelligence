@@ -48,7 +48,7 @@ export function ProfileSelector({
   const canSee = (id: ProfileId) => !allowed || allowed.includes(id);
   const [waiting, setWaiting] = useState<ExtraPersona | null>(null);
 
-  const MALTA_FURTADO = "Família Malta Furtado";
+  const MALTA_FURTADO = "Domus Malta Furtado";
   const hardcodedEmails = new Set(["cinthiavr@yahoo.com.br", "phfurtadovr@yahoo.com.br"]);
 
   const extraCards = extras.filter((e) => {
