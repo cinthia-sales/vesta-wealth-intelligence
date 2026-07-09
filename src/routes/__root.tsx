@@ -82,13 +82,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "description",
         content:
-          "Vesta — Guardiã do Patrimônio: gestão familiar de investimentos, alertas, vencimentos e simuladores.",
+          "Vesta — Guardiã do Patrimônio: Gestão Familiar de Investimentos",
       },
       { name: "author", content: "Vesta" },
       { property: "og:title", content: "Vesta ✦ Guardiã do Patrimônio" },
       {
         property: "og:description",
-        content: "Gestão patrimonial familiar — Cinthia, Paulo e visão consolidada.",
+        content: "Gestão Patrimonial Familiar",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

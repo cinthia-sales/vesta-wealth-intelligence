@@ -22,6 +22,8 @@ export const Route = createFileRoute("/auth")({
 });
 
 function AuthPage() {
+  const search = Route.useSearch();
+  const nextTarget = search.next && search.next.startsWith("/") && !search.next.startsWith("//") ? search.next : "/app";
   const [mode, setMode] = useState<"login" | "forgot" | "change">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -35,19 +37,19 @@ function AuthPage() {
   const enterApp = async () => {
     const { data } = await supabase.auth.getUser();
     if (!data.user) throw new Error("Não foi possível confirmar a sessão.");
-    window.location.replace("/app");
+    window.location.replace(nextTarget);
   };
 
   useEffect(() => {
     // Uma navegação completa evita o flash da rota protegida durante a troca de sessão.
     supabase.auth.getUser().then(({ data }) => {
-      if (data.user) window.location.replace("/app");
+      if (data.user) window.location.replace(nextTarget);
     });
     // Checa se ainda cabe bootstrap (nenhuma Vesta cadastrada).
     isBootstrapAvailable().then((r) => {
       if (r.available) setBootstrapMode(true);
     });
-  }, []);
+  }, [nextTarget]);
 
   async function handleSignIn(e: React.FormEvent) {
     e.preventDefault();
@@ -65,7 +67,7 @@ function AuthPage() {
       await supabase.auth.signOut();
       window.localStorage.setItem(ACCESS_AUTH_KEY, normalizedEmail);
       setBusy(false);
-      window.location.replace("/app");
+      window.location.replace(nextTarget);
       return;
     }
     window.localStorage.removeItem(ACCESS_AUTH_KEY);
@@ -214,7 +216,7 @@ function AuthPage() {
               ? "Use a senha atual para escolher uma nova"
               : bootstrapMode
                 ? "Primeira Vesta — defina email e senha"
-                : "Identifique-se para acessar seus Domus"}
+                : "Identifique-se para acessar seu Domus"}
         </div>
 
         <form onSubmit={formHandler} className="auth-form">
