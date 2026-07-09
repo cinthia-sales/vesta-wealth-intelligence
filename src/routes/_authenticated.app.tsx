@@ -109,7 +109,7 @@ function allowedForSession(sessionData: any, scopes: ScopeMap): ProfileId[] {
     const consolidatedId = (/malta|furtado/i.test(domusName)
       ? "familiar"
       : `domus:${sessionData.membership.domus_id}`) as ProfileId;
-    if (!base.includes(consolidatedId)) base.push(consolidatedId);
+    if (!base.includes(consolidatedId)) base.unshift(consolidatedId);
   }
 
   const hardcodedEmails = new Set(["cinthiavr@yahoo.com.br", "phfurtadovr@yahoo.com.br"]);
@@ -381,7 +381,7 @@ function VestaApp() {
           waitingForData: getUser(id).total <= 0,
         };
       }
-      const knownName = id === "cinthia" ? "Cínthia" : id === "paulo" ? "Paulo" : null;
+      const knownName = id === "cinthia" ? "Cínthia" : id === "paulo" ? "Paulo" : id === "member:luiza-abrantes" ? "Luiza" : null;
       const uuid = id.startsWith("member:") ? id.slice(7) : null;
       const member = uuid ? domusSession.members.find((m: any) => m.profile_id === uuid) : null;
       const name = knownName ?? member?.profile?.nome ?? member?.profile?.email;
