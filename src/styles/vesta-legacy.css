@@ -928,3 +928,50 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
     padding: 12px 14px;
   }
 }
+
+/* Menu "Mais" renderizado fora da barra rolável para evitar bug de overflow/fixed no iOS */
+.context-nav__menu-legacy{display:none!important}
+.context-nav__scrim{
+  position:fixed;inset:0;z-index:99998;
+  border:0;background:transparent;padding:0;margin:0;
+}
+.context-nav__menu{
+  position:fixed!important;
+  top:112px!important;
+  right:24px!important;
+  left:auto!important;
+  bottom:auto!important;
+  transform:none!important;
+  display:grid!important;
+  width:min(280px, calc(100vw - 32px))!important;
+  min-width:0!important;
+  max-width:calc(100vw - 32px)!important;
+  max-height:calc(100vh - 150px);
+  overflow-y:auto;
+  padding:7px;
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:10px;
+  box-shadow:0 14px 35px rgba(42,15,20,.14);
+  z-index:99999;
+}
+.context-nav__menu button{
+  border:0;background:transparent;color:var(--muted);
+  font:500 11px var(--font-body);
+  padding:10px 12px;border-radius:7px;cursor:pointer;
+  white-space:nowrap;text-align:left;width:100%;
+}
+.context-nav__menu button:hover,.context-nav__menu button.on{
+  background:var(--accent-bg);color:var(--accent);
+}
+@media (max-width:768px){
+  .context-nav__menu{
+    top:96px!important;
+    left:50%!important;
+    right:auto!important;
+    transform:translateX(-50%)!important;
+    width:min(320px, calc(100vw - 32px))!important;
+    max-height:calc(100vh - 160px);
+  }
+  .context-nav__menu button{padding:12px 14px}
+}

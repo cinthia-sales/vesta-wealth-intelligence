@@ -502,6 +502,18 @@ export function VestaShell({
     <button className={page === key ? "on" : ""} onClick={() => goTo(key)}>{label}</button>
   );
 
+  const moreMenu = (
+    <div className="context-nav__menu" onPointerDown={(event) => event.stopPropagation()}>
+      {topItem("alertas", `Alertas (${totalAlertas})`)}
+      {hasFullPortfolio && topItem("rendimentos", "Rendimentos")}
+      {hasFullPortfolio && topItem("aporte", "Acelerar breakeven")}
+      {hasFullPortfolio && topItem("secundario", "Mercado secundário")}
+      {hasFullPortfolio && topItem("regras", "Regras")}
+      {hasFullPortfolio && topItem("drivers", "Influenciadores")}
+      {canManageDomus && topItem("domus", "Gerir Domus")}
+    </div>
+  );
+
   return (
     <div className={"app" + (sidebarOpen ? " sidebar-open" : "") + (page === "domus" ? " managing-domus" : "")}>
       <div className={"mob-backdrop" + (sidebarOpen ? " open" : "")} onClick={() => setSidebarOpen(false)} />
@@ -711,7 +723,7 @@ export function VestaShell({
             >
               Mais
             </button>
-            <div className="context-nav__menu">
+            <div className="context-nav__menu-legacy">
               {topItem("alertas", `Alertas (${totalAlertas})`)}
               {hasFullPortfolio && topItem("rendimentos", "Rendimentos")}
               {hasFullPortfolio && topItem("aporte", "Acelerar breakeven")}
@@ -724,6 +736,17 @@ export function VestaShell({
           <span className="context-nav__spacer" />
           {onLogout && <button onClick={onLogout}>Sair</button>}
         </nav>
+        {moreOpen && (
+          <>
+            <button
+              type="button"
+              className="context-nav__scrim"
+              aria-label="Fechar menu Mais"
+              onPointerDown={() => setMoreOpen(false)}
+            />
+            {moreMenu}
+          </>
+        )}
 
         <div className="update-bar">
           <div className="upd-dot off" />
