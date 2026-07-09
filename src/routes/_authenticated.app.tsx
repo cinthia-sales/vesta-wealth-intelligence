@@ -153,7 +153,7 @@ function VestaApp() {
   const [saudacao, setSaudacao] = useState(false);
 
   // Inclui o userId na key — cada usuário tem seu próprio cache, sem flash de sessão anterior
-  const { data: authUser } = useQuery({
+  const { data: authUser, isLoading: isAuthLoading } = useQuery({
     queryKey: ["auth-user"],
     queryFn: () => supabase.auth.getUser(),
     staleTime: 0,
@@ -161,7 +161,7 @@ function VestaApp() {
   });
   const userId = authUser?.data?.user?.id ?? null;
 
-  const { data: sessionData, isLoading } = useQuery({
+  const { data: sessionData, isLoading: isSessionLoading } = useQuery({
     queryKey: ["domus-session", userId],
     queryFn: async () => {
       const { data: sessionResult } = await supabase.auth.getSession();
@@ -283,7 +283,7 @@ function VestaApp() {
     }
   };
 
-  if (isLoading) {
+  if (isAuthLoading || authUser === undefined || isSessionLoading || sessionData === undefined) {
     return (
       <div id="profile-screen">
         <div className="ps-vesta">✦ Vesta ✦</div>
