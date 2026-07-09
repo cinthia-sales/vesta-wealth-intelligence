@@ -35,11 +35,12 @@ function displayDomusName(name: string): string {
   return name.replace(/^fam[íi]lia\s+/i, "Domus ");
 }
 
-function keyForProfile(profileId: string, email?: string | null): PersonaId {
+function keyForProfile(profileId: string, email?: string | null, name?: string | null): PersonaId {
   const lower = (email ?? "").toLowerCase();
+  const profileName = (name ?? "").toLowerCase();
   if (lower === CINTHIA_EMAIL) return "cinthia";
   if (lower === PAULO_EMAIL) return "paulo";
-  if (lower === LUIZA_EMAIL) return "member:luiza-abrantes";
+  if (lower === LUIZA_EMAIL || profileName.includes("luiza")) return "member:luiza-abrantes";
   return `member:${profileId}`;
 }
 
@@ -153,7 +154,7 @@ function buildSimpleSession(email: string) {
 function profileIdForKey(key: string, sessionData: any): string | null {
   if (key === "cinthia") return sessionData.profile?.id ?? null;
   const member = (sessionData.members ?? []).find(
-    (m: any) => keyForProfile(m.profile_id, m.profile?.email) === key,
+    (m: any) => keyForProfile(m.profile_id, m.profile?.email, m.profile?.nome) === key,
   );
   return member?.profile_id ?? null;
 }
@@ -161,11 +162,11 @@ function profileIdForKey(key: string, sessionData: any): string | null {
 function buildScopes(sessionData: any): ScopeMap {
   const next: ScopeMap = { ...DEFAULT_SCOPES };
   if (!sessionData.profile) return next;
-  const memberKey = keyForProfile(sessionData.profile.id, sessionData.profile.email);
+  const memberKey = keyForProfile(sessionData.profile.id, sessionData.profile.email, sessionData.profile.nome);
   const visible = (sessionData.scope?.can_see_member_profile_ids ?? [])
     .map((id: string) => {
       const found = (sessionData.members ?? []).find((m: any) => m.profile_id === id);
-      if (found) return keyForProfile(found.profile_id, found.profile?.email);
+      if (found) return keyForProfile(found.profile_id, found.profile?.email, found.profile?.nome);
       if (id === sessionData.profile?.id) return memberKey;
       return null;
     })
@@ -206,8 +207,8 @@ function allowedForSession(sessionData: any, scopes: ScopeMap): ProfileId[] {
     sessionData.role === "vesta"
       ? isVestaSoberana(sessionData)
         ? "cinthia"
-        : keyForProfile(sessionData.profile.id, sessionData.profile.email)
-      : keyForProfile(sessionData.profile.id, sessionData.profile.email);
+        : keyForProfile(sessionData.profile.id, sessionData.profile.email, sessionData.profile.nome)
+      : keyForProfile(sessionData.profile.id, sessionData.profile.email, sessionData.profile.nome);
 
   const scope = scopes[loggedAs] ?? { seeConsolidado: false, seePersonae: [] };
   const base: ProfileId[] = [loggedAs as ProfileId];
@@ -225,7 +226,7 @@ function allowedForSession(sessionData: any, scopes: ScopeMap): ProfileId[] {
   const hardcodedEmails = new Set(["cinthiavr@yahoo.com.br", "phfurtadovr@yahoo.com.br"]);
   const memberProfiles: ProfileId[] = (sessionData.members ?? [])
     .filter((m: any) => m.profile && !hardcodedEmails.has((m.profile.email ?? "").toLowerCase()))
-    .map((m: any) => keyForProfile(m.profile_id, m.profile?.email) as ProfileId);
+    .map((m: any) => keyForProfile(m.profile_id, m.profile?.email, m.profile?.nome) as ProfileId);
 
   // Soberana: vê todos os perfis hardcoded + todos os membros do banco
   if (isVestaSoberana(sessionData)) {
@@ -242,7 +243,7 @@ function allowedForSession(sessionData: any, scopes: ScopeMap): ProfileId[] {
     if (!myDomusId) return [loggedAs];
     const domusProfiles = memberProfiles.filter((p) => {
       const m = (sessionData.members ?? []).find(
-        (m: any) => keyForProfile(m.profile_id, m.profile?.email) === p,
+        (m: any) => keyForProfile(m.profile_id, m.profile?.email, m.profile?.nome) === p,
       );
       return m?.domus_id === myDomusId;
     });
@@ -443,9 +444,9 @@ function VestaApp() {
   const loggedAs: PersonaId = soberana
     ? "cinthia"
     : sessionData?.role === "vesta" && sessionData.profile
-      ? keyForProfile(sessionData.profile.id, sessionData.profile.email)
+      ? keyForProfile(sessionData.profile.id, sessionData.profile.email, sessionData.profile.nome)
       : sessionData?.profile
-        ? keyForProfile(sessionData.profile.id, sessionData.profile.email)
+        ? keyForProfile(sessionData.profile.id, sessionData.profile.email, sessionData.profile.nome)
         : (`member:${userId ?? "unknown"}` as PersonaId);
 
   const scope = scopes[loggedAs] ?? { seeConsolidado: false, seePersonae: [] };
@@ -516,7 +517,7 @@ function VestaApp() {
     const registeredProfiles = Array.from(new Set(
       domusSession.members
         .filter((member: any) => member.profile)
-        .map((member: any) => keyForProfile(member.profile_id, member.profile?.email) as ProfileId),
+        .map((member: any) => keyForProfile(member.profile_id, member.profile?.email, member.profile?.nome) as ProfileId),
     ));
     registerDomusProfiles(domus.id, domus.nome, registeredProfiles);
     const domusScopes = buildScopes(domusSession);
@@ -638,7 +639,7 @@ function VestaApp() {
           onManageDomus={(domusId) => {
             const domusSession = sessionForDomus(domusId);
             const permitted = allowedForSession(domusSession, buildScopes(domusSession));
-            const ownKey = keyForProfile(sessionData.profile!.id, sessionData.profile!.email) as ProfileId;
+            const ownKey = keyForProfile(sessionData.profile!.id, sessionData.profile!.email, sessionData.profile!.nome) as ProfileId;
             const managementProfile = permitted.includes(ownKey) ? ownKey : permitted[0];
             if (!managementProfile) return;
             setSelectedDomusId(domusId);
@@ -649,7 +650,7 @@ function VestaApp() {
           onReviewPending={(domusId) => {
             const domusSession = sessionForDomus(domusId);
             const permitted = allowedForSession(domusSession, buildScopes(domusSession));
-            const ownKey = keyForProfile(sessionData.profile!.id, sessionData.profile!.email) as ProfileId;
+            const ownKey = keyForProfile(sessionData.profile!.id, sessionData.profile!.email, sessionData.profile!.nome) as ProfileId;
             const managementProfile = permitted.includes(ownKey) ? ownKey : permitted[0];
             if (!managementProfile) return;
             setSelectedDomusId(domusId);
