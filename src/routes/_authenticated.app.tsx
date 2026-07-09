@@ -340,6 +340,11 @@ function VestaApp() {
   });
 
   const soberana = isVestaSoberana(sessionData);
+  const simpleAccessAccount = activeSimpleAuthEmail ? getAccessAccount(activeSimpleAuthEmail) : null;
+  const shouldIncludeDemoDomus =
+    soberana ||
+    simpleAccessAccount?.profile === "cornelia" ||
+    simpleAccessAccount?.profile === "marcus";
   const domusOptions: Array<{ id: string; nome: string }> = (() => {
     const options = soberana ? (sessionData?.domus ?? []).map((domus: any) => ({
       ...domus,
@@ -351,7 +356,7 @@ function VestaApp() {
       }
       return Array.from(unique, ([id, nome]) => ({ id, nome: displayDomusName(nome) }));
     })();
-    if (sessionData?.role === "vesta" && !options.some((option: any) => option.id === DEMO_DOMUS_ID)) {
+    if (shouldIncludeDemoDomus && !options.some((option: any) => option.id === DEMO_DOMUS_ID)) {
       options.push({ id: DEMO_DOMUS_ID, nome: "Domus Exemplum" });
     }
     return options.sort((a: any, b: any) => {
@@ -360,6 +365,8 @@ function VestaApp() {
       return aMalta - bMalta || a.nome.localeCompare(b.nome, "pt-BR");
     });
   })();
+  const selectedDomusStillAllowed =
+    !selectedDomusId || domusOptions.some((domus) => domus.id === selectedDomusId);
 
   const activeDomusId = selectedDomusId ?? (domusOptions.length === 1 ? domusOptions[0].id : null);
   const activeMembership = activeDomusId
@@ -377,6 +384,14 @@ function VestaApp() {
   const activeSession = sessionData && activeDomusId
     ? { ...sessionData, membership: activeMembership, scope: activeScope, members: activeMembers }
     : null;
+
+  useEffect(() => {
+    if (selectedDomusId && !selectedDomusStillAllowed) {
+      setSelectedDomusId(null);
+      setProfile(null);
+      setShowHall(true);
+    }
+  }, [selectedDomusId, selectedDomusStillAllowed]);
 
   useEffect(() => {
     if (activeSession) {
@@ -606,6 +621,11 @@ function VestaApp() {
         {saudacaoOverlay}
         <EntryHall
           name={(loggedName ?? "Membro").split(" ")[0]}
+          intro={
+            soberana
+              ? "Escolha o Domus e a visão que deseja acompanhar."
+              : "Escolha a carteira ou o consolidado que deseja acompanhar."
+          }
           domus={hallDomus}
           pending={hallPending}
           accessKeys={hallAccessKeys}

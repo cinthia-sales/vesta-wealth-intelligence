@@ -37,6 +37,7 @@ export type HallAccessKey = {
 
 export function EntryHall({
   name,
+  intro,
   domus,
   pending,
   accessKeys = [],
@@ -46,6 +47,7 @@ export function EntryHall({
   onLogout,
 }: {
   name: string;
+  intro?: string;
   domus: HallDomus[];
   pending: HallPending[];
   accessKeys?: HallAccessKey[];
@@ -61,7 +63,7 @@ export function EntryHall({
         <div>
           <p className="public-domus-kicker">Vesta · Domus et Patrimonium</p>
           <h1>Bem-vinda, {name}</h1>
-          <p>Escolha um Domus e a visão que deseja acompanhar.</p>
+          <p>{intro ?? "Escolha a carteira ou o consolidado que deseja acompanhar."}</p>
         </div>
         <button className="vesta-hall__logout" onClick={onLogout}>Sair</button>
       </header>
