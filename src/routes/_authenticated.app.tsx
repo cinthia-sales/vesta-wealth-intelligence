@@ -206,7 +206,7 @@ function allowedForSession(sessionData: any, scopes: ScopeMap): ProfileId[] {
     sessionData.role === "vesta"
       ? isVestaSoberana(sessionData)
         ? "cinthia"
-        : (`member:${sessionData.profile?.id}` as PersonaId)
+        : keyForProfile(sessionData.profile.id, sessionData.profile.email)
       : keyForProfile(sessionData.profile.id, sessionData.profile.email);
 
   const scope = scopes[loggedAs] ?? { seeConsolidado: false, seePersonae: [] };
@@ -225,7 +225,7 @@ function allowedForSession(sessionData: any, scopes: ScopeMap): ProfileId[] {
   const hardcodedEmails = new Set(["cinthiavr@yahoo.com.br", "phfurtadovr@yahoo.com.br"]);
   const memberProfiles: ProfileId[] = (sessionData.members ?? [])
     .filter((m: any) => m.profile && !hardcodedEmails.has((m.profile.email ?? "").toLowerCase()))
-    .map((m: any) => `member:${m.profile_id}` as ProfileId);
+    .map((m: any) => keyForProfile(m.profile_id, m.profile?.email) as ProfileId);
 
   // Soberana: vê todos os perfis hardcoded + todos os membros do banco
   if (isVestaSoberana(sessionData)) {
@@ -242,7 +242,7 @@ function allowedForSession(sessionData: any, scopes: ScopeMap): ProfileId[] {
     if (!myDomusId) return [loggedAs];
     const domusProfiles = memberProfiles.filter((p) => {
       const m = (sessionData.members ?? []).find(
-        (m: any) => (`member:${m.profile_id}` as ProfileId) === p,
+        (m: any) => keyForProfile(m.profile_id, m.profile?.email) === p,
       );
       return m?.domus_id === myDomusId;
     });
@@ -442,8 +442,8 @@ function VestaApp() {
 
   const loggedAs: PersonaId = soberana
     ? "cinthia"
-    : sessionData?.role === "vesta"
-      ? (`member:${sessionData?.profile?.id}` as PersonaId)
+    : sessionData?.role === "vesta" && sessionData.profile
+      ? keyForProfile(sessionData.profile.id, sessionData.profile.email)
       : sessionData?.profile
         ? keyForProfile(sessionData.profile.id, sessionData.profile.email)
         : (`member:${userId ?? "unknown"}` as PersonaId);
