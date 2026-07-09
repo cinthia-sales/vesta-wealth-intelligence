@@ -4,6 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { isBootstrapAvailable } from "@/lib/auth.functions";
 import vestaLineart from "@/assets/vesta-lineart.png";
 
+const SIMPLE_AUTH_EMAILS = new Set(["phfurtadovr@yahoo.com.br", "dmalta256@gmail.com"]);
+const SIMPLE_AUTH_KEY = "vesta_simple_auth_email";
+
 export const Route = createFileRoute("/auth")({
   ssr: false,
   validateSearch: (s: Record<string, unknown>) => ({
@@ -41,6 +44,14 @@ function AuthPage() {
     e.preventDefault();
     setError(null);
     setBusy(true);
+    const normalizedEmail = email.trim().toLowerCase();
+    if (SIMPLE_AUTH_EMAILS.has(normalizedEmail)) {
+      window.localStorage.setItem(SIMPLE_AUTH_KEY, normalizedEmail);
+      setBusy(false);
+      window.location.replace("/app");
+      return;
+    }
+    window.localStorage.removeItem(SIMPLE_AUTH_KEY);
     const { error: signInErr } = await supabase.auth.signInWithPassword({
       email: email.trim(),
       password,
@@ -62,6 +73,7 @@ function AuthPage() {
     setError(null);
     setBusy(true);
     try {
+      window.localStorage.removeItem(SIMPLE_AUTH_KEY);
       const { bootstrapVesta } = await import("@/lib/auth.functions");
       await bootstrapVesta({ data: { email: email.trim(), password, nome: nome.trim() } });
       const { error: signInErr } = await supabase.auth.signInWithPassword({
@@ -125,7 +137,7 @@ function AuthPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              minLength={8}
+              minLength={bootstrapMode ? 8 : 1}
               autoComplete={bootstrapMode ? "new-password" : "current-password"}
             />
           </label>

@@ -21,6 +21,9 @@ export const Route = createFileRoute("/_authenticated/app")({
 const CINTHIA_EMAIL = "cinthiavr@yahoo.com.br";
 const PAULO_EMAIL = "phfurtadovr@yahoo.com.br";
 const LUIZA_EMAIL = "lu.abrantes@gmail.com";
+const DANIEL_EMAIL = "dmalta256@gmail.com";
+const SIMPLE_AUTH_KEY = "vesta_simple_auth_email";
+const SIMPLE_MALTA_DOMUS_ID = "simple-malta-furtado";
 const DEMO_DOMUS_ID = "demo-exemplum";
 const DEMO_CORNELIA = "member:demo-cornelia" as ProfileId;
 const DEMO_MARCUS = "member:demo-marcus" as ProfileId;
@@ -38,6 +41,69 @@ function keyForProfile(profileId: string, email?: string | null): PersonaId {
   if (lower === PAULO_EMAIL) return "paulo";
   if (lower === LUIZA_EMAIL) return "member:luiza-abrantes";
   return `member:${profileId}`;
+}
+
+function isLuizaMember(member: any): boolean {
+  return (member?.profile?.email ?? "").toLowerCase() === LUIZA_EMAIL;
+}
+
+function isAbrantesMember(member: any): boolean {
+  return /abrantes/i.test(displayDomusName(member?.domus?.nome ?? ""));
+}
+
+function memberPapel(member: any): string {
+  return isLuizaMember(member) && isAbrantesMember(member) ? "vesta" : member?.papel;
+}
+
+function normalizeMemberPapel(member: any): any {
+  const papel = memberPapel(member);
+  return papel === member?.papel ? member : { ...member, papel };
+}
+
+function buildSimpleSession(email: string) {
+  const lower = email.toLowerCase();
+  const isPaulo = lower === PAULO_EMAIL;
+  const profile = isPaulo
+    ? { id: "simple-paulo", nome: "Paulo", email: PAULO_EMAIL, primeiro_acesso: false }
+    : { id: "simple-daniel", nome: "Daniel Malta Furtado", email: DANIEL_EMAIL, primeiro_acesso: false };
+  const members = [
+    {
+      id: "simple-cinthia-membership",
+      domus_id: SIMPLE_MALTA_DOMUS_ID,
+      profile_id: "simple-cinthia",
+      papel: "vesta",
+      created_at: "2026-01-01",
+      domus: { nome: "Domus Malta-Furtado" },
+      profile: { nome: "Cínthia", email: CINTHIA_EMAIL },
+    },
+    {
+      id: "simple-paulo-membership",
+      domus_id: SIMPLE_MALTA_DOMUS_ID,
+      profile_id: "simple-paulo",
+      papel: "membro",
+      created_at: "2026-01-02",
+      domus: { nome: "Domus Malta-Furtado" },
+      profile: { nome: "Paulo", email: PAULO_EMAIL },
+    },
+    {
+      id: "simple-daniel-membership",
+      domus_id: SIMPLE_MALTA_DOMUS_ID,
+      profile_id: "simple-daniel",
+      papel: "membro",
+      created_at: "2026-01-03",
+      domus: { nome: "Domus Malta-Furtado" },
+      profile: { nome: "Daniel Malta Furtado", email: DANIEL_EMAIL },
+    },
+  ];
+  return {
+    role: "membro",
+    profile,
+    memberships: members.filter((member) => member.profile_id === profile.id),
+    members,
+    domus: [{ id: SIMPLE_MALTA_DOMUS_ID, nome: "Domus Malta-Furtado" }],
+    requests: [],
+    scopes: [],
+  };
 }
 
 function profileIdForKey(key: string, sessionData: any): string | null {
@@ -151,19 +217,35 @@ function VestaApp() {
   const [showHall, setShowHall] = useState(true);
   const [initialPage, setInitialPage] = useState<"home" | "domus" | "upload">("home");
   const [saudacao, setSaudacao] = useState(false);
+  const [simpleAuthEmail, setSimpleAuthEmail] = useState<string | null>(() =>
+    typeof window === "undefined" ? null : window.localStorage.getItem(SIMPLE_AUTH_KEY)?.toLowerCase() ?? null,
+  );
 
   // Inclui o userId na key — cada usuário tem seu próprio cache, sem flash de sessão anterior
-  const { data: authUser, isLoading: isAuthLoading } = useQuery({
-    queryKey: ["auth-user"],
-    queryFn: () => supabase.auth.getUser(),
+  const { data: authUser, isLoading: isAuthLoading } = useQuery<any>({
+    queryKey: ["auth-user", simpleAuthEmail],
+    queryFn: async () => {
+      const realUser = await supabase.auth.getUser();
+      if (realUser.data.user) return realUser;
+      if (simpleAuthEmail) {
+        return {
+          data: { user: { id: `simple:${simpleAuthEmail}`, email: simpleAuthEmail } },
+          error: null,
+        };
+      }
+      return realUser;
+    },
     staleTime: 0,
     gcTime: 0,
   });
   const userId = authUser?.data?.user?.id ?? null;
+  const activeSimpleAuthEmail = userId?.startsWith("simple:") ? simpleAuthEmail : null;
 
   const { data: sessionData, isLoading: isSessionLoading } = useQuery({
-    queryKey: ["domus-session", userId],
+    queryKey: ["domus-session", userId, activeSimpleAuthEmail],
     queryFn: async () => {
+      if (activeSimpleAuthEmail) return buildSimpleSession(activeSimpleAuthEmail);
+
       const { data: sessionResult } = await supabase.auth.getSession();
       if (!sessionResult.session) {
         return { role: null, profile: null, memberships: [], members: [], scopes: [] };
@@ -192,11 +274,16 @@ function VestaApp() {
         .select("id,domus_id,member_profile_id,can_see_consolidado,can_see_member_profile_ids,updated_at")
         .eq("member_profile_id", uid);
 
+      const memberships = (membershipRes.data ?? []).map(normalizeMemberPapel);
+      const members = (allMembersRes.data ?? []).map(normalizeMemberPapel);
+      const isLuizaAbrantesVesta = (profileRes.data?.email ?? "").toLowerCase() === LUIZA_EMAIL &&
+        memberships.some((member: any) => memberPapel(member) === "vesta");
+
       return {
-        role: roleRes.data?.role ?? null,
+        role: isLuizaAbrantesVesta ? "vesta" : roleRes.data?.role ?? null,
         profile: profileRes.data ?? null,
-        memberships: membershipRes.data ?? [],
-        members: allMembersRes.data ?? [],
+        memberships,
+        members,
         domus: allDomusRes.data ?? [],
         requests: requestsRes.data ?? [],
         scopes: scopesData ?? [],
@@ -256,6 +343,7 @@ function VestaApp() {
 
   useEffect(() => {
     if (!sessionData) return;
+    if (activeSimpleAuthEmail) return;
     if (sessionData.role === "vesta") return;
     let ativo = true;
     (async () => {
@@ -272,10 +360,11 @@ function VestaApp() {
     return () => {
       ativo = false;
     };
-  }, [sessionData]);
+  }, [sessionData, activeSimpleAuthEmail]);
 
   const dispensarSaudacao = async () => {
     setSaudacao(false);
+    if (activeSimpleAuthEmail) return;
     const { data: userData } = await supabase.auth.getUser();
     const uid = userData.user?.id;
     if (uid) {
@@ -311,6 +400,8 @@ function VestaApp() {
     profile ?? (allowed.length === 1 ? allowed[0] : null);
 
   const doLogout = async () => {
+    if (typeof window !== "undefined") window.localStorage.removeItem(SIMPLE_AUTH_KEY);
+    setSimpleAuthEmail(null);
     await supabase.auth.signOut();
     navigate({ to: "/" });
   };
@@ -393,7 +484,7 @@ function VestaApp() {
         waitingForData: getUser(id).total <= 0,
       };
     });
-    const vestaMember = domusSession.members.find((m: any) => m.papel === "vesta");
+    const vestaMember = domusSession.members.find((m: any) => memberPapel(m) === "vesta");
     const ownMembership = (sessionData?.memberships ?? []).find((m: any) => m.domus_id === domus.id);
     return {
       id: domus.id,
@@ -401,7 +492,7 @@ function VestaApp() {
       vestaName: vestaMember?.profile?.nome ?? vestaMember?.profile?.email ??
         (/malta|furtado/i.test(domus.nome) && soberana ? (sessionData?.profile?.nome ?? undefined) : undefined),
       memberCount: views.filter((view) => !view.consolidated).length,
-      canManage: sessionData?.role === "vesta" && (soberana || ownMembership?.papel === "vesta"),
+      canManage: sessionData?.role === "vesta" && (soberana || memberPapel(ownMembership) === "vesta"),
       views,
     };
   });
