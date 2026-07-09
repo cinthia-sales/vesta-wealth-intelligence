@@ -1,4 +1,4 @@
-*{box-sizing:border-box;margin:0;padding:0}
+m*{box-sizing:border-box;margin:0;padding:0}
 :root{
   /* Vesta — vinho vivo, guardiã do patrimônio */
   --sidebar:#2A0F14;              /* vinho quase preto */
@@ -892,41 +892,30 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
   display:flex;align-items:center;justify-content:center;
   font-family:var(--font-display);font-weight:600;
 }
-.context-nav,
-.main,
-.content {
-  overflow: visible !important;
-}
-
 .context-nav__more {
-  position: relative !important;
-  overflow: visible !important;
-}
-
-.context-nav {
-  overflow: visible !important;
-}
-
-.context-nav__more {
-  position: relative !important;
+  position: relative;
 }
 
 .context-nav__more[open] .context-nav__menu {
-  display: grid !important;
-  position: absolute !important;
-  top: calc(100% + 8px) !important;
-  right: 0 !important;
-  left: auto !important;
-  z-index: 999999 !important;
-  min-width: 220px !important;
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  left: auto;
+  min-width: 220px;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  z-index: 9999;
 }
 
 @media (max-width: 768px) {
   .context-nav__more[open] .context-nav__menu {
-    position: fixed !important;
-    top: 128px !important;
-    left: 16px !important;
-    right: 16px !important;
-    min-width: auto !important;
+    position: fixed;
+    top: 128px;
+    left: 16px;
+    right: 16px;
+    width: auto;
+    min-width: 0;
+    max-width: calc(100vw - 32px);
   }
 }
+
