@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 
-import { getUser } from "@/data/vesta-users";
+import { getUser, type RFAtivo } from "@/data/vesta-users";
 import type { ProfileId } from "@/lib/profile-derive";
 
 function fmtR(n: number) {
@@ -47,11 +47,26 @@ const RV_RATES: Record<Cenario, number> = {
 
 // Classificação simplificada dos ativos por tipo de indexador
 type Bucket = "posfix" | "inflacao" | "prefix" | "rv";
-function classify(nome: string): Bucket {
-  if (/NTN-B|IPCA|Jalles/i.test(nome)) return "inflacao";
-  if (/CDI|LCA|LCI|LCD|XPAG|LFTB/i.test(nome)) return "posfix";
-  if (/DEB|J&F|prefix/i.test(nome)) return "prefix";
+function parsePercent(text: string, pattern: RegExp): number | null {
+  const match = text.match(pattern);
+  if (!match?.[1]) return null;
+  return Number(match[1].replace(",", "."));
+}
+function classifyAsset(a: Pick<RFAtivo, "n" | "cdi" | "nota">): Bucket {
+  const text = `${a.n} ${a.nota ?? ""}`;
+  if (/NTN-B|IPCA\s*\+/i.test(text)) return "inflacao";
+  if (/pré|prefix|LTN|Daycoval/i.test(text)) return "prefix";
+  if (a.cdi != null || /CDI|Selic|FIDC|CDB|LCA|LCI|LCD|XPAG|LFTB|Previdência|Brasilprev/i.test(text)) {
+    return "posfix";
+  }
   return "rv";
+}
+function defaultCdiPct(a: Pick<RFAtivo, "n" | "cdi" | "nota">): number {
+  if (a.cdi != null) return a.cdi;
+  const text = `${a.n} ${a.nota ?? ""}`;
+  if (/Brasilprev/i.test(text)) return 85;
+  if (/Previdência/i.test(text)) return 90;
+  return 100;
 }
 // Taxa efetiva anual por bucket, dado CDI/IPCA do ano
 function taxaAno(b: Bucket, cdi: number, ipca: number, cdiPct: number, cupomIpca: number, cupomPre: number) {
@@ -78,13 +93,14 @@ export function ProjecaoPage({ profileId }: { profileId: ProfileId }) {
     // Agrupar RF por bucket com taxa característica
     type Pos = { bucket: Bucket; v: number; cdiPct: number; cupomIpca: number; cupomPre: number };
     const pos: Pos[] = u.rf_ativos.map((a) => {
-      const b = classify(a.n);
+      const text = `${a.n} ${a.nota ?? ""}`;
+      const b = classifyAsset(a);
       return {
         bucket: b,
         v: a.v,
-        cdiPct: a.cdi ?? 100,
-        cupomIpca: /IPCA\+9,45/.test(a.n) ? 9.45 : /IPCA\+8,5/.test(a.n) ? 8.5 : /IPCA\+4,45/.test(a.n) ? 4.45 : /IPCA\+4,65/.test(a.n) ? 4.65 : 5,
-        cupomPre: /15,15/.test(a.n) ? 15.15 : 12,
+        cdiPct: defaultCdiPct(a),
+        cupomIpca: parsePercent(text, /IPCA\s*\+\s*(\d+(?:[,.]\d+)?)/i) ?? 5,
+        cupomPre: b === "prefix" ? (a.t ?? parsePercent(text, /(\d+(?:[,.]\d+)?)%\s*pré/i) ?? 12) : 12,
       };
     });
     // RV: assumir taxa média 10% aa (simplificação)
@@ -317,9 +333,9 @@ export function ProjecaoPage({ profileId }: { profileId: ProfileId }) {
             </tr>
           </thead>
           <tbody>
-            <BucketRow label="Pós-fixado (LCAs / LCDs / XPAG)" bucket="posfix" u={u} v={breakdown.posfix} nota="rende menos quando CDI cai" />
-            <BucketRow label="Inflação (NTN-B + Jalles IPCA+)" bucket="inflacao" u={u} v={breakdown.inflacao} nota="protege da inflação · taxa real trava" />
-            <BucketRow label="Prefixado (DEB J&F +15,15%)" bucket="prefix" u={u} v={breakdown.prefix} nota="melhor bloco em queda de CDI" />
+            <BucketRow label="Pós-fixado (CDI / Selic / FIDC / Previdência)" bucket="posfix" u={u} v={breakdown.posfix} nota="rende menos quando CDI cai, mas continua acumulando" />
+            <BucketRow label="Inflação (NTN-B / IPCA+)" bucket="inflacao" u={u} v={breakdown.inflacao} nota="protege da inflação · taxa real trava" />
+            <BucketRow label="Prefixado (LTN / CDB pré / debêntures)" bucket="prefix" u={u} v={breakdown.prefix} nota="melhor bloco em queda de CDI" />
             {u.rv > 0 && (
               <tr>
                 <td>Renda variável (ações + ETFs)</td>
@@ -344,16 +360,15 @@ export function ProjecaoPage({ profileId }: { profileId: ProfileId }) {
         <div style={{ fontSize: 13, lineHeight: 1.6, color: "var(--text)" }}>
           <p>
             <strong>Cenário base:</strong> Selic caindo para ~8,5% até 2030 e ficando lá. Pós-fixados
-            (LCAs/LCDs) passam a render ~8% a.a., enquanto NTN-B IPCA+ e a DEB J&F +15,15% continuam
-            travadas na taxa alta — <em>por isso a projeção premia quem trava agora</em>.
+            (CDI/Selic/FIDC/previdência) passam a render menos, mas continuam acumulando; NTN-B IPCA+ e prefixados continuam
+            travados na taxa alta — <em>por isso a projeção premia quem trava agora</em>.
           </p>
           <p style={{ marginTop: 8 }}>
             <strong>Otimista:</strong> CDI cai devagar, pós-fix ainda rende bem. <strong>Pessimista:</strong>{" "}
-            CDI cai forte, pós-fix vira o pior bloco — reforça a tese de trocar o LCD BRDE 2036 assim
-            que houver janela no secundário.
+            CDI cai forte, pós-fix vira o pior bloco — reforça a tese de auditar taxas, custos e fundos caros.
           </p>
           <p style={{ marginTop: 8, color: "var(--muted)", fontSize: 12 }}>
-            Premissas: pós-fixado usa %CDI de cada título; inflação usa cupom do próprio título +
+            Premissas: pós-fixado usa %CDI de cada título; previdência sem fundo detalhado usa aproximação conservadora; inflação usa cupom do próprio título +
             IPCA da curva; prefixado é vitalício até o vencimento. RV projetada a{" "}
             {(RV_RATES[rvCenario] * 100 > 0 ? "+" : "")}{(RV_RATES[rvCenario] * 100).toFixed(0)}% a.a.
             (cenário {rvCenario} — não substitui análise de ações).
@@ -367,7 +382,7 @@ export function ProjecaoPage({ profileId }: { profileId: ProfileId }) {
 function BucketRow({ label, bucket, u, v, nota }: {
   label: string; bucket: Bucket; u: ReturnType<typeof getUser>; v: number; nota: string;
 }) {
-  const hoje = u.rf_ativos.filter((a) => classify(a.n) === bucket).reduce((s, a) => s + a.v, 0);
+  const hoje = u.rf_ativos.filter((a) => classifyAsset(a) === bucket).reduce((s, a) => s + a.v, 0);
   if (hoje === 0) return null;
   const growth = ((v / hoje) - 1) * 100;
   return (
