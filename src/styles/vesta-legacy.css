@@ -1,5 +1,4 @@
-
-m*{box-sizing:border-box;margin:0;padding:0}
+*{box-sizing:border-box;margin:0;padding:0}
 :root{
   /* Vesta — vinho vivo, guardiã do patrimônio */
   --sidebar:#2A0F14;              /* vinho quase preto */
