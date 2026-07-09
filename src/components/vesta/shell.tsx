@@ -498,12 +498,18 @@ export function VestaShell({
     </div>
   );
 
-  const topItem = (key: PageKey, label: string) => (
-    <button className={page === key ? "on" : ""} onClick={() => goTo(key)}>{label}</button>
+  const topItem = (key: PageKey, label: string, className = "") => (
+    <button className={[page === key ? "on" : "", className].filter(Boolean).join(" ")} onClick={() => goTo(key)}>{label}</button>
   );
 
   const moreMenu = (
-    <div className="context-nav__more-panel">
+    <div className="context-nav__menu">
+      {hasFullPortfolio && topItem("posicao", "Posição")}
+      {hasFullPortfolio && topItem("breakeven", "Breakeven")}
+      {hasFullPortfolio && topItem("equiv", "Equivalência")}
+      {hasFullPortfolio && topItem("validador", "Validador")}
+      {hasFullPortfolio && topItem("projecao", "Projeção")}
+      {!isFamily && topItem("upload", "Importar posição mensal")}
       {topItem("alertas", `Alertas (${totalAlertas})`)}
       {hasFullPortfolio && topItem("rendimentos", "Rendimentos")}
       {hasFullPortfolio && topItem("aporte", "Acelerar breakeven")}
@@ -699,12 +705,12 @@ export function VestaShell({
         <nav className="context-nav" aria-label="Navegação da carteira">
           <button className="context-nav__back" onClick={onBackToHall ?? onSwitchProfile}>← Hall</button>
           {topItem("home", "Visão geral")}
-          {hasFullPortfolio && topItem("posicao", "Posição")}
-          {hasFullPortfolio && topItem("breakeven", "Breakeven")}
-          {hasFullPortfolio && topItem("equiv", "Equivalência")}
-          {hasFullPortfolio && topItem("validador", "Validador")}
-          {hasFullPortfolio && topItem("projecao", "Projeção")}
-          {!isFamily && topItem("upload", "Importar posição mensal")}
+          {hasFullPortfolio && topItem("posicao", "Posição", "context-nav__portrait-hidden")}
+          {hasFullPortfolio && topItem("breakeven", "Breakeven", "context-nav__portrait-hidden")}
+          {hasFullPortfolio && topItem("equiv", "Equivalência", "context-nav__portrait-hidden")}
+          {hasFullPortfolio && topItem("validador", "Validador", "context-nav__portrait-hidden")}
+          {hasFullPortfolio && topItem("projecao", "Projeção", "context-nav__portrait-hidden")}
+          {!isFamily && topItem("upload", "Importar posição mensal", "context-nav__portrait-hidden")}
           <div className={"context-nav__more" + (moreOpen ? " open" : "")}>
             <button
               type="button"
