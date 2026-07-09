@@ -892,3 +892,32 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
   display:flex;align-items:center;justify-content:center;
   font-family:var(--font-display);font-weight:600;
 }
+.context-nav,
+.main,
+.content {
+  overflow: visible !important;
+}
+
+.context-nav__more {
+  position: relative !important;
+  overflow: visible !important;
+}
+
+.context-nav__more[open] .context-nav__menu {
+  display: grid !important;
+  position: fixed !important;
+  top: 145px !important;
+  left: 16px !important;
+  right: 16px !important;
+  z-index: 999999 !important;
+  background: var(--card) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 12px !important;
+  padding: 10px !important;
+  box-shadow: 0 18px 45px rgba(42, 15, 20, .22) !important;
+}
+
+.context-nav__more[open] .context-nav__menu button {
+  width: 100% !important;
+  text-align: left !important;
+}
