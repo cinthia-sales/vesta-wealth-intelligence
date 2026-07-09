@@ -67,7 +67,7 @@ function AuthPage() {
       await supabase.auth.signOut();
       window.localStorage.setItem(ACCESS_AUTH_KEY, normalizedEmail);
       setBusy(false);
-      window.location.replace("/app");
+      window.location.replace(nextTarget);
       return;
     }
     window.localStorage.removeItem(ACCESS_AUTH_KEY);
