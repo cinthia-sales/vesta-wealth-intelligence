@@ -692,7 +692,7 @@ export function VestaShell({
           {hasFullPortfolio && topItem("validador", "Validador")}
           {hasFullPortfolio && topItem("projecao", "Projeção")}
           {!isFamily && topItem("upload", "Importar posição mensal")}
-          <details className="context-nav__more"open>
+          <details className="context-nav__more">
             <summary>Mais</summary>
             <div className="context-nav__menu">
               {topItem("alertas", `Alertas (${totalAlertas})`)}
