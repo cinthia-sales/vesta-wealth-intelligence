@@ -66,9 +66,54 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 .context-nav__back{color:var(--accent)!important;margin-right:8px}
 .context-nav__spacer{flex:1}
 .context-nav__more{position:relative}
-.context-nav__more summary::-webkit-details-marker{display:none}
-.context-nav__menu{position:absolute;top:38px;left:0;min-width:210px;padding:7px;background:var(--card);border:1px solid var(--border);border-radius:10px;box-shadow:0 14px 35px rgba(42,15,20,.14);display:grid;z-index:50}
-.context-nav__menu button{text-align:left;width:100%}
+.context-nav__more{
+  position:relative;
+}
+
+.context-nav__more summary{
+  cursor:pointer;
+  list-style:none;
+}
+
+.context-nav__more summary::-webkit-details-marker{
+  display:none;
+}
+
+.context-nav__menu{
+  position:absolute;
+  top:calc(100% + 8px);
+  right:0;
+  left:auto;
+  min-width:220px;
+  padding:7px;
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:10px;
+  box-shadow:0 14px 35px rgba(42,15,20,.14);
+  display:grid;
+  z-index:9999;
+}
+
+.context-nav__menu button{
+  text-align:left;
+  width:100%;
+}
+
+@media (max-width:768px){
+  .context-nav{
+    overflow:visible;
+  }
+
+  .context-nav__more[open] .context-nav__menu{
+    position:fixed;
+    left:16px;
+    right:16px;
+    top:auto;
+    bottom:72px;
+    min-width:auto;
+    z-index:99999;
+  }
+}
 .scope-continuation{margin-top:-15px!important;border-top:0;border-radius:0 0 var(--radius) var(--radius)}
 .managing-domus>.main>.topbar,.managing-domus>.main>.context-nav,.managing-domus>.main>.update-bar{display:none}
 .management-header{height:58px;display:grid;grid-template-columns:auto auto 1fr auto;align-items:center;gap:18px;padding:0 24px;background:var(--sidebar);color:#fff;flex-shrink:0}
