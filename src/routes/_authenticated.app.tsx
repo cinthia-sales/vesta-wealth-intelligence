@@ -6,6 +6,7 @@ import { ProfileSelector, VestaShell } from "@/components/vesta/shell";
 import { EntryHall, type HallDomus, type HallPending } from "@/components/vesta/entry-hall";
 import { getUser, registerDomusProfiles } from "@/data/vesta-users";
 import { supabase } from "@/integrations/supabase/client";
+import { ACCESS_ACCOUNTS, ACCESS_AUTH_KEY, ACCESS_DEFAULT_PASSWORD, getAccessAccount } from "@/lib/vesta-access-keys";
 import type { ProfileId } from "@/lib/profile-derive";
 import {
   DEFAULT_SCOPES,
@@ -22,7 +23,6 @@ const CINTHIA_EMAIL = "cinthiavr@yahoo.com.br";
 const PAULO_EMAIL = "phfurtadovr@yahoo.com.br";
 const LUIZA_EMAIL = "lu.abrantes@gmail.com";
 const DANIEL_EMAIL = "dmalta256@gmail.com";
-const SIMPLE_AUTH_KEY = "vesta_simple_auth_email";
 const SIMPLE_MALTA_DOMUS_ID = "simple-malta-furtado";
 const DEMO_DOMUS_ID = "demo-exemplum";
 const DEMO_CORNELIA = "member:demo-cornelia" as ProfileId;
@@ -61,11 +61,55 @@ function normalizeMemberPapel(member: any): any {
 }
 
 function buildSimpleSession(email: string) {
-  const lower = email.toLowerCase();
-  const isPaulo = lower === PAULO_EMAIL;
-  const profile = isPaulo
-    ? { id: "simple-paulo", nome: "Paulo", email: PAULO_EMAIL, primeiro_acesso: false }
-    : { id: "simple-daniel", nome: "Daniel Malta Furtado", email: DANIEL_EMAIL, primeiro_acesso: false };
+  const account = getAccessAccount(email);
+  const profile =
+    account?.profile === "paulo"
+      ? { id: "simple-paulo", nome: "Paulo", email: PAULO_EMAIL, primeiro_acesso: false }
+      : account?.profile === "daniel"
+        ? { id: "simple-daniel", nome: "Daniel Malta Furtado", email: DANIEL_EMAIL, primeiro_acesso: false }
+        : account?.profile === "cornelia"
+          ? { id: "demo-cornelia", nome: "Cornelia", email: account.email, primeiro_acesso: false }
+          : { id: "demo-marcus", nome: "Marcus", email: account?.email ?? email.toLowerCase(), primeiro_acesso: false };
+  if (account?.profile === "cornelia" || account?.profile === "marcus") {
+    const members = [
+      {
+        id: "demo-cornelia-membership",
+        domus_id: DEMO_DOMUS_ID,
+        profile_id: "demo-cornelia",
+        papel: "vesta",
+        created_at: "2026-01-01",
+        domus: { nome: "Domus Exemplum" },
+        profile: { nome: "Cornelia", email: "cornelia@domus-exemplum.vesta" },
+      },
+      {
+        id: "demo-marcus-membership",
+        domus_id: DEMO_DOMUS_ID,
+        profile_id: "demo-marcus",
+        papel: "membro",
+        created_at: "2026-01-02",
+        domus: { nome: "Domus Exemplum" },
+        profile: { nome: "Marcus", email: "marcus@domus-exemplum.vesta" },
+      },
+    ];
+    return {
+      role: account.profile === "cornelia" ? "vesta" : "membro",
+      profile,
+      memberships: members.filter((member) => member.profile_id === profile.id),
+      members,
+      domus: [{ id: DEMO_DOMUS_ID, nome: "Domus Exemplum" }],
+      requests: [],
+      scopes: [
+        {
+          id: `scope:${profile.id}`,
+          domus_id: DEMO_DOMUS_ID,
+          member_profile_id: profile.id,
+          can_see_consolidado: true,
+          can_see_member_profile_ids: [profile.id],
+          updated_at: "2026-01-01",
+        },
+      ],
+    };
+  }
   const members = [
     {
       id: "simple-cinthia-membership",
@@ -218,7 +262,7 @@ function VestaApp() {
   const [initialPage, setInitialPage] = useState<"home" | "domus" | "upload">("home");
   const [saudacao, setSaudacao] = useState(false);
   const [simpleAuthEmail, setSimpleAuthEmail] = useState<string | null>(() =>
-    typeof window === "undefined" ? null : window.localStorage.getItem(SIMPLE_AUTH_KEY)?.toLowerCase() ?? null,
+    typeof window === "undefined" ? null : window.localStorage.getItem(ACCESS_AUTH_KEY)?.toLowerCase() ?? null,
   );
 
   // Inclui o userId na key — cada usuário tem seu próprio cache, sem flash de sessão anterior
@@ -307,7 +351,7 @@ function VestaApp() {
       }
       return Array.from(unique, ([id, nome]) => ({ id, nome: displayDomusName(nome) }));
     })();
-    if (sessionData?.role === "vesta") {
+    if (sessionData?.role === "vesta" && !options.some((option: any) => option.id === DEMO_DOMUS_ID)) {
       options.push({ id: DEMO_DOMUS_ID, nome: "Domus Exemplum" });
     }
     return options.sort((a: any, b: any) => {
@@ -400,7 +444,7 @@ function VestaApp() {
     profile ?? (allowed.length === 1 ? allowed[0] : null);
 
   const doLogout = async () => {
-    if (typeof window !== "undefined") window.localStorage.removeItem(SIMPLE_AUTH_KEY);
+    if (typeof window !== "undefined") window.localStorage.removeItem(ACCESS_AUTH_KEY);
     setSimpleAuthEmail(null);
     await supabase.auth.signOut();
     navigate({ to: "/" });
@@ -509,6 +553,15 @@ function VestaApp() {
           kind: "request" as const,
         }))
     : [];
+  const hallAccessKeys = soberana
+    ? ACCESS_ACCOUNTS.map((account) => ({
+        email: account.email,
+        name: account.name,
+        domus: account.domus,
+        password: ACCESS_DEFAULT_PASSWORD,
+        note: account.note,
+      }))
+    : [];
 
   // Nome do PERFIL SELECIONADO (pode ser um membro diferente do logado)
   const profileName: string | undefined = (() => {
@@ -555,6 +608,7 @@ function VestaApp() {
           name={(loggedName ?? "Membro").split(" ")[0]}
           domus={hallDomus}
           pending={hallPending}
+          accessKeys={hallAccessKeys}
           onOpenView={(domusId, profileId) => {
             setSelectedDomusId(domusId);
             setProfile(profileId);

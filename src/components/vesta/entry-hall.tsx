@@ -27,10 +27,19 @@ export type HallPending = {
   kind: "request" | "data" | "action";
 };
 
+export type HallAccessKey = {
+  email: string;
+  name: string;
+  domus: string;
+  password: string;
+  note: string;
+};
+
 export function EntryHall({
   name,
   domus,
   pending,
+  accessKeys = [],
   onOpenView,
   onManageDomus,
   onReviewPending,
@@ -39,6 +48,7 @@ export function EntryHall({
   name: string;
   domus: HallDomus[];
   pending: HallPending[];
+  accessKeys?: HallAccessKey[];
   onOpenView: (domusId: string, profileId: ProfileId) => void;
   onManageDomus: (domusId: string) => void;
   onReviewPending: (domusId: string) => void;
@@ -71,6 +81,27 @@ export function EntryHall({
                     Analisar pedido
                   </button>
                 )}
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {accessKeys.length > 0 && (
+        <section className="vesta-hall__keys" aria-label="Chaves de acesso">
+          <div className="vesta-hall__section-title">
+            <span>Chaves de acesso</span><b>{accessKeys.length}</b>
+          </div>
+          <p className="vesta-hall__keys-note">
+            Visível apenas para a Vesta soberana. Use para enviar acessos de demonstração ou entrada simples.
+          </p>
+          <div className="vesta-hall__keys-grid">
+            {accessKeys.map((key) => (
+              <article key={key.email} className="vesta-hall__key-card">
+                <strong>{key.name}</strong>
+                <small>{key.domus} · {key.note}</small>
+                <code>{key.email}</code>
+                <em>senha inicial: {key.password}</em>
               </article>
             ))}
           </div>
