@@ -447,7 +447,8 @@ export function VestaShell({
 }) {
   const [page, setPage] = useState<PageKey>(initialPage);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const goTo = (k: PageKey) => { setPage(k); setSidebarOpen(false); };
+  const [moreOpen, setMoreOpen] = useState(false);
+  const goTo = (k: PageKey) => { setPage(k); setSidebarOpen(false); setMoreOpen(false); };
   // profileName = nome do perfil visualizado (pode ser membro diferente do logado)
   const meta = getProfileMeta(profileId, profileName ?? loggedName);
   const isFamily = profileId === "familiar" || profileId.startsWith("domus:");
@@ -692,8 +693,8 @@ export function VestaShell({
           {hasFullPortfolio && topItem("validador", "Validador")}
           {hasFullPortfolio && topItem("projecao", "Projeção")}
           {!isFamily && topItem("upload", "Importar posição mensal")}
-          <details className="context-nav__more">
-            <summary>Mais</summary>
+          <div className={"context-nav__more" + (moreOpen ? " open" : "")}>
+            <button type="button" onClick={() => setMoreOpen((v) => !v)}>Mais</button>
             <div className="context-nav__menu">
               {topItem("alertas", `Alertas (${totalAlertas})`)}
               {hasFullPortfolio && topItem("rendimentos", "Rendimentos")}
@@ -703,7 +704,7 @@ export function VestaShell({
               {hasFullPortfolio && topItem("drivers", "Influenciadores")}
               {canManageDomus && topItem("domus", "Gerir Domus")}
             </div>
-          </details>
+          </div>
           <span className="context-nav__spacer" />
           {onLogout && <button onClick={onLogout}>Sair</button>}
         </nav>
