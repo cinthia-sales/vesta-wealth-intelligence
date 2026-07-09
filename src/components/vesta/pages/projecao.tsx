@@ -68,6 +68,20 @@ function defaultCdiPct(a: Pick<RFAtivo, "n" | "cdi" | "nota">): number {
   if (/Previdência/i.test(text)) return 90;
   return 100;
 }
+function effectiveCdiPct(a: Pick<RFAtivo, "n" | "cdi" | "nota">, profileId: ProfileId): number {
+  const base = defaultCdiPct(a);
+  if (profileId !== "member:luiza-abrantes") return base;
+
+  const text = `${a.n} ${a.nota ?? ""}`;
+  // Luiza: o relatorio traz taxa bruta nos FIDCs/previdencias.
+  // Na projecao, usamos taxa liquida estimada para refletir IR, custos/rebate,
+  // come-cotas/estrutura de fundos e perda economica em produtos caros.
+  if (/Multiagro.*FIDC/i.test(text)) return 92;
+  if (/Multiplica.*FIDC/i.test(text)) return 88;
+  if (/Brasilprev/i.test(text)) return 62;
+  if (/Previd|TAF\s*~?1%/i.test(text)) return 78;
+  return base;
+}
 // Taxa efetiva anual por bucket, dado CDI/IPCA do ano
 function taxaAno(b: Bucket, cdi: number, ipca: number, cdiPct: number, cupomIpca: number, cupomPre: number) {
   switch (b) {
@@ -98,7 +112,7 @@ export function ProjecaoPage({ profileId }: { profileId: ProfileId }) {
       return {
         bucket: b,
         v: a.v,
-        cdiPct: defaultCdiPct(a),
+        cdiPct: effectiveCdiPct(a, profileId),
         cupomIpca: parsePercent(text, /IPCA\s*\+\s*(\d+(?:[,.]\d+)?)/i) ?? 5,
         cupomPre: b === "prefix" ? (a.t ?? parsePercent(text, /(\d+(?:[,.]\d+)?)%\s*pré/i) ?? 12) : 12,
       };
@@ -138,7 +152,7 @@ export function ProjecaoPage({ profileId }: { profileId: ProfileId }) {
     posEvol.forEach((p) => { breakdown[p.bucket] += p.v; });
 
     return { serie, breakdown };
-  }, [u, cenario, rvCenario, aporteMensalEq, bonus, bonusAno]);
+  }, [u, profileId, cenario, rvCenario, aporteMensalEq, bonus, bonusAno]);
 
   const maxV = Math.max(...serie.map((s) => s.total));
   const minV = Math.min(...serie.map((s) => s.total));
