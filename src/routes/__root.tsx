@@ -88,7 +88,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:title", content: "Vesta ✦ Guardiã do Patrimônio" },
       {
         property: "og:description",
-        content: "Gestão patrimonial familiar — Cinthia, Paulo e visão consolidada.",
+        content: "Gestão Patrimonial Familiar",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
