@@ -503,7 +503,7 @@ export function VestaShell({
   );
 
   const moreMenu = (
-    <div className="context-nav__menu" onPointerDown={(event) => event.stopPropagation()}>
+    <div className="context-nav__more-panel">
       {topItem("alertas", `Alertas (${totalAlertas})`)}
       {hasFullPortfolio && topItem("rendimentos", "Rendimentos")}
       {hasFullPortfolio && topItem("aporte", "Acelerar breakeven")}
@@ -736,17 +736,7 @@ export function VestaShell({
           <span className="context-nav__spacer" />
           {onLogout && <button onClick={onLogout}>Sair</button>}
         </nav>
-        {moreOpen && (
-          <>
-            <button
-              type="button"
-              className="context-nav__scrim"
-              aria-label="Fechar menu Mais"
-              onPointerDown={() => setMoreOpen(false)}
-            />
-            {moreMenu}
-          </>
-        )}
+        {moreOpen && moreMenu}
 
         <div className="update-bar">
           <div className="upd-dot off" />
