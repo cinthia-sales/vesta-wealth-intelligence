@@ -455,7 +455,7 @@ export function VestaShell({
   const isVesta = loggedRole === "vesta" || loggedPersona?.role === "vesta";
   const canManageDomus = isVesta && profileId !== "paulo";
   const isMember = profileId.startsWith("member:");
-  const hasFullPortfolio = !isMember || profileId.startsWith("member:demo-");
+  const hasFullPortfolio = !isMember || profileId.startsWith("member:demo-") || profileId === "member:luiza-abrantes";
   // Nome de exibição: usa loggedName (real do banco) ou fallback para getPersonaInfo
   const displayName = loggedName ?? (loggedAs ? getPersonaInfo(loggedAs).name : "Membro");
   const userData = getUser(profileId);

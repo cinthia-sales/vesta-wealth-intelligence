@@ -310,6 +310,60 @@ const EMPTY_MEMBER: UserData = {
   data_referencia: "",
 };
 
+const LUIZA_ABRANTES: UserData = {
+  ...EMPTY_MEMBER,
+  nome: "Luiza",
+  conta: "BTG/Menthor · C6 Bank · Brasilprev",
+  total: 1193145,
+  rf: 1094395,
+  rv: 98750,
+  rf_pct: 91.7,
+  rv_pct: 8.3,
+  saudacao: "Carteira da Luiza · posição em 30/06/2026.",
+  topbar_sub: "Carteira Luiza · Domus Abrantes · posição 30/06/2026",
+  kpi4_label: "Ação prioritária",
+  kpi4_val: "Brasilprev",
+  kpi4_sub: "portabilidade urgente · TAF 1,8%",
+  donut_data: [671042, 167357, 255996, 98750],
+  donut_labels: ["Crédito privado e CDBs", "Tesouro direto", "Previdência", "Renda variável"],
+  donut_colors: ["#A11D3E", "#4E7A5C", "#D97706", "#3E5E7A"],
+  rf_ativos: [
+    { n: "Multiagro FIDC Mezanino", v: 402964, t: 19.18, cdi: 130, venc: "—", s: "urgente", nota: "BTG/Menthor · orientação: sair" },
+    { n: "Multiplica FIDC Sênior", v: 128003, t: 18.14, cdi: 123, venc: "—", s: "urgente", nota: "BTG/Menthor · orientação: sair" },
+    { n: "CDB Daycoval", v: 68629, t: 13, cdi: null, venc: "11/2027", s: "monitorar", nota: "BTG/Menthor · 13% pré · orientação: manter" },
+    { n: "NTN-B-P 2045", v: 48641, t: 11.63, cdi: null, venc: "05/2045", s: "estrategico", nota: "BTG/Menthor · IPCA+6,13% · estratégico" },
+    { n: "BTG Tesouro Selic", v: 98414, t: 14.75, cdi: 100, venc: "—", s: "intocavel", nota: "BTG/Menthor · 100% CDI · ok" },
+    { n: "BTG Digital Tesouro Selic", v: 10189, t: 14.75, cdi: 100, venc: "—", s: "intocavel", nota: "BTG/Menthor · 100% CDI · ok" },
+    { n: "LTN Pré 2032", v: 10113, t: 13.53, cdi: null, venc: "01/2032", s: "intocavel", nota: "BTG/Menthor · 13,53% pré · ok" },
+    { n: "Previdência BTG 7 fundos", v: 152588, t: null, cdi: null, venc: "—", s: "monitorar", nota: "BTG/Menthor · TAF ~1% · auditar" },
+    { n: "CDB C6 Comodidade", v: 71446, t: 14.75, cdi: 100, venc: "—", s: "intocavel", nota: "C6 Bank · 100% CDI · ok" },
+    { n: "Brasilprev PGBL FIX X", v: 103408, t: null, cdi: null, venc: "—", s: "urgente", nota: "Brasilprev · TAF 1,8% · portabilidade urgente" },
+  ],
+  rv_ativos: [
+    { n: "Western Asset US500 BTG", v: "R$ 26.661", pm: "BTG/Menthor", r: "+13,1% em 2026", rc: "good", cls: "RV", sb: "sb-g" },
+    { n: "Alpha Key FICFIA", v: "R$ 15.086", pm: "BTG/Menthor", r: "+0,57% em 2026", rc: "muted", cls: "RV", sb: "sb-w" },
+    { n: "Western Asset US500 C6", v: "R$ 57.003", pm: "C6 Bank", r: "+13,1% em 2026", rc: "good", cls: "RV", sb: "sb-g" },
+  ],
+  alertas_list: [
+    { cor: "r", titulo: "Brasilprev PGBL FIX X — portabilidade urgente", det: "R$ 103.408 com TAF 1,8%. Priorizar análise de portabilidade." },
+    { cor: "r", titulo: "FIDCs marcados para saída", det: "Multiagro Mezanino + Multiplica Sênior somam R$ 530.967." },
+    { cor: "w", titulo: "Previdência BTG precisa auditoria", det: "R$ 152.588 em 7 fundos com TAF aproximada de 1%." },
+    { cor: "w", titulo: "Alpha Key FICFIA — sair", det: "R$ 15.086 com retorno de apenas +0,57% em 2026." },
+  ],
+  vencimentos: [
+    { icon: "🔴", bg: "var(--danger-bg)", nome: "CDB Daycoval", det: "R$ 68.629 · 11/2027 · 13% pré", badge: "manter", bc: "sb-w" },
+    { icon: "📅", bg: "rgba(74,124,89,.12)", nome: "LTN Pré 2032", det: "R$ 10.113 · 01/2032 · 13,53% pré", badge: "ok", bc: "sb-g" },
+    { icon: "🏛", bg: "rgba(74,124,89,.12)", nome: "NTN-B-P 2045", det: "R$ 48.641 · 05/2045 · IPCA+6,13%", badge: "estratégico", bc: "sb-g" },
+  ],
+  resumo: [
+    { dot: "g", nome: "Posição importada em 30/06/2026", det: "Patrimônio total de R$ 1.193.145 distribuído entre BTG/Menthor, C6 Bank e Brasilprev." },
+    { dot: "w", nome: "Carteira majoritariamente defensiva", det: "91,7% em renda fixa/previdência e 8,3% em renda variável." },
+    { dot: "r", nome: "Saídas priorizadas", det: "Multiagro FIDC, Multiplica FIDC, Alpha Key e Brasilprev exigem decisão." },
+    { dot: "g", nome: "US500 segue preservado", det: "Western Asset US500 soma R$ 83.664 entre BTG/Menthor e C6, ambos +13,1% em 2026." },
+  ],
+  data_referencia: "2026-06-30",
+};
+
 // Portfólios inteiramente fictícios para demonstrações do Domus Exemplum.
 const CORNELIA_DEMO: UserData = {
   ...EMPTY_MEMBER,
@@ -459,6 +513,7 @@ function buildDomusConsolidated(domusId: string): UserData {
 }
 
 export function getUser(id: ProfileId): UserData {
+  if (id === "member:luiza-abrantes") return LUIZA_ABRANTES;
   if (id === "member:demo-cornelia") return CORNELIA_DEMO;
   if (id === "member:demo-marcus") return MARCUS_DEMO;
   if (id === "paulo") return loadFromStorage("paulo", PAULO);

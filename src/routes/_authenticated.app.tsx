@@ -20,6 +20,7 @@ export const Route = createFileRoute("/_authenticated/app")({
 
 const CINTHIA_EMAIL = "cinthiavr@yahoo.com.br";
 const PAULO_EMAIL = "phfurtadovr@yahoo.com.br";
+const LUIZA_EMAIL = "lu.abrantes@gmail.com";
 const DEMO_DOMUS_ID = "demo-exemplum";
 const DEMO_CORNELIA = "member:demo-cornelia" as ProfileId;
 const DEMO_MARCUS = "member:demo-marcus" as ProfileId;
@@ -35,6 +36,7 @@ function keyForProfile(profileId: string, email?: string | null): PersonaId {
   const lower = (email ?? "").toLowerCase();
   if (lower === CINTHIA_EMAIL) return "cinthia";
   if (lower === PAULO_EMAIL) return "paulo";
+  if (lower === LUIZA_EMAIL) return "member:luiza-abrantes";
   return `member:${profileId}`;
 }
 
