@@ -694,7 +694,23 @@ export function VestaShell({
           {hasFullPortfolio && topItem("projecao", "Projeção")}
           {!isFamily && topItem("upload", "Importar posição mensal")}
           <div className={"context-nav__more" + (moreOpen ? " open" : "")}>
-            <button type="button" onClick={() => setMoreOpen((v) => !v)}>Mais</button>
+            <button
+              type="button"
+              aria-expanded={moreOpen}
+              onPointerDown={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                setMoreOpen((v) => !v);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  setMoreOpen((v) => !v);
+                }
+              }}
+            >
+              Mais
+            </button>
             <div className="context-nav__menu">
               {topItem("alertas", `Alertas (${totalAlertas})`)}
               {hasFullPortfolio && topItem("rendimentos", "Rendimentos")}
