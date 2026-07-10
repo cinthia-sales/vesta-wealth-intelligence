@@ -15,6 +15,7 @@ import { AportePage } from "@/components/vesta/pages/aporte";
 import { RendimentosPage } from "@/components/vesta/pages/rendimentos";
 import { DomusPage } from "@/components/vesta/pages/domus";
 import { RVPage } from "@/components/vesta/pages/rv";
+import { OportunidadePage } from "@/components/vesta/pages/oportunidade";
 
 import type { ProfileId } from "@/lib/profile-derive";
 import { getUser } from "@/data/vesta-users";
@@ -371,7 +372,8 @@ type PageKey =
   | "aporte"
   | "rendimentos"
   | "domus"
-  | "rv";
+  | "rv"
+  | "oportunidade";
 
 const PROFILE_META: Record<"familiar" | "cinthia" | "paulo", { name: string; sub: string; avatarBg: string; avatarColor: string; content: ReactNode }> = {
   familiar: {
@@ -507,15 +509,12 @@ export function VestaShell({
   const moreMenu = (
     <div className="context-nav__menu">
       {hasFullPortfolio && topItem("posicao", "Posição")}
-      {hasFullPortfolio && topItem("breakeven", "Breakeven")}
-      {hasFullPortfolio && topItem("equiv", "Equivalência")}
-      {hasFullPortfolio && topItem("validador", "Validador")}
+      {hasFullPortfolio && topItem("oportunidade", "Custo de oportunidade")}
+      {hasFullPortfolio && topItem("breakeven", "Breakeven & giros")}
       {hasFullPortfolio && topItem("projecao", "Projeção")}
       {!isFamily && topItem("upload", "Importar posição mensal")}
       {topItem("alertas", `Alertas (${totalAlertas})`)}
       {hasFullPortfolio && topItem("rendimentos", "Rendimentos")}
-      {hasFullPortfolio && topItem("aporte", "Acelerar breakeven")}
-      {hasFullPortfolio && topItem("rv", "Simulador RV")}
       {hasFullPortfolio && topItem("secundario", "Mercado secundário")}
       {hasFullPortfolio && topItem("regras", "Regras")}
       {hasFullPortfolio && topItem("drivers", "Influenciadores")}
@@ -636,17 +635,15 @@ export function VestaShell({
 
           {hasFullPortfolio && (
             <>
-              <div className="nav-sec">Plano</div>
-              {item("equiv", "Equivalência de taxas")}
-              {item("validador", "Validador de troca")}
-              {item("breakeven", "Breakeven")}
-              {item("aporte", "Acelerar breakeven")}
+              <div className="nav-sec">Decidir</div>
+              {item("oportunidade", "Custo de oportunidade", <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--sidebar-primary)" }}>⚖</span>)}
+              {item("breakeven", "Breakeven & giros")}
               {item("projecao", "Projeção patrimônio")}
               {item("secundario", "Saída secundário")}
+              <div className="nav-sec">Sistema</div>
               {item("regras", "Regras — não mexer")}
-              {item("upload", "Importar arquivos XP")}
               {item("drivers", "Influenciadores")}
-              {item("rv", "Simulador RV")}
+              {item("upload", "Importar arquivos XP")}
             </>
           )}
 
@@ -710,9 +707,8 @@ export function VestaShell({
           <button className="context-nav__back" onClick={onBackToHall ?? onSwitchProfile}>← Hall</button>
           {topItem("home", "Visão geral")}
           {hasFullPortfolio && topItem("posicao", "Posição", "context-nav__portrait-hidden")}
+          {hasFullPortfolio && topItem("oportunidade", "Oportunidade", "context-nav__portrait-hidden")}
           {hasFullPortfolio && topItem("breakeven", "Breakeven", "context-nav__portrait-hidden")}
-          {hasFullPortfolio && topItem("equiv", "Equivalência", "context-nav__portrait-hidden")}
-          {hasFullPortfolio && topItem("validador", "Validador", "context-nav__portrait-hidden")}
           {hasFullPortfolio && topItem("projecao", "Projeção", "context-nav__portrait-hidden")}
           {!isFamily && topItem("upload", "Importar posição mensal", "context-nav__portrait-hidden")}
           <div className={"context-nav__more" + (moreOpen ? " open" : "")}>
@@ -736,7 +732,6 @@ export function VestaShell({
             <div className="context-nav__menu-legacy">
               {topItem("alertas", `Alertas (${totalAlertas})`)}
               {hasFullPortfolio && topItem("rendimentos", "Rendimentos")}
-              {hasFullPortfolio && topItem("aporte", "Acelerar breakeven")}
               {hasFullPortfolio && topItem("secundario", "Mercado secundário")}
               {hasFullPortfolio && topItem("regras", "Regras")}
               {hasFullPortfolio && topItem("drivers", "Influenciadores")}
@@ -793,6 +788,7 @@ export function VestaShell({
             {page === "aporte" && <AportePage />}
             {page === "rendimentos" && <RendimentosPage profileId={profileId} />}
             {page === "rv" && <RVPage />}
+            {page === "oportunidade" && <OportunidadePage />}
             {page === "domus" && canManageDomus && scopes && onUpdateScopes && (
               <DomusPage
                 scopes={scopes}
@@ -801,7 +797,7 @@ export function VestaShell({
                 initialDomusId={activeDomusId}
               />
             )}
-            {!["home", "posicao", "breakeven", "equiv", "validador", "projecao", "secundario", "alertas", "regras", "upload", "drivers", "aporte", "rendimentos", "domus", "rv"].includes(page) && (
+            {!["home", "posicao", "breakeven", "equiv", "validador", "projecao", "secundario", "alertas", "regras", "upload", "drivers", "aporte", "rendimentos", "domus", "rv", "oportunidade"].includes(page) && (
               <div className="ph">
                 <h1>Em breve</h1>
                 <p>Este módulo será migrado nas próximas rodadas.</p>
