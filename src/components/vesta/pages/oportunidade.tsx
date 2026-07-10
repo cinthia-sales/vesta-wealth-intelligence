@@ -1,8 +1,9 @@
 import { useMemo, useState, type CSSProperties } from "react";
 import {
   CARTEIRA,
+  CDI_HIST,
+  IPCA_HIST,
   notaRetrospectiva,
-  ondeEstaria,
   salvarGiro,
   type AtivoCarteira,
 } from "@/data/carteira-ativos";
@@ -50,6 +51,36 @@ function taxaDestinoAno(
   }
 }
 
+function taxaRetroAno(
+  tipo: DestinoTipo,
+  ano: number,
+  p: { pctCdi: number; ipcaReal: number; preTaxa: number; acaoRet: number; cartTaxa: number },
+): number {
+  const cdi = (CDI_HIST[ano] ?? 0) / 100;
+  const ipca = (IPCA_HIST[ano] ?? 0) / 100;
+  switch (tipo) {
+    case "lci": return cdi * (p.pctCdi / 100);
+    case "cdb": return cdi * (p.pctCdi / 100) * 0.85;
+    case "ipca": return (1 + ipca) * (1 + p.ipcaReal / 100) - 1;
+    case "pre": return p.preTaxa / 100;
+    case "acao": return p.acaoRet / 100;
+    case "carteira": return p.cartTaxa / 100;
+  }
+}
+
+function valorContrafactual(
+  capital: number,
+  desde: number,
+  tipo: DestinoTipo,
+  p: { pctCdi: number; ipcaReal: number; preTaxa: number; acaoRet: number; cartTaxa: number },
+) {
+  let v = capital;
+  for (let ano = desde; ano <= 2026; ano++) {
+    v *= 1 + taxaRetroAno(tipo, ano, p);
+  }
+  return v;
+}
+
 /* ── vereditos linha dura ──
    Retro:  perda nominal 3+ anos → MIGRAR travado
            abaixo do CDI 2+ anos sem tese → puxa MIGRAR
@@ -94,6 +125,17 @@ export function OportunidadePage() {
   const [aDy, setADy] = useState<number | null>(null);
   const [aApre, setAApre] = useState(0);
   const [aTaxaRf, setATaxaRf] = useState<number | null>(null);
+  const [durationOverride, setDurationOverride] = useState<number | null>(null);
+  const [taxaCurvaOverride, setTaxaCurvaOverride] = useState<number | null>(null);
+  const [taxaMercadoOverride, setTaxaMercadoOverride] = useState<number | null>(null);
+
+  /* passado contrafactual */
+  const [retroDesde, setRetroDesde] = useState(2021);
+  const [retroTipo, setRetroTipo] = useState<DestinoTipo>("lci");
+  const [retroPctCdi, setRetroPctCdi] = useState(89);
+  const [retroIpcaReal, setRetroIpcaReal] = useState(8.5);
+  const [retroPreTaxa, setRetroPreTaxa] = useState(15);
+  const [retroAcaoRet, setRetroAcaoRet] = useState(10);
 
   /* destino */
   const [tipoB, setTipoB] = useState<DestinoTipo>("lci");
@@ -130,8 +172,24 @@ export function OportunidadePage() {
   const desagioImplicito = Math.max(valorCurvaA - valorMercadoA, 0);
   const dyA = aDy ?? (ativo?.dyEsperado ?? 0);
   const taxaRfA = aTaxaRf ?? (ativo?.taxaBruta ?? 0);
+  const valorInvestidoA = ativo?.qtd && ativo?.pm ? ativo.qtd * ativo.pm : valorMercadoA;
+  const dividendosRecebidosA = ativo?.divRecebidos ?? 0;
+  const valorEconomicoHoje = valorMercadoA + dividendosRecebidosA;
+  const durationA = durationOverride ?? ativo?.durationAnos ?? null;
+  const taxaRealCurvaA = taxaCurvaOverride ?? ativo?.taxaRealCurva ?? null;
+  const taxaRealMercadoA = taxaMercadoOverride ?? ativo?.taxaRealMercado ?? null;
 
   const cartDest = CARTEIRA.find((a) => a.id === cartDestId);
+  const retroCartDest = CARTEIRA.find((a) => a.id === cartDestId);
+  const retroParams = {
+    pctCdi: retroPctCdi,
+    ipcaReal: retroIpcaReal,
+    preTaxa: retroPreTaxa,
+    acaoRet: retroAcaoRet,
+    cartTaxa: retroCartDest?.taxaBruta ?? 13,
+  };
+  const valorOndePoderiaEstar = valorContrafactual(valorInvestidoA, retroDesde, retroTipo, retroParams);
+  const dividaConosco = valorOndePoderiaEstar - valorEconomicoHoje;
   const params = {
     pctCdi, irCdb, ipcaReal, ipcaProj, preTaxa, acaoDy, acaoApre,
     cartTaxa: cartDest?.taxaBruta ?? 13,
@@ -233,25 +291,38 @@ export function OportunidadePage() {
     <>
       <div className="ph">
         <h1>Custo de oportunidade</h1>
-        <p>Qualquer ativo seu → qualquer destino. Linha dura: o passado conta, e toda troca paga seu breakeven.</p>
+        <p>Três tempos da decisão: onde está hoje, onde poderia ter estado, e para onde o capital líquido vai daqui em diante.</p>
       </div>
 
       <div style={{
         background: "#FDF8EA", borderLeft: "3px solid #B8892A", borderRadius: "4px 8px 8px 4px",
         padding: "9px 13px", marginBottom: 14, fontSize: 12, color: "#8A6420", lineHeight: 1.55,
       }}>
-        <strong>Custo afundado:</strong> o preço de compra não importa. As perguntas são: o capital de hoje
-        renderia mais em outro lugar? E quanto ele <strong>já deixou de render</strong> parado onde está?
-        Dividendo parado na conta não vira juros compostos.
+        <strong>Custo de oportunidade:</strong> dividendos recebidos entram no valor econômico da origem, mas não são
+        valor de mercado da ação. O CDI do topo é a foto de hoje; a curva abaixo é a premissa editável para projetar o destino.
       </div>
 
-      {/* ── ORIGEM / DESTINO ── */}
-      <div className="val-grid">
+      {/* ── 1. ORIGEM / 2. PASSADO / 3. DESTINO ── */}
+      <div className="val-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
         <div className="side-card a">
           <div className="side-title a">Ativo atual — origem</div>
           <div className="fld">
             <label>Selecionar da carteira</label>
-            <select style={inputSt} value={origemId} onChange={(e) => { setOrigemId(e.target.value); setADy(null); setAApre(0); setATaxaRf(null); setVOverride(null); setBuscaMsg(""); }}>
+            <select style={inputSt} value={origemId} onChange={(e) => {
+              const nextId = e.target.value;
+              const nextAtivo = CARTEIRA.find((a) => a.id === nextId);
+              setOrigemId(nextId);
+              setRetroDesde(nextAtivo?.anoCompra ?? 2021);
+              setADy(null);
+              setAApre(0);
+              setATaxaRf(null);
+              setDurationOverride(null);
+              setTaxaCurvaOverride(null);
+              setTaxaMercadoOverride(null);
+              setVOverride(null);
+              setVCurvaOverride(null);
+              setBuscaMsg("");
+            }}>
               <optgroup label="Renda Variável — Paulo">
                 {CARTEIRA.filter((a) => a.classe === "rv").map((a) => (
                   <option key={a.id} value={a.id}>{a.nome} · {fmtR(a.valorMercado)}</option>
@@ -356,12 +427,44 @@ export function OportunidadePage() {
                 /></div>
             </div>
           )}
+          <div style={{
+            display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(115px, 1fr))", gap: 8,
+            background: "var(--secondary)", borderRadius: 8, padding: "9px 10px", marginBottom: 9,
+          }}>
+            <div>
+              <div style={{ fontSize: 9.5, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: ".08em" }}>Investido</div>
+              <div style={{ fontFamily: "var(--font-serif)", fontSize: 16 }}>{fmtR(valorInvestidoA)}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 9.5, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: ".08em" }}>Mercado hoje</div>
+              <div style={{ fontFamily: "var(--font-serif)", fontSize: 16 }}>{fmtR(valorMercadoA)}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 9.5, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: ".08em" }}>Dividendos recebidos</div>
+              <div style={{ fontFamily: "var(--font-serif)", fontSize: 16 }}>{fmtR(dividendosRecebidosA)}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 9.5, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: ".08em" }}>Valor econômico</div>
+              <div style={{ fontFamily: "var(--font-serif)", fontSize: 16, color: "var(--accent)" }}>{fmtR(valorEconomicoHoje)}</div>
+            </div>
+          </div>
           {!isRV && desagioImplicito > 0 && (
             <div style={{
               background: "var(--secondary)", borderRadius: 7, padding: "6px 10px",
               fontSize: 11, color: "var(--muted-foreground)", marginBottom: 9,
             }}>
               Deságio implícito: <b>{fmtR(desagioImplicito)}</b> — sair hoje entrega {fmtR(valorMercadoA)} dos {fmtR(valorCurvaA)} da curva.
+            </div>
+          )}
+
+          {!isRV && (
+            <div className="fld-row">
+              <div className="fld"><label style={lblSt}>Duration estimada (anos)</label>
+                <input style={inputSt} type="number" step={0.5} value={durationA ?? ""} onChange={(e) => setDurationOverride(e.target.value === "" ? null : +e.target.value)} /></div>
+              <div className="fld"><label style={lblSt}>Taxa contratada IPCA+</label>
+                <input style={inputSt} type="number" step={0.05} value={taxaRealCurvaA ?? ""} onChange={(e) => setTaxaCurvaOverride(e.target.value === "" ? null : +e.target.value)} /></div>
+              <div className="fld"><label style={lblSt}>Taxa de mercado IPCA+</label>
+                <input style={inputSt} type="number" step={0.05} value={taxaRealMercadoA ?? ""} onChange={(e) => setTaxaMercadoOverride(e.target.value === "" ? null : +e.target.value)} /></div>
             </div>
           )}
 
@@ -391,8 +494,81 @@ export function OportunidadePage() {
           )}
         </div>
 
+        <div className="side-card" style={{ borderTop: "3px solid #B8892A" }}>
+          <div className="side-title" style={{ color: "#B8892A" }}>Onde poderia ter estado</div>
+          <div className="fld-row">
+            <div className="fld"><label style={lblSt}>Desde quando deveria ter migrado</label>
+              <select style={inputSt} value={retroDesde} onChange={(e) => setRetroDesde(+e.target.value)}>
+                {[2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026].map((ano) => (
+                  <option key={ano} value={ano}>{ano}</option>
+                ))}
+              </select></div>
+            <div className="fld"><label style={lblSt}>Para onde teria ido</label>
+              <select style={inputSt} value={retroTipo} onChange={(e) => setRetroTipo(e.target.value as DestinoTipo)}>
+                {(Object.keys(DESTINO_LABEL) as DestinoTipo[]).map((t) => (
+                  <option key={t} value={t}>{DESTINO_LABEL[t]}</option>
+                ))}
+              </select></div>
+          </div>
+
+          {(retroTipo === "lci" || retroTipo === "cdb") && (
+            <div className="fld"><label style={lblSt}>% do CDI histórico</label>
+              <input style={inputSt} type="number" step={0.5} value={retroPctCdi} onChange={(e) => setRetroPctCdi(+e.target.value || 0)} /></div>
+          )}
+          {retroTipo === "ipca" && (
+            <div className="fld"><label style={lblSt}>IPCA + taxa real</label>
+              <input style={inputSt} type="number" step={0.1} value={retroIpcaReal} onChange={(e) => setRetroIpcaReal(+e.target.value || 0)} /></div>
+          )}
+          {retroTipo === "pre" && (
+            <div className="fld"><label style={lblSt}>Taxa pré histórica %/ano</label>
+              <input style={inputSt} type="number" step={0.1} value={retroPreTaxa} onChange={(e) => setRetroPreTaxa(+e.target.value || 0)} /></div>
+          )}
+          {retroTipo === "acao" && (
+            <div className="fld"><label style={lblSt}>Retorno total estimado da ação %/ano</label>
+              <input style={inputSt} type="number" step={0.5} value={retroAcaoRet} onChange={(e) => setRetroAcaoRet(+e.target.value || 0)} /></div>
+          )}
+
+          <div style={{
+            display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(125px, 1fr))", gap: 9,
+            background: "rgba(184,137,42,.10)", border: "1px solid rgba(184,137,42,.25)",
+            borderRadius: 9, padding: "10px 12px", marginTop: 8,
+          }}>
+            <div>
+              <div style={{ fontSize: 9.5, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: ".08em" }}>Onde estaria</div>
+              <div style={{ fontFamily: "var(--font-serif)", fontSize: 18, color: "#5B8A6A" }}>{fmtR(valorOndePoderiaEstar)}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 9.5, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: ".08em" }}>Onde está hoje</div>
+              <div style={{ fontFamily: "var(--font-serif)", fontSize: 18 }}>{fmtR(valorEconomicoHoje)}</div>
+              <div style={{ fontSize: 10.5, color: "var(--muted-foreground)" }}>mercado + dividendos</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 9.5, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: ".08em" }}>Dívida conosco</div>
+              <div style={{ fontFamily: "var(--font-serif)", fontSize: 18, color: dividaConosco > 0 ? "#A85555" : "#5B8A6A" }}>
+                {dividaConosco > 0 ? "−" : "+"}{fmtR(Math.abs(dividaConosco))}
+              </div>
+            </div>
+          </div>
+          <div className="tip-txt" style={{ marginTop: 8 }}>
+            Esse quadro olha para trás: compara o valor econômico atual da origem com o que o capital investido teria virado
+            se a migração tivesse acontecido em {retroDesde}.
+          </div>
+        </div>
+
         <div className="side-card b">
           <div className="side-title b">Destino — para onde vai</div>
+          <div style={{
+            background: "var(--secondary)", borderRadius: 8, padding: "9px 10px", marginBottom: 10,
+            border: "1px solid var(--border)",
+          }}>
+            <div style={{ fontSize: 9.5, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: ".08em" }}>
+              Capital líquido que migra hoje
+            </div>
+            <div style={{ fontFamily: "var(--font-serif)", fontSize: 20, color: "var(--accent)" }}>{fmtR(sim.capB)}</div>
+            <div style={{ fontSize: 10.5, color: "var(--muted-foreground)" }}>
+              mercado {fmtR(valorMercadoA)} − custos {fmtR(custo)}
+            </div>
+          </div>
           <div className="fld">
             <label style={lblSt}>Tipo de destino</label>
             <select style={inputSt} value={tipoB} onChange={(e) => setTipoB(e.target.value as DestinoTipo)}>
@@ -545,47 +721,14 @@ export function OportunidadePage() {
               Esperar "voltar ao preço médio" é pagar o CDI de aluguel, ano após ano.
             </div>
           )}
-
-          {/* Quanto estamos devendo a nós mesmos — contrafactual */}
-          {ativo?.anoCompra && (() => {
-            const estaria = ondeEstaria(retro.valorInvestido, ativo.anoCompra!, pctCdi || 89);
-            const temos = ativo.valorMercado + (ativo.divRecebidos ?? 0);
-            const divida = estaria - temos;
-            return (
-              <div style={{
-                marginTop: 12, background: "rgba(216,179,106,.10)", border: "1px solid rgba(216,179,106,.3)",
-                borderRadius: 9, padding: "11px 14px",
-              }}>
-                <div style={{ fontSize: 10, letterSpacing: ".12em", textTransform: "uppercase", color: "#d8b36a", marginBottom: 8 }}>
-                  Quanto estamos devendo a nós mesmos
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, fontSize: 12 }}>
-                  <div>
-                    <div style={{ color: "#9fb0bf", fontSize: 10 }}>Onde estaria ({pctCdi || 89}% CDI desde {ativo.anoCompra})</div>
-                    <div style={{ fontSize: 16, fontFamily: "var(--font-serif)", color: "#a0d4b0" }}>{fmtR(estaria)}</div>
-                  </div>
-                  <div>
-                    <div style={{ color: "#9fb0bf", fontSize: 10 }}>Onde está (mercado + dividendos)</div>
-                    <div style={{ fontSize: 16, fontFamily: "var(--font-serif)" }}>{fmtR(temos)}</div>
-                  </div>
-                  <div>
-                    <div style={{ color: "#9fb0bf", fontSize: 10 }}>Dívida com nós mesmos</div>
-                    <div style={{ fontSize: 16, fontFamily: "var(--font-serif)", color: divida > 0 ? "#e8a0a0" : "#a0d4b0" }}>
-                      {divida > 0 ? "−" + fmtR(divida) : "+" + fmtR(-divida)}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })()}
         </div>
       )}
 
       {/* ── JANELA DE DURATION (RF marcada a mercado) ── */}
-      {!isRV && ativo?.durationAnos && ativo?.taxaRealCurva != null && ativo?.taxaRealMercado != null && (() => {
-        const dur = ativo.durationAnos!;
-        const tc = ativo.taxaRealCurva!;
-        const tm = ativo.taxaRealMercado!;
+      {!isRV && durationA != null && taxaRealCurvaA != null && taxaRealMercadoA != null && (() => {
+        const dur = durationA;
+        const tc = taxaRealCurvaA;
+        const tm = taxaRealMercadoA;
         /* aproximação: a taxa real de mercado cai junto com a Selic projetada;
            deságio% ≈ duration × (taxaMercado − taxaCurva); janela = quando zera */
         const quedaSelic = (i: number) => (selic[0] ?? 13.5) - (selic[Math.min(i, selic.length - 1)] ?? 9);
