@@ -14,6 +14,7 @@ import { DriversPage } from "@/components/vesta/pages/drivers";
 import { AportePage } from "@/components/vesta/pages/aporte";
 import { RendimentosPage } from "@/components/vesta/pages/rendimentos";
 import { DomusPage } from "@/components/vesta/pages/domus";
+import { RVPage } from "@/components/vesta/pages/rv";
 
 import type { ProfileId } from "@/lib/profile-derive";
 import { getUser } from "@/data/vesta-users";
@@ -369,7 +370,8 @@ type PageKey =
   | "drivers"
   | "aporte"
   | "rendimentos"
-  | "domus";
+  | "domus"
+  | "rv";
 
 const PROFILE_META: Record<"familiar" | "cinthia" | "paulo", { name: string; sub: string; avatarBg: string; avatarColor: string; content: ReactNode }> = {
   familiar: {
@@ -513,6 +515,7 @@ export function VestaShell({
       {topItem("alertas", `Alertas (${totalAlertas})`)}
       {hasFullPortfolio && topItem("rendimentos", "Rendimentos")}
       {hasFullPortfolio && topItem("aporte", "Acelerar breakeven")}
+      {hasFullPortfolio && topItem("rv", "Simulador RV")}
       {hasFullPortfolio && topItem("secundario", "Mercado secundário")}
       {hasFullPortfolio && topItem("regras", "Regras")}
       {hasFullPortfolio && topItem("drivers", "Influenciadores")}
@@ -643,6 +646,7 @@ export function VestaShell({
               {item("regras", "Regras — não mexer")}
               {item("upload", "Importar arquivos XP")}
               {item("drivers", "Influenciadores")}
+              {item("rv", "Simulador RV")}
             </>
           )}
 
@@ -788,6 +792,7 @@ export function VestaShell({
             {page === "drivers" && <DriversPage />}
             {page === "aporte" && <AportePage />}
             {page === "rendimentos" && <RendimentosPage profileId={profileId} />}
+            {page === "rv" && <RVPage />}
             {page === "domus" && canManageDomus && scopes && onUpdateScopes && (
               <DomusPage
                 scopes={scopes}
@@ -796,7 +801,7 @@ export function VestaShell({
                 initialDomusId={activeDomusId}
               />
             )}
-            {!["home", "posicao", "breakeven", "equiv", "validador", "projecao", "secundario", "alertas", "regras", "upload", "drivers", "aporte", "rendimentos", "domus"].includes(page) && (
+            {!["home", "posicao", "breakeven", "equiv", "validador", "projecao", "secundario", "alertas", "regras", "upload", "drivers", "aporte", "rendimentos", "domus", "rv"].includes(page) && (
               <div className="ph">
                 <h1>Em breve</h1>
                 <p>Este módulo será migrado nas próximas rodadas.</p>
