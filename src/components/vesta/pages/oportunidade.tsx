@@ -380,9 +380,7 @@ export function OportunidadePage() {
     const capB = Math.max(valorMercadoA - custo, 0);
     const rows: { ano: number; a: number; b: number }[] = [];
     let va = valorA;
-    /* Para RV: dividendos já recebidos fazem parte de "ficar" (estão no bolso).
-       A LCI parte do valor de mercado e precisa superar o valor econômico total. */
-    let divAcum = isRV ? dividendosRecebidosA : 0;
+    let divAcum = 0;
     let vb = capB;
     for (let i = 0; i < hz; i++) {
       if (isRV) {
@@ -409,7 +407,7 @@ export function OportunidadePage() {
        ultrapassa a origem — o breakeven da troca */
     let cruzaMes: number | null = null;
     {
-      let vaM = valorA, divM = isRV ? dividendosRecebidosA : 0, vbM = capB;
+      let vaM = valorA, divM = 0, vbM = capB;
       const maxM = Math.max(hz, 10) * 12;
       for (let m = 1; m <= maxM; m++) {
         const i = Math.min(Math.floor((m - 1) / 12), selic.length - 1);
@@ -424,7 +422,7 @@ export function OportunidadePage() {
       }
     }
     return { rows, final, cagrNec, divAcum, capB, ganhoMes, tA1, tB1, cruzaMes };
-  }, [valorA, valorMercadoA, custo, hz, isRV, dyA, aApre, taxaRfA, tipoB, selic, pctCdi, irCdb, ipcaReal, ipcaProj, preTaxa, acaoDy, acaoApre, cartDestId, dividendosRecebidosA]);
+  }, [valorA, valorMercadoA, custo, hz, isRV, dyA, aApre, taxaRfA, tipoB, selic, pctCdi, irCdb, ipcaReal, ipcaProj, preTaxa, acaoDy, acaoApre, cartDestId]);
 
   const retro = ativo ? notaRetrospectiva(ativo) : null;
   const vd = veredito(ativo, isRV ? sim.cagrNec : null, sim.final.b > sim.final.a);
@@ -1010,7 +1008,7 @@ export function OportunidadePage() {
         </div>
         <GraficoCurvas
           rows={sim.rows}
-          pontoA={isRV ? valorEconomicoHoje : valorA}
+          pontoA={valorA}
           pontoB={sim.capB}
           cruzaMes={sim.cruzaMes}
           nomeA={nomeA}
