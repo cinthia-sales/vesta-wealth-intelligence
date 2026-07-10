@@ -454,6 +454,16 @@ export function VestaShell({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const goTo = (k: PageKey) => { setPage(k); setSidebarOpen(false); setMoreOpen(false); };
+
+  useEffect(() => {
+    if (!moreOpen) return;
+    const close = (e: PointerEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && !t.closest(".context-nav__more") && !t.closest(".context-nav__menu")) setMoreOpen(false);
+    };
+    document.addEventListener("pointerdown", close);
+    return () => document.removeEventListener("pointerdown", close);
+  }, [moreOpen]);
   // profileName = nome do perfil visualizado (pode ser membro diferente do logado)
   const meta = getProfileMeta(profileId, profileName ?? loggedName);
   const isFamily = profileId === "familiar" || profileId.startsWith("domus:");
@@ -510,8 +520,7 @@ export function VestaShell({
   const moreMenu = (
     <div className="context-nav__menu">
       {hasFullPortfolio && topItem("posicao", "Posição")}
-      {hasFullPortfolio && topItem("oportunidade", "Custo de oportunidade")}
-      {hasFullPortfolio && topItem("breakeven", "Breakeven & giros")}
+      {hasFullPortfolio && topItem("breakeven", "Breakeven & decisões")}
       {hasFullPortfolio && topItem("projecao", "Projeção")}
       {!isFamily && topItem("upload", "Importar posição mensal")}
       {topItem("alertas", `Alertas (${totalAlertas})`)}
@@ -637,8 +646,7 @@ export function VestaShell({
           {hasFullPortfolio && (
             <>
               <div className="nav-sec">Decidir</div>
-              {item("oportunidade", "Custo de oportunidade", <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--sidebar-primary)" }}>⚖</span>)}
-              {item("breakeven", "Breakeven & giros")}
+              {item("breakeven", "Breakeven & decisões", <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--sidebar-primary)" }}>⚖</span>)}
               {item("projecao", "Projeção patrimônio")}
               {item("secundario", "Saída secundário")}
               <div className="nav-sec">Sistema</div>
@@ -708,7 +716,6 @@ export function VestaShell({
           <button className="context-nav__back" onClick={onBackToHall ?? onSwitchProfile}>← Hall</button>
           {topItem("home", "Visão geral")}
           {hasFullPortfolio && topItem("posicao", "Posição", "context-nav__portrait-hidden")}
-          {hasFullPortfolio && topItem("oportunidade", "Oportunidade", "context-nav__portrait-hidden")}
           {hasFullPortfolio && topItem("breakeven", "Breakeven", "context-nav__portrait-hidden")}
           {hasFullPortfolio && topItem("projecao", "Projeção", "context-nav__portrait-hidden")}
           {!isFamily && topItem("upload", "Importar posição mensal", "context-nav__portrait-hidden")}
@@ -867,8 +874,8 @@ function GirosRegistradosPanel() {
 }
 
 function BreakevenTabs({ profileId }: { profileId: ProfileId }) {
-  const [tab, setTab] = useState<"giros" | "aporte">("giros");
-  const tabBtn = (id: "giros" | "aporte", label: string) => (
+  const [tab, setTab] = useState<"oportunidade" | "giros" | "aporte">("oportunidade");
+  const tabBtn = (id: "oportunidade" | "giros" | "aporte", label: string) => (
     <button
       onClick={() => setTab(id)}
       style={{
@@ -886,9 +893,11 @@ function BreakevenTabs({ profileId }: { profileId: ProfileId }) {
   return (
     <>
       <div style={{ display: "flex", gap: 4, borderBottom: "1px solid var(--border)", marginBottom: 18 }}>
+        {tabBtn("oportunidade", "⚖ Custo de oportunidade")}
         {tabBtn("giros", "Giros & plano")}
         {tabBtn("aporte", "Acelerar com aporte")}
       </div>
+      {tab === "oportunidade" && <OportunidadePage />}
       {tab === "giros" && (
         <>
           <GirosRegistradosPanel />

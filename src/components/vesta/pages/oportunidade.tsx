@@ -109,9 +109,13 @@ export function OportunidadePage() {
   const [selic, setSelic] = useState<number[]>([...SELIC_DEF]);
   const [showSelic, setShowSelic] = useState(false);
   const [giroSalvo, setGiroSalvo] = useState(false);
+  const [vOverride, setVOverride] = useState<number | null>(null);
+  const [ticker, setTicker] = useState("");
+  const [tickerQtd, setTickerQtd] = useState(100);
+  const [buscaMsg, setBuscaMsg] = useState("");
 
   /* valores da origem */
-  const valorA = manual ? mValor : (ativo?.valorMercado ?? 0);
+  const valorA = manual ? mValor : (vOverride ?? ativo?.valorMercado ?? 0);
   const nomeA = manual ? mNome : (ativo?.nome ?? "");
   const isRV = manual ? true : ativo?.classe === "rv";
   const dyA = aDy ?? (ativo?.dyEsperado ?? 0);
@@ -123,9 +127,12 @@ export function OportunidadePage() {
     cartTaxa: cartDest?.taxaBruta ?? 13,
   };
 
+  /* custo de saída é deságio — sempre positivo, abatido do capital que migra */
+  const custo = Math.abs(custoSaida);
+
   /* simulação ano a ano */
   const sim = useMemo(() => {
-    const capB = Math.max(valorA - custoSaida, 0);
+    const capB = Math.max(valorA - custo, 0);
     const rows: { ano: number; a: number; b: number }[] = [];
     let va = valorA;
     let divAcum = 0;
@@ -151,15 +158,32 @@ export function OportunidadePage() {
     const tA1 = isRV ? dyA / 100 + aApre / 100 : taxaRfA / 100;
     const tB1 = taxaDestinoAno(tipoB, 0, selic, params);
     const ganhoMes = (capB * (tB1 - tA1)) / 12;
-    return { rows, final, cagrNec, divAcum, capB, ganhoMes, tA1, tB1 };
-  }, [valorA, custoSaida, hz, isRV, dyA, aApre, taxaRfA, tipoB, selic, pctCdi, irCdb, ipcaReal, ipcaProj, preTaxa, acaoDy, acaoApre, cartDestId]);
+    /* cruzamento das curvas mês a mês: quando o destino (que entrou com deságio)
+       ultrapassa a origem — o breakeven da troca */
+    let cruzaMes: number | null = null;
+    {
+      let vaM = valorA, divM = 0, vbM = capB;
+      const maxM = Math.max(hz, 10) * 12;
+      for (let m = 1; m <= maxM; m++) {
+        const i = Math.min(Math.floor((m - 1) / 12), selic.length - 1);
+        if (isRV) {
+          divM += (vaM * (dyA / 100)) / 12;
+          vaM *= Math.pow(1 + aApre / 100, 1 / 12);
+        } else {
+          vaM *= Math.pow(1 + taxaRfA / 100, 1 / 12);
+        }
+        vbM *= Math.pow(1 + taxaDestinoAno(tipoB, i, selic, params), 1 / 12);
+        if (cruzaMes === null && vbM >= vaM + divM) { cruzaMes = m; break; }
+      }
+    }
+    return { rows, final, cagrNec, divAcum, capB, ganhoMes, tA1, tB1, cruzaMes };
+  }, [valorA, custo, hz, isRV, dyA, aApre, taxaRfA, tipoB, selic, pctCdi, irCdb, ipcaReal, ipcaProj, preTaxa, acaoDy, acaoApre, cartDestId]);
 
   const retro = ativo ? notaRetrospectiva(ativo) : null;
   const vd = veredito(ativo, isRV ? sim.cagrNec : null, sim.final.b > sim.final.a);
-  const bkMeses = sim.ganhoMes > 0 && custoSaida > 0 ? Math.ceil(custoSaida / sim.ganhoMes) : 0;
+  const bkMeses = sim.ganhoMes > 0 && custo > 0 ? Math.ceil(custo / sim.ganhoMes) : 0;
 
   /* equivalência embutida: taxa isenta ↔ CDB bruto equivalente */
-  const cdiHoje = (selic[0] - 0.1) / 100;
   const taxaB1Isenta = tipoB === "lci" || tipoB === "ipca" || tipoB === "pre";
   const equivBruta = taxaB1Isenta ? sim.tB1 / (1 - 0.15) : sim.tB1;
 
@@ -180,7 +204,7 @@ export function OportunidadePage() {
       origem: nomeA,
       destino: descDestino,
       capital: sim.capB,
-      custoSaida,
+      custoSaida: custo,
       ganhoMesEstimado: Math.max(0, sim.ganhoMes),
       horizonteAnos: hz,
     });
@@ -216,7 +240,7 @@ export function OportunidadePage() {
           <div className="side-title a">Ativo atual — origem</div>
           <div className="fld">
             <label>Selecionar da carteira</label>
-            <select style={inputSt} value={origemId} onChange={(e) => { setOrigemId(e.target.value); setADy(null); setAApre(0); setATaxaRf(null); }}>
+            <select style={inputSt} value={origemId} onChange={(e) => { setOrigemId(e.target.value); setADy(null); setAApre(0); setATaxaRf(null); setVOverride(null); setBuscaMsg(""); }}>
               <optgroup label="Renda Variável — Paulo">
                 {CARTEIRA.filter((a) => a.classe === "rv").map((a) => (
                   <option key={a.id} value={a.id}>{a.nome} · {fmtR(a.valorMercado)}</option>
@@ -253,15 +277,58 @@ export function OportunidadePage() {
 
           {manual && (
             <>
+              <div className="fld-row">
+                <div className="fld"><label style={lblSt}>Buscar por código (B3)</label>
+                  <input style={inputSt} type="text" placeholder="ex.: PSSA3" value={ticker}
+                    onChange={(e) => setTicker(e.target.value.toUpperCase())} /></div>
+                <div className="fld"><label style={lblSt}>Quantidade</label>
+                  <input style={inputSt} type="number" value={tickerQtd} onChange={(e) => setTickerQtd(+e.target.value || 0)} /></div>
+              </div>
+              <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 9 }}>
+                <button
+                  onClick={async () => {
+                    if (!ticker) return;
+                    setBuscaMsg("buscando…");
+                    try {
+                      const r = await fetch(`https://brapi.dev/api/quote/${ticker}`);
+                      const j = await r.json();
+                      const q = j?.results?.[0];
+                      if (q?.regularMarketPrice) {
+                        setMNome(`${ticker} · ${q.longName ?? q.shortName ?? ""}`.trim());
+                        setMValor(Math.round(q.regularMarketPrice * tickerQtd));
+                        setBuscaMsg(`✓ ${ticker} a ${fmtP(q.regularMarketPrice)} — ${fmtR(q.regularMarketPrice * tickerQtd)}`);
+                      } else {
+                        setBuscaMsg("não encontrado — preencha manualmente");
+                      }
+                    } catch {
+                      setBuscaMsg("fonte indisponível — preencha manualmente");
+                    }
+                  }}
+                  style={{
+                    background: "var(--primary)", color: "var(--primary-foreground)", border: "none",
+                    padding: "6px 14px", borderRadius: 7, fontSize: 12, cursor: "pointer", fontFamily: "inherit",
+                  }}
+                >buscar cotação</button>
+                {buscaMsg && <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{buscaMsg}</span>}
+              </div>
               <div className="fld"><label style={lblSt}>Nome</label>
                 <input style={inputSt} type="text" value={mNome} onChange={(e) => setMNome(e.target.value)} /></div>
-              <div className="fld"><label style={lblSt}>Valor de mercado (R$)</label>
-                <input style={inputSt} type="number" value={mValor} onChange={(e) => setMValor(+e.target.value || 0)} /></div>
             </>
           )}
 
+          <div className="fld"><label style={lblSt}>Valor de mercado (R$)</label>
+            <input
+              style={{ ...inputSt, fontWeight: 600 }}
+              type="number"
+              value={valorA}
+              onChange={(e) => {
+                const v = +e.target.value || 0;
+                if (manual) setMValor(v); else setVOverride(v);
+              }}
+            /></div>
+
           <div className="fld-row">
-            <div className="fld"><label style={lblSt}>Custo de saída (R$)</label>
+            <div className="fld"><label style={lblSt}>Custo de saída / deságio (R$)</label>
               <input style={inputSt} type="number" value={custoSaida} onChange={(e) => setCustoSaida(+e.target.value || 0)} /></div>
             {isRV ? (
               <div className="fld"><label style={lblSt}>DY esperado %/ano</label>
@@ -274,6 +341,15 @@ export function OportunidadePage() {
           {isRV && (
             <div className="fld"><label style={lblSt}>Variação de preço esperada %/ano</label>
               <input style={inputSt} type="number" step={0.5} value={aApre} onChange={(e) => setAApre(+e.target.value || 0)} /></div>
+          )}
+          {custo > 0 && (
+            <div style={{
+              background: "var(--secondary)", borderRadius: 7, padding: "6px 10px",
+              fontSize: 11, color: "var(--muted-foreground)",
+            }}>
+              Pedágio de {fmtR(custo)}: o destino parte de <b>{fmtR(sim.capB)}</b> ({fmtR(valorA)} − {fmtR(custo)})
+              e precisa alcançar a origem na taxa nova.
+            </div>
           )}
         </div>
 
@@ -299,8 +375,15 @@ export function OportunidadePage() {
                     <option value={0.175}>17,5%</option><option value={0.15}>15%</option>
                   </select></div>
               ) : (
-                <div className="fld"><label style={lblSt}>CDI hoje</label>
-                  <input style={inputSt} readOnly value={pct(cdiHoje, 2)} /></div>
+                <div className="fld"><label style={lblSt}>CDI hoje %</label>
+                  <input
+                    style={inputSt} type="number" step={0.05}
+                    value={+(selic[0] - 0.1).toFixed(2)}
+                    onChange={(e) => {
+                      const v = parseFloat(e.target.value);
+                      if (!isNaN(v)) setSelic((prev) => { const n = [...prev]; n[0] = +(v + 0.1).toFixed(2); return n; });
+                    }}
+                  /></div>
               )}
             </div>
           )}
@@ -346,12 +429,34 @@ export function OportunidadePage() {
             {taxaB1Isenta && ` (≈ ${pct(equivBruta, 2)} bruto em CDB — equivalência embutida)`}
           </div>
 
-          <button
-            onClick={() => setShowSelic(!showSelic)}
-            style={{ background: "none", border: "none", color: "var(--accent)", fontSize: 11, cursor: "pointer", padding: 0, marginTop: 6, fontFamily: "inherit", textDecoration: "underline" }}
-          >
-            {showSelic ? "▾ ocultar curva Selic" : "▸ editar curva Selic projetada"}
-          </button>
+          <div style={{ display: "flex", gap: 14, marginTop: 6, flexWrap: "wrap" }}>
+            <button
+              onClick={() => setShowSelic(!showSelic)}
+              style={{ background: "none", border: "none", color: "var(--accent)", fontSize: 11, cursor: "pointer", padding: 0, fontFamily: "inherit", textDecoration: "underline" }}
+            >
+              {showSelic ? "▾ ocultar curva Selic" : "▸ editar curva Selic projetada"}
+            </button>
+            <button
+              onClick={async () => {
+                setBuscaMsg("consultando BCB…");
+                try {
+                  const r = await fetch("https://api.bcb.gov.br/dados/serie/bcdata.sgs.4389/dados/ultimos/1?formato=json");
+                  const j = await r.json();
+                  const v = parseFloat(j?.[0]?.valor);
+                  if (!isNaN(v)) {
+                    setSelic((prev) => { const n = [...prev]; n[0] = +(v + 0.1).toFixed(2); return n; });
+                    setBuscaMsg(`✓ CDI ${v.toFixed(2)}% (BCB, série 4389)`);
+                  } else setBuscaMsg("BCB sem dados — mantido o valor atual");
+                } catch {
+                  setBuscaMsg("BCB indisponível — mantido o valor atual");
+                }
+              }}
+              style={{ background: "none", border: "none", color: "var(--accent)", fontSize: 11, cursor: "pointer", padding: 0, fontFamily: "inherit", textDecoration: "underline" }}
+            >
+              ↻ CDI do Banco Central
+            </button>
+            {buscaMsg && !manual && <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{buscaMsg}</span>}
+          </div>
           {showSelic && (
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
               {SELIC_DEF.slice(0, hz).map((def, i) => (
@@ -417,9 +522,51 @@ export function OportunidadePage() {
         <span style={{ fontSize: 12.5, lineHeight: 1.5, color: VCOLOR[vd.t], flex: 1, minWidth: 220 }}>
           <b>{nomeA} → {descDestino}:</b> {vd.motivo}
           {vd.t !== "MANTER" && sim.ganhoMes > 0 && (
-            <> Troca rende <b>+{fmtR(sim.ganhoMes)}/mês</b>{custoSaida > 0 ? <> e paga o custo de saída em <b>{bkMeses} {bkMeses === 1 ? "mês" : "meses"}</b></> : " sem custo de saída"}.</>
+            <> Troca rende <b>+{fmtR(sim.ganhoMes)}/mês</b>{custo > 0 ? <> e paga o pedágio em <b>{bkMeses} {bkMeses === 1 ? "mês" : "meses"}</b></> : " sem custo de saída"}.</>
           )}
         </span>
+      </div>
+
+      {/* ── PEDÁGIO & CRUZAMENTO — o breakeven da troca ── */}
+      <div className="kpi-row" style={{ marginBottom: 13 }}>
+        <div className="kpi">
+          <div className="kpi-l">Pedágio de saída</div>
+          <div className="kpi-v" style={{ color: custo > 0 ? "var(--destructive)" : undefined }}>
+            {custo > 0 ? fmtR(custo) : "—"}
+          </div>
+          <div className="kpi-s">{custo > 0 ? `destino parte de ${fmtR(sim.capB)}` : "sem custo de saída"}</div>
+        </div>
+        <div className="kpi">
+          <div className="kpi-l">Ganho na taxa nova</div>
+          <div className="kpi-v" style={{ color: sim.ganhoMes > 0 ? "var(--success, #5B8A6A)" : "var(--destructive)" }}>
+            {sim.ganhoMes > 0 ? "+" : ""}{fmtR(sim.ganhoMes)}/mês
+          </div>
+          <div className="kpi-s">1º ano · {pct(sim.tB1, 2)} vs {pct(sim.tA1, 2)}</div>
+        </div>
+        <div className="kpi">
+          <div className="kpi-l">Pedágio pago em</div>
+          <div className="kpi-v">
+            {custo === 0 ? "imediato" : sim.ganhoMes > 0 ? `${bkMeses} ${bkMeses === 1 ? "mês" : "meses"}` : "nunca"}
+          </div>
+          <div className="kpi-s">breakeven da troca (fluxo)</div>
+        </div>
+        <div className="kpi">
+          <div className="kpi-l">Curvas se cruzam</div>
+          <div className="kpi-v" style={{ color: sim.cruzaMes === null ? "var(--destructive)" : undefined }}>
+            {sim.cruzaMes === null
+              ? "não cruzam"
+              : sim.cruzaMes <= 1
+              ? "imediato"
+              : sim.cruzaMes % 12 === 0
+              ? `${sim.cruzaMes / 12} ${sim.cruzaMes === 12 ? "ano" : "anos"}`
+              : `${sim.cruzaMes} meses`}
+          </div>
+          <div className="kpi-s">
+            {sim.cruzaMes === null
+              ? "em até 10 anos — origem rende mais"
+              : `destino ultrapassa a origem em ${new Date(2026, 6 + sim.cruzaMes, 1).toLocaleDateString("pt-BR", { month: "short", year: "numeric" })}`}
+          </div>
+        </div>
       </div>
 
       {/* ── COMPARAÇÃO NO TEMPO ── */}
