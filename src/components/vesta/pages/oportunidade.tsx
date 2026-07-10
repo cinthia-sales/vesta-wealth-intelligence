@@ -97,17 +97,26 @@ function GraficoCurvas({
             </text>
           </g>
         ))}
-        {/* label de início do destino se for diferente da origem */}
-        {pontoB < pontoA - 100 && (
+        {/* label de início do destino se sair de baixo (há pedágio) */}
+        {pontoB < pontoA - 200 && (
           <text x={PL + 6} y={ys(pontoB) + 13} fontSize={10} fill="#888">
             destino líquido {fmtRk(pontoB)}
           </text>
         )}
+        {/* área entre curvas (azul acima = destino ganha) */}
+        {(() => {
+          const bAbove = pts.every(p => p.b >= p.a);
+          if (!bAbove) return null;
+          const areaD = pts.map((p, i) => (i ? "L" : "M") + xs(p.m).toFixed(1) + " " + ys(p.b).toFixed(1)).join(" ")
+            + [...pts].reverse().map(p => "L" + xs(p.m).toFixed(1) + " " + ys(p.a).toFixed(1)).join(" ")
+            + " Z";
+          return <path d={areaD} fill="rgba(79,142,247,.10)" />;
+        })()}
         {/* curvas */}
         <path d={pathOf("a")} fill="none" stroke="#A85555" strokeWidth={2.5} />
         <path d={pathOf("b")} fill="none" stroke="#4f8ef7" strokeWidth={2.5} />
-        {/* marcador de cruzamento */}
-        {mCross !== null && (() => {
+        {/* marcador de cruzamento — só quando há pedágio real a recuperar (>6 meses) */}
+        {mCross !== null && mCross > 6 && (() => {
           const cx = xs(mCross), cy = ys(aAtCross);
           const lcx = lx + labelW / 2, lcy = ly + labelH;
           const crossLabel = mCross % 12 === 0
@@ -128,10 +137,28 @@ function GraficoCurvas({
             </>
           );
         })()}
-        {/* sem cruzamento no horizonte */}
-        {mCross === null && (
-          <text x={W - PR - 4} y={PT + 12} fontSize={10} textAnchor="end" fill="var(--muted-foreground)" opacity=".7">
-            destino não cruza no horizonte
+        {/* sem cruzamento = destino já ganha: mostra vantagem no final */}
+        {(mCross === null || mCross <= 6) && (() => {
+          const last = pts[pts.length - 1];
+          if (!last || last.b <= last.a) return null;
+          const yEnd = ys(last.b), xEnd = xs(last.m);
+          const diff = last.b - last.a;
+          return (
+            <>
+              <circle cx={xEnd} cy={yEnd} r={4} fill="#4f8ef7" />
+              <text x={xEnd - 4} y={yEnd - 10} fontSize={10} fontWeight={700} fill="#4f8ef7" textAnchor="end">
+                +{fmtRk(diff)}
+              </text>
+              <text x={xEnd - 4} y={yEnd - 0} fontSize={9} fill="#4f8ef7" textAnchor="end" opacity=".8">
+                vs ficar
+              </text>
+            </>
+          );
+        })()}
+        {/* destino não cruza: origem ganha */}
+        {mCross === null && pts[pts.length-1]?.b <= pts[pts.length-1]?.a && (
+          <text x={W - PR - 4} y={PT + 12} fontSize={10} textAnchor="end" fill="#A85555" opacity=".8">
+            origem mantém vantagem
           </text>
         )}
       </svg>
@@ -353,7 +380,9 @@ export function OportunidadePage() {
     const capB = Math.max(valorMercadoA - custo, 0);
     const rows: { ano: number; a: number; b: number }[] = [];
     let va = valorA;
-    let divAcum = 0;
+    /* Para RV: dividendos já recebidos fazem parte de "ficar" (estão no bolso).
+       A LCI parte do valor de mercado e precisa superar o valor econômico total. */
+    let divAcum = isRV ? dividendosRecebidosA : 0;
     let vb = capB;
     for (let i = 0; i < hz; i++) {
       if (isRV) {
@@ -380,7 +409,7 @@ export function OportunidadePage() {
        ultrapassa a origem — o breakeven da troca */
     let cruzaMes: number | null = null;
     {
-      let vaM = valorA, divM = 0, vbM = capB;
+      let vaM = valorA, divM = isRV ? dividendosRecebidosA : 0, vbM = capB;
       const maxM = Math.max(hz, 10) * 12;
       for (let m = 1; m <= maxM; m++) {
         const i = Math.min(Math.floor((m - 1) / 12), selic.length - 1);
@@ -395,7 +424,7 @@ export function OportunidadePage() {
       }
     }
     return { rows, final, cagrNec, divAcum, capB, ganhoMes, tA1, tB1, cruzaMes };
-  }, [valorA, valorMercadoA, custo, hz, isRV, dyA, aApre, taxaRfA, tipoB, selic, pctCdi, irCdb, ipcaReal, ipcaProj, preTaxa, acaoDy, acaoApre, cartDestId]);
+  }, [valorA, valorMercadoA, custo, hz, isRV, dyA, aApre, taxaRfA, tipoB, selic, pctCdi, irCdb, ipcaReal, ipcaProj, preTaxa, acaoDy, acaoApre, cartDestId, dividendosRecebidosA]);
 
   const retro = ativo ? notaRetrospectiva(ativo) : null;
   const vd = veredito(ativo, isRV ? sim.cagrNec : null, sim.final.b > sim.final.a);
@@ -981,7 +1010,7 @@ export function OportunidadePage() {
         </div>
         <GraficoCurvas
           rows={sim.rows}
-          pontoA={valorA}
+          pontoA={isRV ? valorEconomicoHoje : valorA}
           pontoB={sim.capB}
           cruzaMes={sim.cruzaMes}
           nomeA={nomeA}
