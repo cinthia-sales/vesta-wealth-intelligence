@@ -1,4 +1,128 @@
 import { useMemo, useState, type CSSProperties } from "react";
+
+/* ── helpers de gráfico SVG (espelhados do breakeven) ── */
+function niceNum(range: number, round: boolean) {
+  const exp = Math.floor(Math.log10(Math.max(range, 1e-9)));
+  const f = range / Math.pow(10, exp);
+  let n: number;
+  if (round) { n = f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10; }
+  else        { n = f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10; }
+  return n * Math.pow(10, exp);
+}
+function niceScale(min: number, max: number, divs = 4) {
+  if (max <= min) return { niceMin: min, niceMax: max || min + 1 };
+  const range = niceNum(max - min, false);
+  const step  = niceNum(range / divs, true);
+  const niceMin = Math.floor(min / step) * step;
+  const niceMax = niceMin + step * divs >= max ? niceMin + step * divs : Math.ceil(max / step) * step;
+  return { niceMin, niceMax };
+}
+function fmtRk(n: number) {
+  if (Math.abs(n) >= 1_000_000) return "R$ " + (n / 1_000_000).toFixed(1) + "M";
+  if (Math.abs(n) >= 1_000)     return "R$ " + Math.round(n / 1_000) + "k";
+  return "R$ " + Math.round(n);
+}
+
+function GraficoCurvas({
+  pontoA, taxaA, pontoB, taxaB, cruzaMes, horizonte: hzAnos, nomeA, nomeB,
+}: {
+  pontoA: number; taxaA: number; /* taxa anual fracionária */
+  pontoB: number; taxaB: number;
+  cruzaMes: number | null;
+  horizonte: number; /* anos */
+  nomeA: string; nomeB: string;
+}) {
+  const totalMeses = hzAnos * 12;
+  const vA = (m: number) => pontoA * Math.pow(1 + taxaA, m / 12);
+  const vB = (m: number) => pontoB * Math.pow(1 + taxaB, m / 12);
+  const N = 60;
+  const pts = Array.from({ length: N + 1 }, (_, i) => {
+    const m = (i / N) * totalMeses;
+    return { m, a: vA(m), b: vB(m) };
+  });
+  const maxV = Math.max(...pts.map(p => Math.max(p.a, p.b)));
+  const minV = Math.min(pontoA, pontoB);
+  const pad = (maxV - minV) * 0.1;
+  const { niceMin, niceMax } = niceScale(minV - pad * 0.3, maxV + pad);
+  const W = 620, H = 270, PL = 72, PR = 20, PT = 36, PB = 36;
+  const xs = (m: number) => PL + (m / totalMeses) * (W - PL - PR);
+  const ys = (v: number) => PT + (1 - (v - niceMin) / (niceMax - niceMin)) * (H - PT - PB);
+  const yTicks = [0, 0.25, 0.5, 0.75, 1].map(f => niceMin + f * (niceMax - niceMin));
+  const xStep = totalMeses <= 36 ? 6 : totalMeses <= 72 ? 12 : 24;
+  const xTicks: number[] = [];
+  for (let m = 0; m <= totalMeses; m += xStep) xTicks.push(m);
+  const pathA = pts.map((p, i) => (i ? "L" : "M") + xs(p.m).toFixed(1) + " " + ys(p.a).toFixed(1)).join(" ");
+  const pathB = pts.map((p, i) => (i ? "L" : "M") + xs(p.m).toFixed(1) + " " + ys(p.b).toFixed(1)).join(" ");
+  const mCross = cruzaMes !== null && cruzaMes <= totalMeses ? cruzaMes : null;
+
+  const labelW = 220, labelH = 38;
+  const lx = mCross !== null
+    ? Math.min(Math.max(xs(mCross) - labelW / 2, PL + 2), W - PR - labelW - 2)
+    : 0;
+  const ly = 4;
+
+  return (
+    <div style={{ height: 290 }}>
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "100%" }}>
+        {/* grid */}
+        {yTicks.map((v, i) => (
+          <g key={i}>
+            <line x1={PL} x2={W - PR} y1={ys(v)} y2={ys(v)} stroke="rgba(0,0,0,.06)" />
+            <text x={PL - 6} y={ys(v) + 3} fontSize={10} textAnchor="end" fill="var(--muted-foreground)">{fmtRk(v)}</text>
+          </g>
+        ))}
+        <line x1={PL} x2={W - PR} y1={H - PB} y2={H - PB} stroke="rgba(0,0,0,.15)" />
+        <line x1={PL} x2={PL} y1={PT} y2={H - PB} stroke="rgba(0,0,0,.15)" />
+        {xTicks.map(m => (
+          <g key={m}>
+            <line x1={xs(m)} x2={xs(m)} y1={H - PB} y2={H - PB + 3} stroke="rgba(0,0,0,.2)" />
+            <text x={xs(m)} y={H - PB + 14} fontSize={10} textAnchor="middle" fill="var(--muted-foreground)">
+              {m === 0 ? "hoje" : m % 12 === 0 ? `${m / 12}a` : `${m}m`}
+            </text>
+          </g>
+        ))}
+        {/* destino label inline no início */}
+        <text x={PL + 6} y={ys(pontoB) + (pontoB < pontoA ? 14 : -6)} fontSize={10} fill="#888">
+          destino líquido {fmtRk(pontoB)}
+        </text>
+        {/* curvas */}
+        <path d={pathA} fill="none" stroke="#A85555" strokeWidth={2.5} />
+        <path d={pathB} fill="none" stroke="#999" strokeWidth={2} strokeDasharray="6 3" />
+        {/* cruzamento */}
+        {mCross !== null && (() => {
+          const cx = xs(mCross), cy = ys(vA(mCross));
+          const lcx = lx + labelW / 2;
+          const lcy = ly + labelH;
+          return (
+            <>
+              <line x1={cx} x2={cx} y1={PT} y2={H - PB} stroke="var(--accent)" strokeDasharray="4 3" strokeWidth={1} strokeOpacity=".7" />
+              <circle cx={cx} cy={cy} r={5} fill="var(--accent)" />
+              <line x1={cx} y1={cy - 6} x2={lcx} y2={lcy} stroke="var(--accent)" strokeOpacity=".3" strokeWidth={1} />
+              <rect x={lx} y={ly} width={labelW} height={labelH} rx={5}
+                fill="white" stroke="var(--accent)" strokeOpacity=".5" />
+              <text x={lcx} y={ly + 15} fontSize={12} fontWeight={700} fill="var(--accent)" textAnchor="middle">
+                Breakeven · {mCross} meses · {fmtRk(vA(mCross))}
+              </text>
+              <text x={lcx} y={ly + 29} fontSize={10} fill="var(--accent)" textAnchor="middle" opacity=".8">
+                pedágio R$ {fmtRk(vA(mCross) - pontoB)} · passivo {fmtRk(vA(mCross) - pontoA)}
+              </text>
+            </>
+          );
+        })()}
+      </svg>
+      <div style={{ display: "flex", gap: 18, fontSize: 11, color: "var(--muted-foreground)", flexWrap: "wrap", marginTop: 4 }}>
+        <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+          <span style={{ display: "inline-block", width: 18, height: 2.5, background: "#A85555" }} />
+          {nomeA} ({(taxaA * 100).toFixed(2)}% a.a.)
+        </span>
+        <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+          <span style={{ display: "inline-block", width: 18, height: 2, background: "#999", borderTop: "2px dashed #999" }} />
+          {nomeB} ({(taxaB * 100).toFixed(2)}% a.a.)
+        </span>
+      </div>
+    </div>
+  );
+}
 import {
   CARTEIRA,
   CDI_HIST,
@@ -398,34 +522,25 @@ export function OportunidadePage() {
             </>
           )}
 
-          {isRV ? (
-            <div className="fld"><label style={lblSt}>Valor de mercado (R$)</label>
-              <input
-                style={{ ...inputSt, fontWeight: 600 }}
-                type="number"
-                value={valorMercadoA}
-                onChange={(e) => {
-                  const v = +e.target.value || 0;
-                  if (manual) setMValor(v); else setVOverride(v);
-                }}
-              /></div>
+          {/* valores: editáveis só em modo manual ou override explícito */}
+          {manual ? (
+            isRV ? (
+              <div className="fld"><label style={lblSt}>Valor de mercado (R$)</label>
+                <input style={{ ...inputSt, fontWeight: 600 }} type="number" value={valorMercadoA}
+                  onChange={(e) => setMValor(+e.target.value || 0)} /></div>
+            ) : (
+              <div className="fld-row">
+                <div className="fld"><label style={lblSt}>Valor na curva (R$)</label>
+                  <input style={{ ...inputSt, fontWeight: 600 }} type="number" value={valorCurvaA}
+                    onChange={(e) => setVCurvaOverride(+e.target.value || 0)} /></div>
+                <div className="fld"><label style={lblSt}>Valor de mercado (R$)</label>
+                  <input style={{ ...inputSt, fontWeight: 600 }} type="number" value={valorMercadoA}
+                    onChange={(e) => setVOverride(+e.target.value || 0)} /></div>
+              </div>
+            )
           ) : (
-            <div className="fld-row">
-              <div className="fld"><label style={lblSt}>Valor na curva — se ficar (R$)</label>
-                <input
-                  style={{ ...inputSt, fontWeight: 600 }}
-                  type="number"
-                  value={valorCurvaA}
-                  onChange={(e) => setVCurvaOverride(+e.target.value || 0)}
-                /></div>
-              <div className="fld"><label style={lblSt}>Valor de mercado — se sair (R$)</label>
-                <input
-                  style={{ ...inputSt, fontWeight: 600 }}
-                  type="number"
-                  value={valorMercadoA}
-                  onChange={(e) => setVOverride(+e.target.value || 0)}
-                /></div>
-            </div>
+            /* ativo da carteira — exibe como badge, permite override via link */
+            !isRV && desagioImplicito > 0 ? null : null /* deságio já aparece abaixo */
           )}
           <div style={{
             display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(115px, 1fr))", gap: 8,
@@ -457,31 +572,43 @@ export function OportunidadePage() {
             </div>
           )}
 
-          {!isRV && (
+          {/* Duration/taxa — mostrar só se RF e tiver os dados (ou manual) */}
+          {!isRV && (durationA != null || manual) && (
             <div className="fld-row">
-              <div className="fld"><label style={lblSt}>Duration estimada (anos)</label>
-                <input style={inputSt} type="number" step={0.5} value={durationA ?? ""} onChange={(e) => setDurationOverride(e.target.value === "" ? null : +e.target.value)} /></div>
-              <div className="fld"><label style={lblSt}>Taxa contratada IPCA+</label>
-                <input style={inputSt} type="number" step={0.05} value={taxaRealCurvaA ?? ""} onChange={(e) => setTaxaCurvaOverride(e.target.value === "" ? null : +e.target.value)} /></div>
-              <div className="fld"><label style={lblSt}>Taxa de mercado IPCA+</label>
-                <input style={inputSt} type="number" step={0.05} value={taxaRealMercadoA ?? ""} onChange={(e) => setTaxaMercadoOverride(e.target.value === "" ? null : +e.target.value)} /></div>
+              <div className="fld"><label style={lblSt}>Duration (anos)</label>
+                <input style={inputSt} type="number" step={0.5} value={durationA ?? ""}
+                  onChange={(e) => setDurationOverride(e.target.value === "" ? null : +e.target.value)} /></div>
+              {(taxaRealCurvaA != null || manual) && <>
+                <div className="fld"><label style={lblSt}>Taxa contratada IPCA+</label>
+                  <input style={inputSt} type="number" step={0.05} value={taxaRealCurvaA ?? ""}
+                    onChange={(e) => setTaxaCurvaOverride(e.target.value === "" ? null : +e.target.value)} /></div>
+                <div className="fld"><label style={lblSt}>Taxa mercado IPCA+</label>
+                  <input style={inputSt} type="number" step={0.05} value={taxaRealMercadoA ?? ""}
+                    onChange={(e) => setTaxaMercadoOverride(e.target.value === "" ? null : +e.target.value)} /></div>
+              </>}
             </div>
           )}
 
-          <div className="fld-row">
-            <div className="fld"><label style={lblSt}>Custo extra de saída — IR/corretagem (R$)</label>
-              <input style={inputSt} type="number" value={custoSaida} onChange={(e) => setCustoSaida(+e.target.value || 0)} /></div>
-            {isRV ? (
-              <div className="fld"><label style={lblSt}>DY esperado %/ano</label>
-                <input style={inputSt} type="number" step={0.5} value={dyA} onChange={(e) => setADy(+e.target.value || 0)} /></div>
-            ) : (
-              <div className="fld"><label style={lblSt}>Taxa atual %/ano</label>
-                <input style={inputSt} type="number" step={0.05} value={taxaRfA} onChange={(e) => setATaxaRf(+e.target.value || 0)} /></div>
-            )}
-          </div>
+          {/* único campo obrigatório de input: custo de saída (IR/corretagem) */}
+          <div className="fld"><label style={lblSt}>Custo extra de saída — IR/corretagem (R$)</label>
+            <input style={{ ...inputSt, fontWeight: 600 }} type="number" value={custoSaida}
+              onChange={(e) => setCustoSaida(+e.target.value || 0)} /></div>
+
+          {/* projeção futura — sempre editável pois é premissa, não dado histórico */}
           {isRV && (
-            <div className="fld"><label style={lblSt}>Variação de preço esperada %/ano</label>
-              <input style={inputSt} type="number" step={0.5} value={aApre} onChange={(e) => setAApre(+e.target.value || 0)} /></div>
+            <div className="fld-row">
+              <div className="fld"><label style={lblSt}>DY esperado %/ano {!manual && ativo?.dyEsperado ? `(carteira: ${ativo.dyEsperado}%)` : ""}</label>
+                <input style={inputSt} type="number" step={0.5} value={dyA}
+                  onChange={(e) => setADy(+e.target.value || 0)} /></div>
+              <div className="fld"><label style={lblSt}>Variação de preço esperada %/ano</label>
+                <input style={inputSt} type="number" step={0.5} value={aApre}
+                  onChange={(e) => setAApre(+e.target.value || 0)} /></div>
+            </div>
+          )}
+          {!isRV && (
+            <div className="fld"><label style={lblSt}>Taxa atual %/ano {!manual && ativo?.taxaBruta ? `(carteira: ${ativo.taxaBruta}%)` : ""}</label>
+              <input style={inputSt} type="number" step={0.05} value={taxaRfA}
+                onChange={(e) => setATaxaRf(+e.target.value || 0)} /></div>
           )}
           {pedagioTotal > 0 && (
             <div style={{
@@ -821,38 +948,31 @@ export function OportunidadePage() {
         </div>
       </div>
 
-      {/* ── COMPARAÇÃO NO TEMPO ── */}
+      {/* ── GRÁFICO DAS CURVAS ── */}
       <div className="card" style={{ marginBottom: 13 }}>
         <div className="card-hdr">
-          Comparação no tempo
-          <span>curva Selic decrescente · dividendos da origem NÃO compõem</span>
+          Curvas no tempo
+          <span>destino parte com o capital líquido · dividendos da origem não compõem</span>
         </div>
-        <div style={{ overflowX: "auto" }}>
-          <table className="cmp-tbl">
-            <thead>
-              <tr><th>Ano</th><th>Ficar — {nomeA}</th><th>Trocar — {descDestino}</th><th>Diferença</th><th></th></tr>
-            </thead>
-            <tbody>
-              {sim.rows.map((r) => {
-                const win = r.b > r.a;
-                return (
-                  <tr key={r.ano} className={win ? "win" : ""}>
-                    <td>{r.ano} {r.ano === 1 ? "ano" : "anos"}</td>
-                    <td>{fmtR(r.a)}</td>
-                    <td style={{ color: win ? "var(--success)" : "inherit" }}>{fmtR(r.b)}</td>
-                    <td style={{ color: win ? "var(--success)" : "var(--danger)" }}>
-                      {win ? "+" : "−"}{fmtR(Math.abs(r.b - r.a))}
-                    </td>
-                    <td><span className={"sb " + (win ? "sb-g" : "sb-r")}>{win ? "destino ganha" : "origem ganha"}</span></td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <GraficoCurvas
+          pontoA={valorA}
+          taxaA={isRV ? (dyA / 100 + aApre / 100) : (taxaRfA / 100)}
+          pontoB={sim.capB}
+          taxaB={sim.tB1}
+          cruzaMes={sim.cruzaMes}
+          horizonte={hz}
+          nomeA={nomeA}
+          nomeB={descDestino}
+        />
         {isRV && sim.cagrNec !== null && (
-          <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 8 }}>
-            Para a origem empatar com o destino em {hz} anos, o preço precisa subir <b>{pct(sim.cagrNec)} a.a.</b> além
+          <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 10 }}>
+            O breakeven real acontece quando o destino alcança <b>{fmtR(valorA)}</b>: valor de hoje + pedágio +
+            passivo calculado desde {ativo?.anoCompra ?? "—"}. No fim de {hz} anos, o destino fica{" "}
+            <b style={{ color: sim.final.b > sim.final.a ? "var(--success, #5B8A6A)" : "var(--destructive)" }}>
+              {sim.final.b > sim.final.a ? "acima" : "abaixo"}
+            </b>{" "}
+            da meta em <b>{fmtR(Math.abs(sim.final.b - sim.final.a))}</b>.
+            Para a origem RV empatar, o preço precisa subir <b>{pct(sim.cagrNec)} a.a.</b> além
             dos dividendos ({fmtR(sim.divAcum)} projetados, parados na conta).
           </div>
         )}
