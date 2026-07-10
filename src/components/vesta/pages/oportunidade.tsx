@@ -23,46 +23,62 @@ function fmtRk(n: number) {
   return "R$ " + Math.round(n);
 }
 
+/* GraficoCurvas usa os rows já computados pelo sim (dividendos não compõem —
+   a curva A reflete a realidade: preço + dividendos parados, NÃO composto).
+   Isso garante que a curva do destino cruza a de origem no momento correto. */
 function GraficoCurvas({
-  pontoA, taxaA, pontoB, taxaB, cruzaMes, horizonte: hzAnos, nomeA, nomeB,
+  rows, pontoA, pontoB, cruzaMes, nomeA, nomeB, tA, tB,
 }: {
-  pontoA: number; taxaA: number; /* taxa anual fracionária */
-  pontoB: number; taxaB: number;
+  rows: { ano: number; a: number; b: number }[];
+  pontoA: number;  pontoB: number;
   cruzaMes: number | null;
-  horizonte: number; /* anos */
-  nomeA: string; nomeB: string;
+  nomeA: string;   nomeB: string;
+  tA: number;      tB: number;  /* taxa anual fracionária — só para legenda */
 }) {
-  const totalMeses = hzAnos * 12;
-  const vA = (m: number) => pontoA * Math.pow(1 + taxaA, m / 12);
-  const vB = (m: number) => pontoB * Math.pow(1 + taxaB, m / 12);
-  const N = 60;
-  const pts = Array.from({ length: N + 1 }, (_, i) => {
-    const m = (i / N) * totalMeses;
-    return { m, a: vA(m), b: vB(m) };
-  });
+  /* adiciona ponto 0 (hoje) e converte anos → meses para o eixo X */
+  const pts = [
+    { m: 0, a: pontoA, b: pontoB },
+    ...rows.map(r => ({ m: r.ano * 12, a: r.a, b: r.b })),
+  ];
+  const totalMeses = (rows[rows.length - 1]?.ano ?? 5) * 12;
   const maxV = Math.max(...pts.map(p => Math.max(p.a, p.b)));
   const minV = Math.min(pontoA, pontoB);
-  const pad = (maxV - minV) * 0.1;
-  const { niceMin, niceMax } = niceScale(minV - pad * 0.3, maxV + pad);
+  const pad = (maxV - minV) * 0.12;
+  const { niceMin, niceMax } = niceScale(Math.max(0, minV - pad * 0.3), maxV + pad);
+
   const W = 620, H = 270, PL = 72, PR = 20, PT = 36, PB = 36;
   const xs = (m: number) => PL + (m / totalMeses) * (W - PL - PR);
   const ys = (v: number) => PT + (1 - (v - niceMin) / (niceMax - niceMin)) * (H - PT - PB);
-  const yTicks = [0, 0.25, 0.5, 0.75, 1].map(f => niceMin + f * (niceMax - niceMin));
-  const xStep = totalMeses <= 36 ? 6 : totalMeses <= 72 ? 12 : 24;
-  const xTicks: number[] = [];
-  for (let m = 0; m <= totalMeses; m += xStep) xTicks.push(m);
-  const pathA = pts.map((p, i) => (i ? "L" : "M") + xs(p.m).toFixed(1) + " " + ys(p.a).toFixed(1)).join(" ");
-  const pathB = pts.map((p, i) => (i ? "L" : "M") + xs(p.m).toFixed(1) + " " + ys(p.b).toFixed(1)).join(" ");
-  const mCross = cruzaMes !== null && cruzaMes <= totalMeses ? cruzaMes : null;
 
-  const labelW = 220, labelH = 38;
+  const yTicks = [0, 0.25, 0.5, 0.75, 1].map(f => niceMin + f * (niceMax - niceMin));
+  const xTicks: number[] = [];
+  const xStep = totalMeses <= 36 ? 6 : totalMeses <= 72 ? 12 : 24;
+  for (let m = 0; m <= totalMeses; m += xStep) xTicks.push(m);
+
+  const pathOf = (key: "a" | "b") =>
+    pts.map((p, i) => (i ? "L" : "M") + xs(p.m).toFixed(1) + " " + ys(p[key]).toFixed(1)).join(" ");
+
+  /* para o callout precisamos interpolar o valor exato no cruzamento */
+  const mCross = cruzaMes !== null && cruzaMes <= totalMeses ? cruzaMes : null;
+  /* valor da curva A no mês do cruzamento (interpolado entre anos) */
+  const aAtCross = (() => {
+    if (mCross === null) return 0;
+    const yrF = mCross / 12;
+    const lo = [...pts].reverse().find((p: {m:number;a:number;b:number}) => p.m / 12 <= yrF) ?? pts[0];
+    const hi = pts.find(p => p.m / 12 > yrF) ?? pts[pts.length - 1];
+    if (lo === hi) return lo.a;
+    const t = (yrF - lo.m / 12) / ((hi.m - lo.m) / 12);
+    return lo.a + (hi.a - lo.a) * t;
+  })();
+
+  const labelW = 230, labelH = 38;
   const lx = mCross !== null
     ? Math.min(Math.max(xs(mCross) - labelW / 2, PL + 2), W - PR - labelW - 2)
     : 0;
   const ly = 4;
 
   return (
-    <div style={{ height: 290 }}>
+    <div style={{ height: 295 }}>
       <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "100%" }}>
         {/* grid */}
         {yTicks.map((v, i) => (
@@ -81,43 +97,52 @@ function GraficoCurvas({
             </text>
           </g>
         ))}
-        {/* destino label inline no início */}
-        <text x={PL + 6} y={ys(pontoB) + (pontoB < pontoA ? 14 : -6)} fontSize={10} fill="#888">
-          destino líquido {fmtRk(pontoB)}
-        </text>
+        {/* label de início do destino se for diferente da origem */}
+        {pontoB < pontoA - 100 && (
+          <text x={PL + 6} y={ys(pontoB) + 13} fontSize={10} fill="#888">
+            destino líquido {fmtRk(pontoB)}
+          </text>
+        )}
         {/* curvas */}
-        <path d={pathA} fill="none" stroke="#A85555" strokeWidth={2.5} />
-        <path d={pathB} fill="none" stroke="#999" strokeWidth={2} strokeDasharray="6 3" />
-        {/* cruzamento */}
+        <path d={pathOf("a")} fill="none" stroke="#A85555" strokeWidth={2.5} />
+        <path d={pathOf("b")} fill="none" stroke="#4f8ef7" strokeWidth={2.5} />
+        {/* marcador de cruzamento */}
         {mCross !== null && (() => {
-          const cx = xs(mCross), cy = ys(vA(mCross));
-          const lcx = lx + labelW / 2;
-          const lcy = ly + labelH;
+          const cx = xs(mCross), cy = ys(aAtCross);
+          const lcx = lx + labelW / 2, lcy = ly + labelH;
+          const crossLabel = mCross % 12 === 0
+            ? `${mCross / 12} ${mCross === 12 ? "ano" : "anos"}`
+            : `${mCross} meses`;
           return (
             <>
               <line x1={cx} x2={cx} y1={PT} y2={H - PB} stroke="var(--accent)" strokeDasharray="4 3" strokeWidth={1} strokeOpacity=".7" />
               <circle cx={cx} cy={cy} r={5} fill="var(--accent)" />
               <line x1={cx} y1={cy - 6} x2={lcx} y2={lcy} stroke="var(--accent)" strokeOpacity=".3" strokeWidth={1} />
-              <rect x={lx} y={ly} width={labelW} height={labelH} rx={5}
-                fill="white" stroke="var(--accent)" strokeOpacity=".5" />
+              <rect x={lx} y={ly} width={labelW} height={labelH} rx={5} fill="white" stroke="var(--accent)" strokeOpacity=".5" />
               <text x={lcx} y={ly + 15} fontSize={12} fontWeight={700} fill="var(--accent)" textAnchor="middle">
-                Breakeven · {mCross} meses · {fmtRk(vA(mCross))}
+                Destino passa origem · {crossLabel}
               </text>
               <text x={lcx} y={ly + 29} fontSize={10} fill="var(--accent)" textAnchor="middle" opacity=".8">
-                pedágio R$ {fmtRk(vA(mCross) - pontoB)} · passivo {fmtRk(vA(mCross) - pontoA)}
+                {fmtRk(aAtCross)}
               </text>
             </>
           );
         })()}
+        {/* sem cruzamento no horizonte */}
+        {mCross === null && (
+          <text x={W - PR - 4} y={PT + 12} fontSize={10} textAnchor="end" fill="var(--muted-foreground)" opacity=".7">
+            destino não cruza no horizonte
+          </text>
+        )}
       </svg>
       <div style={{ display: "flex", gap: 18, fontSize: 11, color: "var(--muted-foreground)", flexWrap: "wrap", marginTop: 4 }}>
         <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
           <span style={{ display: "inline-block", width: 18, height: 2.5, background: "#A85555" }} />
-          {nomeA} ({(taxaA * 100).toFixed(2)}% a.a.)
+          {nomeA} ({(tA * 100).toFixed(2)}% a.a.)
         </span>
         <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
-          <span style={{ display: "inline-block", width: 18, height: 2, background: "#999", borderTop: "2px dashed #999" }} />
-          {nomeB} ({(taxaB * 100).toFixed(2)}% a.a.)
+          <span style={{ display: "inline-block", width: 18, height: 2.5, background: "#4f8ef7" }} />
+          {nomeB} ({(tB * 100).toFixed(2)}% a.a.)
         </span>
       </div>
     </div>
@@ -955,14 +980,14 @@ export function OportunidadePage() {
           <span>destino parte com o capital líquido · dividendos da origem não compõem</span>
         </div>
         <GraficoCurvas
+          rows={sim.rows}
           pontoA={valorA}
-          taxaA={isRV ? (dyA / 100 + aApre / 100) : (taxaRfA / 100)}
           pontoB={sim.capB}
-          taxaB={sim.tB1}
           cruzaMes={sim.cruzaMes}
-          horizonte={hz}
           nomeA={nomeA}
           nomeB={descDestino}
+          tA={sim.tA1}
+          tB={sim.tB1}
         />
         {isRV && sim.cagrNec !== null && (
           <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 10 }}>
