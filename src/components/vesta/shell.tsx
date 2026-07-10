@@ -464,6 +464,28 @@ export function VestaShell({
     document.addEventListener("pointerdown", close);
     return () => document.removeEventListener("pointerdown", close);
   }, [moreOpen]);
+
+  /* CDI (série 4389) e IPCA 12m (série 13522) direto do Banco Central */
+  const [bcbCdi, setBcbCdi] = useState<number | null>(null);
+  const [bcbIpca, setBcbIpca] = useState<number | null>(null);
+  const [bcbLive, setBcbLive] = useState(false);
+  const atualizarBCB = async () => {
+    try {
+      const fetchSerie = async (s: number) => {
+        const r = await fetch(`https://api.bcb.gov.br/dados/serie/bcdata.sgs.${s}/dados/ultimos/1?formato=json`);
+        const j = await r.json();
+        const v = parseFloat(j?.[0]?.valor);
+        return isNaN(v) ? null : v;
+      };
+      const [cdi, ipca] = await Promise.all([fetchSerie(4389), fetchSerie(13522)]);
+      if (cdi !== null) setBcbCdi(cdi);
+      if (ipca !== null) setBcbIpca(ipca);
+      setBcbLive(cdi !== null || ipca !== null);
+    } catch {
+      setBcbLive(false);
+    }
+  };
+  useEffect(() => { void atualizarBCB(); }, []);
   // profileName = nome do perfil visualizado (pode ser membro diferente do logado)
   const meta = getProfileMeta(profileId, profileName ?? loggedName);
   const isFamily = profileId === "familiar" || profileId.startsWith("domus:");
@@ -520,7 +542,7 @@ export function VestaShell({
   const moreMenu = (
     <div className="context-nav__menu">
       {hasFullPortfolio && topItem("posicao", "Posição")}
-      {hasFullPortfolio && topItem("breakeven", "Breakeven & decisões")}
+      {hasFullPortfolio && topItem("breakeven", "Custo de oportunidade")}
       {hasFullPortfolio && topItem("projecao", "Projeção")}
       {!isFamily && topItem("upload", "Importar posição mensal")}
       {topItem("alertas", `Alertas (${totalAlertas})`)}
@@ -646,7 +668,7 @@ export function VestaShell({
           {hasFullPortfolio && (
             <>
               <div className="nav-sec">Decidir</div>
-              {item("breakeven", "Breakeven & decisões", <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--sidebar-primary)" }}>⚖</span>)}
+              {item("breakeven", "Custo de oportunidade", <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--sidebar-primary)" }}>⚖</span>)}
               {item("projecao", "Projeção patrimônio")}
               {item("secundario", "Saída secundário")}
               <div className="nav-sec">Sistema</div>
@@ -716,7 +738,7 @@ export function VestaShell({
           <button className="context-nav__back" onClick={onBackToHall ?? onSwitchProfile}>← Hall</button>
           {topItem("home", "Visão geral")}
           {hasFullPortfolio && topItem("posicao", "Posição", "context-nav__portrait-hidden")}
-          {hasFullPortfolio && topItem("breakeven", "Breakeven", "context-nav__portrait-hidden")}
+          {hasFullPortfolio && topItem("breakeven", "Oportunidade", "context-nav__portrait-hidden")}
           {hasFullPortfolio && topItem("projecao", "Projeção", "context-nav__portrait-hidden")}
           {!isFamily && topItem("upload", "Importar posição mensal", "context-nav__portrait-hidden")}
           <div className={"context-nav__more" + (moreOpen ? " open" : "")}>
@@ -752,13 +774,13 @@ export function VestaShell({
         {moreOpen && moreMenu}
 
         <div className="update-bar">
-          <div className="upd-dot off" />
+          <div className={"upd-dot" + (bcbLive ? "" : " off")} />
           <span>
-            CDI <b>14,75%</b>
+            CDI <b>{(bcbCdi ?? 14.75).toFixed(2).replace(".", ",")}%</b>
           </span>
           <span>·</span>
           <span>
-            IPCA <b>5,50%</b>
+            IPCA <b>{(bcbIpca ?? 5.5).toFixed(2).replace(".", ",")}%</b>
           </span>
           {(() => {
             const total = userData.total;
@@ -769,8 +791,10 @@ export function VestaShell({
               </>
             ) : null;
           })()}
-          <span style={{ marginLeft: "auto", fontSize: 10 }} />
-          <button className="upd-btn">↻ atualizar</button>
+          <span style={{ marginLeft: "auto", fontSize: 10 }}>
+            {bcbLive ? "BCB · ao vivo" : "valores de referência"}
+          </span>
+          <button className="upd-btn" onClick={() => void atualizarBCB()}>↻ atualizar</button>
         </div>
 
         <div className="content">

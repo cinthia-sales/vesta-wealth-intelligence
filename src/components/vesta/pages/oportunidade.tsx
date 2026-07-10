@@ -2,6 +2,7 @@ import { useMemo, useState, type CSSProperties } from "react";
 import {
   CARTEIRA,
   notaRetrospectiva,
+  ondeEstaria,
   salvarGiro,
   type AtivoCarteira,
 } from "@/data/carteira-ativos";
@@ -110,14 +111,23 @@ export function OportunidadePage() {
   const [showSelic, setShowSelic] = useState(false);
   const [giroSalvo, setGiroSalvo] = useState(false);
   const [vOverride, setVOverride] = useState<number | null>(null);
+  const [vCurvaOverride, setVCurvaOverride] = useState<number | null>(null);
   const [ticker, setTicker] = useState("");
   const [tickerQtd, setTickerQtd] = useState(100);
   const [buscaMsg, setBuscaMsg] = useState("");
 
-  /* valores da origem */
-  const valorA = manual ? mValor : (vOverride ?? ativo?.valorMercado ?? 0);
+  /* valores da origem
+     RF: FICAR roda o valor NA CURVA (taxa contratada até o venc.);
+         SAIR entrega o valor DE MERCADO. Deságio = curva − mercado.
+     RV: curva = mercado (ação não tem curva). */
+  const valorMercadoA = manual ? mValor : (vOverride ?? ativo?.valorMercado ?? 0);
   const nomeA = manual ? mNome : (ativo?.nome ?? "");
   const isRV = manual ? true : ativo?.classe === "rv";
+  const valorCurvaA = isRV
+    ? valorMercadoA
+    : (vCurvaOverride ?? ativo?.valorCurva ?? valorMercadoA);
+  const valorA = valorCurvaA;   // trajetória de quem FICA
+  const desagioImplicito = Math.max(valorCurvaA - valorMercadoA, 0);
   const dyA = aDy ?? (ativo?.dyEsperado ?? 0);
   const taxaRfA = aTaxaRf ?? (ativo?.taxaBruta ?? 0);
 
@@ -127,12 +137,13 @@ export function OportunidadePage() {
     cartTaxa: cartDest?.taxaBruta ?? 13,
   };
 
-  /* custo de saída é deságio — sempre positivo, abatido do capital que migra */
+  /* custo extra de saída (IR/corretagem) — o deságio curva↔mercado já é automático */
   const custo = Math.abs(custoSaida);
+  const pedagioTotal = desagioImplicito + custo;
 
   /* simulação ano a ano */
   const sim = useMemo(() => {
-    const capB = Math.max(valorA - custo, 0);
+    const capB = Math.max(valorMercadoA - custo, 0);
     const rows: { ano: number; a: number; b: number }[] = [];
     let va = valorA;
     let divAcum = 0;
@@ -177,11 +188,11 @@ export function OportunidadePage() {
       }
     }
     return { rows, final, cagrNec, divAcum, capB, ganhoMes, tA1, tB1, cruzaMes };
-  }, [valorA, custo, hz, isRV, dyA, aApre, taxaRfA, tipoB, selic, pctCdi, irCdb, ipcaReal, ipcaProj, preTaxa, acaoDy, acaoApre, cartDestId]);
+  }, [valorA, valorMercadoA, custo, hz, isRV, dyA, aApre, taxaRfA, tipoB, selic, pctCdi, irCdb, ipcaReal, ipcaProj, preTaxa, acaoDy, acaoApre, cartDestId]);
 
   const retro = ativo ? notaRetrospectiva(ativo) : null;
   const vd = veredito(ativo, isRV ? sim.cagrNec : null, sim.final.b > sim.final.a);
-  const bkMeses = sim.ganhoMes > 0 && custo > 0 ? Math.ceil(custo / sim.ganhoMes) : 0;
+  const bkMeses = sim.ganhoMes > 0 && pedagioTotal > 0 ? Math.ceil(pedagioTotal / sim.ganhoMes) : 0;
 
   /* equivalência embutida: taxa isenta ↔ CDB bruto equivalente */
   const taxaB1Isenta = tipoB === "lci" || tipoB === "ipca" || tipoB === "pre";
@@ -316,19 +327,46 @@ export function OportunidadePage() {
             </>
           )}
 
-          <div className="fld"><label style={lblSt}>Valor de mercado (R$)</label>
-            <input
-              style={{ ...inputSt, fontWeight: 600 }}
-              type="number"
-              value={valorA}
-              onChange={(e) => {
-                const v = +e.target.value || 0;
-                if (manual) setMValor(v); else setVOverride(v);
-              }}
-            /></div>
+          {isRV ? (
+            <div className="fld"><label style={lblSt}>Valor de mercado (R$)</label>
+              <input
+                style={{ ...inputSt, fontWeight: 600 }}
+                type="number"
+                value={valorMercadoA}
+                onChange={(e) => {
+                  const v = +e.target.value || 0;
+                  if (manual) setMValor(v); else setVOverride(v);
+                }}
+              /></div>
+          ) : (
+            <div className="fld-row">
+              <div className="fld"><label style={lblSt}>Valor na curva — se ficar (R$)</label>
+                <input
+                  style={{ ...inputSt, fontWeight: 600 }}
+                  type="number"
+                  value={valorCurvaA}
+                  onChange={(e) => setVCurvaOverride(+e.target.value || 0)}
+                /></div>
+              <div className="fld"><label style={lblSt}>Valor de mercado — se sair (R$)</label>
+                <input
+                  style={{ ...inputSt, fontWeight: 600 }}
+                  type="number"
+                  value={valorMercadoA}
+                  onChange={(e) => setVOverride(+e.target.value || 0)}
+                /></div>
+            </div>
+          )}
+          {!isRV && desagioImplicito > 0 && (
+            <div style={{
+              background: "var(--secondary)", borderRadius: 7, padding: "6px 10px",
+              fontSize: 11, color: "var(--muted-foreground)", marginBottom: 9,
+            }}>
+              Deságio implícito: <b>{fmtR(desagioImplicito)}</b> — sair hoje entrega {fmtR(valorMercadoA)} dos {fmtR(valorCurvaA)} da curva.
+            </div>
+          )}
 
           <div className="fld-row">
-            <div className="fld"><label style={lblSt}>Custo de saída / deságio (R$)</label>
+            <div className="fld"><label style={lblSt}>Custo extra de saída — IR/corretagem (R$)</label>
               <input style={inputSt} type="number" value={custoSaida} onChange={(e) => setCustoSaida(+e.target.value || 0)} /></div>
             {isRV ? (
               <div className="fld"><label style={lblSt}>DY esperado %/ano</label>
@@ -342,13 +380,13 @@ export function OportunidadePage() {
             <div className="fld"><label style={lblSt}>Variação de preço esperada %/ano</label>
               <input style={inputSt} type="number" step={0.5} value={aApre} onChange={(e) => setAApre(+e.target.value || 0)} /></div>
           )}
-          {custo > 0 && (
+          {pedagioTotal > 0 && (
             <div style={{
               background: "var(--secondary)", borderRadius: 7, padding: "6px 10px",
               fontSize: 11, color: "var(--muted-foreground)",
             }}>
-              Pedágio de {fmtR(custo)}: o destino parte de <b>{fmtR(sim.capB)}</b> ({fmtR(valorA)} − {fmtR(custo)})
-              e precisa alcançar a origem na taxa nova.
+              Pedágio total de <b>{fmtR(pedagioTotal)}</b>{desagioImplicito > 0 && custo > 0 ? ` (deságio ${fmtR(desagioImplicito)} + custos ${fmtR(custo)})` : ""}:
+              o destino parte de <b>{fmtR(sim.capB)}</b> e precisa alcançar a curva de quem fica.
             </div>
           )}
         </div>
@@ -507,8 +545,75 @@ export function OportunidadePage() {
               Esperar "voltar ao preço médio" é pagar o CDI de aluguel, ano após ano.
             </div>
           )}
+
+          {/* Quanto estamos devendo a nós mesmos — contrafactual */}
+          {ativo?.anoCompra && (() => {
+            const estaria = ondeEstaria(retro.valorInvestido, ativo.anoCompra!, pctCdi || 89);
+            const temos = ativo.valorMercado + (ativo.divRecebidos ?? 0);
+            const divida = estaria - temos;
+            return (
+              <div style={{
+                marginTop: 12, background: "rgba(216,179,106,.10)", border: "1px solid rgba(216,179,106,.3)",
+                borderRadius: 9, padding: "11px 14px",
+              }}>
+                <div style={{ fontSize: 10, letterSpacing: ".12em", textTransform: "uppercase", color: "#d8b36a", marginBottom: 8 }}>
+                  Quanto estamos devendo a nós mesmos
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, fontSize: 12 }}>
+                  <div>
+                    <div style={{ color: "#9fb0bf", fontSize: 10 }}>Onde estaria ({pctCdi || 89}% CDI desde {ativo.anoCompra})</div>
+                    <div style={{ fontSize: 16, fontFamily: "var(--font-serif)", color: "#a0d4b0" }}>{fmtR(estaria)}</div>
+                  </div>
+                  <div>
+                    <div style={{ color: "#9fb0bf", fontSize: 10 }}>Onde está (mercado + dividendos)</div>
+                    <div style={{ fontSize: 16, fontFamily: "var(--font-serif)" }}>{fmtR(temos)}</div>
+                  </div>
+                  <div>
+                    <div style={{ color: "#9fb0bf", fontSize: 10 }}>Dívida com nós mesmos</div>
+                    <div style={{ fontSize: 16, fontFamily: "var(--font-serif)", color: divida > 0 ? "#e8a0a0" : "#a0d4b0" }}>
+                      {divida > 0 ? "−" + fmtR(divida) : "+" + fmtR(-divida)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
+
+      {/* ── JANELA DE DURATION (RF marcada a mercado) ── */}
+      {!isRV && ativo?.durationAnos && ativo?.taxaRealCurva != null && ativo?.taxaRealMercado != null && (() => {
+        const dur = ativo.durationAnos!;
+        const tc = ativo.taxaRealCurva!;
+        const tm = ativo.taxaRealMercado!;
+        /* aproximação: a taxa real de mercado cai junto com a Selic projetada;
+           deságio% ≈ duration × (taxaMercado − taxaCurva); janela = quando zera */
+        const quedaSelic = (i: number) => (selic[0] ?? 13.5) - (selic[Math.min(i, selic.length - 1)] ?? 9);
+        let janela: number | null = null;
+        for (let i = 0; i < 10; i++) {
+          if (tm - quedaSelic(i) <= tc) { janela = 2026 + i; break; }
+        }
+        const desagioPctHoje = Math.max(dur * (tm - tc), 0);
+        return (
+          <div className="card" style={{ marginBottom: 13, borderLeft: "3px solid var(--ring)" }}>
+            <div className="card-hdr">
+              Janela de duration
+              <span>estimativa didática — preço ≈ duration × variação da taxa</span>
+            </div>
+            <div style={{ fontSize: 12.5, lineHeight: 1.7 }}>
+              Contratado a <b>IPCA+{tc}%</b>; mercado hoje exige <b>IPCA+{tm}%</b>.
+              Com duration de <b>{dur} anos</b>, o deságio implícito é da ordem de <b>{desagioPctHoje.toFixed(0)}%</b> do valor na curva.
+              {janela !== null ? (
+                <> Se a taxa real cair junto com a Selic projetada, o deságio deve fechar por volta de{" "}
+                <b style={{ color: "var(--accent)" }}>{janela}</b> — essa é a janela para migrar <b>sem pagar pedágio</b>.
+                Antes disso, sair custa caro; depois, o título perde a vantagem de taxa.</>
+              ) : (
+                <> Com a curva Selic projetada, a taxa real não converge para a contratada em 10 anos — o deságio tende a persistir; avalie a troca pelo cruzamento das curvas abaixo.</>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── VEREDITO ── */}
       <div style={{
@@ -522,7 +627,7 @@ export function OportunidadePage() {
         <span style={{ fontSize: 12.5, lineHeight: 1.5, color: VCOLOR[vd.t], flex: 1, minWidth: 220 }}>
           <b>{nomeA} → {descDestino}:</b> {vd.motivo}
           {vd.t !== "MANTER" && sim.ganhoMes > 0 && (
-            <> Troca rende <b>+{fmtR(sim.ganhoMes)}/mês</b>{custo > 0 ? <> e paga o pedágio em <b>{bkMeses} {bkMeses === 1 ? "mês" : "meses"}</b></> : " sem custo de saída"}.</>
+            <> Troca rende <b>+{fmtR(sim.ganhoMes)}/mês</b>{pedagioTotal > 0 ? <> e paga o pedágio em <b>{bkMeses} {bkMeses === 1 ? "mês" : "meses"}</b></> : " sem custo de saída"}.</>
           )}
         </span>
       </div>
@@ -531,10 +636,14 @@ export function OportunidadePage() {
       <div className="kpi-row" style={{ marginBottom: 13 }}>
         <div className="kpi">
           <div className="kpi-l">Pedágio de saída</div>
-          <div className="kpi-v" style={{ color: custo > 0 ? "var(--destructive)" : undefined }}>
-            {custo > 0 ? fmtR(custo) : "—"}
+          <div className="kpi-v" style={{ color: pedagioTotal > 0 ? "var(--destructive)" : undefined }}>
+            {pedagioTotal > 0 ? fmtR(pedagioTotal) : "—"}
           </div>
-          <div className="kpi-s">{custo > 0 ? `destino parte de ${fmtR(sim.capB)}` : "sem custo de saída"}</div>
+          <div className="kpi-s">
+            {pedagioTotal > 0
+              ? desagioImplicito > 0 ? `deságio + custos · destino parte de ${fmtR(sim.capB)}` : `destino parte de ${fmtR(sim.capB)}`
+              : "sem custo de saída"}
+          </div>
         </div>
         <div className="kpi">
           <div className="kpi-l">Ganho na taxa nova</div>
@@ -546,7 +655,7 @@ export function OportunidadePage() {
         <div className="kpi">
           <div className="kpi-l">Pedágio pago em</div>
           <div className="kpi-v">
-            {custo === 0 ? "imediato" : sim.ganhoMes > 0 ? `${bkMeses} ${bkMeses === 1 ? "mês" : "meses"}` : "nunca"}
+            {pedagioTotal === 0 ? "imediato" : sim.ganhoMes > 0 ? `${bkMeses} ${bkMeses === 1 ? "mês" : "meses"}` : "nunca"}
           </div>
           <div className="kpi-s">breakeven da troca (fluxo)</div>
         </div>

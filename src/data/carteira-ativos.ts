@@ -22,10 +22,15 @@ export type AtivoCarteira = {
   divRecebidos?: number;    // R$ acumulados (não reinvestidos)
   anoCompra?: number;
   /** renda fixa */
-  taxaBruta?: number;       // %/ano equivalente hoje
+  taxaBruta?: number;       // %/ano equivalente hoje (na curva)
   isento?: boolean;
   vencimento?: string;
   intocavel?: boolean;      // tese registrada em Regras
+  /** marcação a mercado (títulos longos) */
+  valorCurva?: number;      // valor se levar até o vencimento (curva)
+  durationAnos?: number;
+  taxaRealCurva?: number;   // % real contratada (IPCA+)
+  taxaRealMercado?: number; // % real negociada hoje
 };
 
 export const CARTEIRA: AtivoCarteira[] = [
@@ -38,8 +43,8 @@ export const CARTEIRA: AtivoCarteira[] = [
 
   /* ── RF Paulo ── */
   { id: "xpag11",   dono: "paulo", classe: "rf", nome: "XPAG11 · XP Crédito Agro",        valorMercado: 61373, taxaBruta: 12.5, isento: true },
-  { id: "ntnb50a",  dono: "paulo", classe: "rf", nome: "NTN-B 2050 · IPCA+4,45%",         valorMercado: 53341, taxaBruta: 10.2, isento: false, vencimento: "08/2050" },
-  { id: "ntnb50b",  dono: "paulo", classe: "rf", nome: "NTN-B 2050 · IPCA+4,65%",         valorMercado: 23088, taxaBruta: 10.4, isento: false, vencimento: "08/2050" },
+  { id: "ntnb50a",  dono: "paulo", classe: "rf", nome: "NTN-B 2050 · IPCA+4,45%",         valorMercado: 53341, taxaBruta: 10.2, isento: false, vencimento: "08/2050", durationAnos: 15, taxaRealCurva: 4.45, taxaRealMercado: 7.0 },
+  { id: "ntnb50b",  dono: "paulo", classe: "rf", nome: "NTN-B 2050 · IPCA+4,65%",         valorMercado: 23088, taxaBruta: 10.4, isento: false, vencimento: "08/2050", durationAnos: 15, taxaRealCurva: 4.65, taxaRealMercado: 7.0 },
   { id: "ntnb26",   dono: "paulo", classe: "rf", nome: "NTN-B AGO/2026 · IPCA+9,45%",     valorMercado: 96511, taxaBruta: 15.5, isento: false, vencimento: "08/2026" },
   { id: "debjf",    dono: "paulo", classe: "rf", nome: "DEB J&F FEV/2028 · 15,15% pré",   valorMercado: 94830, taxaBruta: 15.15, isento: true, vencimento: "02/2028", intocavel: true },
   { id: "debjalles",dono: "paulo", classe: "rf", nome: "DEB Jalles DEZ/2031 · IPCA+8,5%", valorMercado: 70642, taxaBruta: 14.5, isento: true, vencimento: "12/2031", intocavel: true },
@@ -73,6 +78,15 @@ function fatorAcumulado(hist: Record<number, number>, desde: number): number {
 export const cdiAcumuladoDesde = (ano: number) => fatorAcumulado(CDI_HIST, ano) - 1;
 export const ipcaAcumuladoDesde = (ano: number) => fatorAcumulado(IPCA_HIST, ano) - 1;
 export const anosNaCarteira = (anoCompra: number) => ANO_ATUAL - anoCompra;
+
+/** Onde o capital estaria se tivesse ido para uma LCI a X% do CDI no ano da compra */
+export function ondeEstaria(valorInvestido: number, anoCompra: number, pctCdi = 89): number {
+  let f = 1;
+  for (let ano = anoCompra; ano <= ANO_ATUAL; ano++) {
+    f *= 1 + ((CDI_HIST[ano] ?? 0) * (pctCdi / 100)) / 100;
+  }
+  return valorInvestido * f;
+}
 
 /* ── Linha dura: nota retrospectiva de uma posição RV ── */
 export type NotaRetro = {
