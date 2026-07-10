@@ -16,6 +16,7 @@ import { RendimentosPage } from "@/components/vesta/pages/rendimentos";
 import { DomusPage } from "@/components/vesta/pages/domus";
 import { RVPage } from "@/components/vesta/pages/rv";
 import { OportunidadePage } from "@/components/vesta/pages/oportunidade";
+import { carregarGiros, removerGiro } from "@/data/carteira-ativos";
 
 import type { ProfileId } from "@/lib/profile-derive";
 import { getUser } from "@/data/vesta-users";
@@ -771,7 +772,7 @@ export function VestaShell({
               <HomePage profileId={profileId} overrideName={profileName ?? loggedName} />
             )}
             {page === "posicao" && <PosicaoPage profileId={profileId} />}
-            {page === "breakeven" && <BreakevenPage profileId={profileId} />}
+            {page === "breakeven" && <BreakevenTabs profileId={profileId} />}
             {page === "equiv" && <EquivPage />}
             {page === "validador" && <ValidadorPage />}
             {page === "projecao" && <ProjecaoPage profileId={profileId} />}
@@ -808,6 +809,94 @@ export function VestaShell({
         </div>
       </div>
     </div>
+  );
+}
+
+/* ============================================================
+   BreakevenTabs — Breakeven & giros com "Acelerar com aporte"
+   como aba, + painel de giros registrados pela tela
+   Custo de Oportunidade (localStorage)
+   ============================================================ */
+function GirosRegistradosPanel() {
+  const [giros, setGiros] = useState(() => carregarGiros());
+  if (giros.length === 0) return null;
+  return (
+    <div className="card" style={{ marginBottom: 14 }}>
+      <div className="card-hdr">
+        Giros registrados no Custo de Oportunidade
+        <span>{giros.length} pendente(s) de execução</span>
+      </div>
+      {giros.map((g) => {
+        const bkMeses = g.ganhoMesEstimado > 0 && g.custoSaida > 0
+          ? Math.ceil(g.custoSaida / g.ganhoMesEstimado)
+          : 0;
+        return (
+          <div
+            key={g.id}
+            style={{
+              display: "flex", alignItems: "center", gap: 12, padding: "10px 0",
+              borderBottom: "1px solid var(--border)", fontSize: 12.5, flexWrap: "wrap",
+            }}
+          >
+            <div style={{ flex: 1, minWidth: 220 }}>
+              <b>{g.origem}</b> → {g.destino}
+              <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 2 }}>
+                Capital R$ {Math.round(g.capital).toLocaleString("pt-BR")} ·
+                ganho estimado +R$ {Math.round(g.ganhoMesEstimado).toLocaleString("pt-BR")}/mês ·
+                {g.custoSaida > 0
+                  ? ` paga custo de saída em ${bkMeses} ${bkMeses === 1 ? "mês" : "meses"}`
+                  : " sem custo de saída"} ·
+                registrado {new Date(g.criadoEm).toLocaleDateString("pt-BR")}
+              </div>
+            </div>
+            <button
+              onClick={() => { removerGiro(g.id); setGiros(carregarGiros()); }}
+              style={{
+                background: "none", border: "1px solid var(--border)", borderRadius: 7,
+                padding: "5px 12px", fontSize: 11, cursor: "pointer",
+                color: "var(--muted-foreground)", fontFamily: "inherit",
+              }}
+            >
+              remover
+            </button>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function BreakevenTabs({ profileId }: { profileId: ProfileId }) {
+  const [tab, setTab] = useState<"giros" | "aporte">("giros");
+  const tabBtn = (id: "giros" | "aporte", label: string) => (
+    <button
+      onClick={() => setTab(id)}
+      style={{
+        padding: "7px 16px", fontSize: 12.5, cursor: "pointer", fontFamily: "inherit",
+        border: "1px solid var(--border)", borderBottom: "none",
+        borderRadius: "9px 9px 0 0", letterSpacing: ".01em",
+        background: tab === id ? "var(--card)" : "transparent",
+        color: tab === id ? "var(--foreground)" : "var(--muted-foreground)",
+        fontWeight: tab === id ? 600 : 400,
+      }}
+    >
+      {label}
+    </button>
+  );
+  return (
+    <>
+      <div style={{ display: "flex", gap: 4, borderBottom: "1px solid var(--border)", marginBottom: 18 }}>
+        {tabBtn("giros", "Giros & plano")}
+        {tabBtn("aporte", "Acelerar com aporte")}
+      </div>
+      {tab === "giros" && (
+        <>
+          <GirosRegistradosPanel />
+          <BreakevenPage profileId={profileId} />
+        </>
+      )}
+      {tab === "aporte" && <AportePage />}
+    </>
   );
 }
 
