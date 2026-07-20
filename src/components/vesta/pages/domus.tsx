@@ -224,9 +224,11 @@ export function DomusPage({
     activeDomus.slug?.includes("malta");
 
   // Membros e pedidos filtrados pelo Domus ativo
-  const activeMembers = (adminData?.members ?? []).filter(
-    (m: any) => m.domus_id === activeDomusId || m.domus?.nome === activeDomus?.nome,
-  );
+  const activeMembers = isDemoDomus
+    ? DEMO_EXEMPLUM_MEMBERS
+    : (adminData?.members ?? []).filter(
+        (m: any) => m.domus_id === activeDomusId || m.domus?.nome === activeDomus?.nome,
+      );
   const activeVesta = activeMembers.find((member: any) => member.papel === "vesta");
   const vestaNome = activeVesta?.profile?.nome ?? activeVesta?.profile?.email ?? adminData?.vesta?.nome ?? "Vesta";
 
