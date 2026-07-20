@@ -570,13 +570,30 @@ function VestaApp() {
         }))
     : [];
   const hallAccessKeys = soberana
-    ? ACCESS_ACCOUNTS.map((account) => ({
-        email: account.email,
-        name: account.name,
-        domus: account.domus,
-        password: ACCESS_DEFAULT_PASSWORD,
-        note: account.note,
-      }))
+    ? [
+        ...ACCESS_ACCOUNTS.map((account) => ({
+          email: account.email,
+          name: account.name,
+          domus: account.domus,
+          password: ACCESS_DEFAULT_PASSWORD,
+          note: account.note,
+        })),
+        // Membros reais criados no banco (ex.: Luiza) — mesma vitrine dos demais
+        ...(sessionData?.members ?? [])
+          .filter((m: any) => {
+            const email = (m.profile?.email ?? "").toLowerCase();
+            if (!email) return false;
+            if (email === (sessionData?.profile?.email ?? "").toLowerCase()) return false;
+            return !ACCESS_ACCOUNTS.some((a) => a.email === email);
+          })
+          .map((m: any) => ({
+            email: m.profile.email,
+            name: m.profile.nome ?? m.profile.email,
+            domus: m.domus?.nome ?? "Domus",
+            password: ACCESS_DEFAULT_PASSWORD,
+            note: memberPapel(m) === "vesta" ? "vesta do domus" : "membro",
+          })),
+      ]
     : [];
 
   // Nome do PERFIL SELECIONADO (pode ser um membro diferente do logado)
@@ -720,6 +737,13 @@ function VestaApp() {
         loggedAs={loggedAs}
         loggedName={loggedName}
         profileName={profileName}
+        gestoraName={
+          activeDomusId === DEMO_DOMUS_ID
+            ? "Cornelia"
+            : ((sessionData?.members ?? []).find(
+                (m: any) => m.domus_id === activeDomusId && memberPapel(m) === "vesta",
+              )?.profile?.nome ?? sessionData?.profile?.nome ?? undefined)
+        }
         loggedRole={sessionData?.role ?? null}
         scopes={scopes}
         onUpdateScopes={

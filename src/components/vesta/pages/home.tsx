@@ -14,9 +14,10 @@ function saudacaoPorHora(): string {
   return "Boa noite";
 }
 
-export function HomePage({ profileId, overrideName }: { profileId: ProfileId; overrideName?: string }) {
+export function HomePage({ profileId, overrideName, loggedName }: { profileId: ProfileId; overrideName?: string; loggedName?: string }) {
   const u = getUser(profileId);
-  const firstName = (overrideName ?? u.nome).split(" ")[0];
+  // Saudação sempre para quem está logado, nunca para o nome da visão/consolidado
+  const firstName = (loggedName ?? overrideName ?? u.nome).split(" ")[0];
   const saud = saudacaoPorHora();
 
   if (u.total <= 0) {

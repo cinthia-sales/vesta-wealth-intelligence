@@ -426,6 +426,7 @@ export function VestaShell({
   loggedAs,
   loggedName,
   profileName,
+  gestoraName,
   loggedRole,
   scopes,
   onUpdateScopes,
@@ -442,6 +443,7 @@ export function VestaShell({
   loggedAs?: PersonaId;
   loggedName?: string;
   profileName?: string;
+  gestoraName?: string;
   loggedRole?: string | null;
   scopes?: ScopeMap;
   onUpdateScopes?: (next: ScopeMap) => void;
@@ -724,7 +726,7 @@ export function VestaShell({
             </div>
             <div className="topbar-sub" style={{ whiteSpace: "pre-line" }}>
               {isFamily 
-                ? "Visão do Domus ·\u00A0\nCinthia VESTA como gestora\nPatrimonium Consolidatum" 
+                ? `Visão do Domus ·\u00A0\n${gestoraName ?? "Cinthia"} VESTA como gestora\nPatrimonium Consolidatum` 
                 : `Carteira ${meta.name}\u00A0${
                     profileId === "paulo" ? "\nPost Reformam\u00A0·\u00A0MMXXVI\u00A0" : 
                     profileId === "cinthia" ? "\nCustos Ignis et Patrimonni" : ""
@@ -800,7 +802,7 @@ export function VestaShell({
         <div className="content">
           <div className="page on">
             {page === "home" && (
-              <HomePage profileId={profileId} overrideName={profileName ?? loggedName} />
+              <HomePage profileId={profileId} overrideName={profileName ?? loggedName} loggedName={loggedName} />
             )}
             {page === "posicao" && <PosicaoPage profileId={profileId} />}
             {page === "breakeven" && <BreakevenTabs profileId={profileId} />}
