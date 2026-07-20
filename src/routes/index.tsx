@@ -14,7 +14,7 @@ export const Route = createFileRoute("/")({
   beforeLoad: async () => {
     const { data } = await supabase.auth.getUser();
     if (data.user) throw redirect({ to: "/app" });
-    throw redirect({ to: "/auth", search: { next: "/app" } });
+    // Sem sessão: mostra a página pública de escolha do Domus (entrar ou pedir acesso)
   },
   head: () => ({
     meta: [
