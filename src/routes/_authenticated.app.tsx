@@ -505,7 +505,7 @@ function VestaApp() {
         name: "Domus Exemplum",
         vestaName: "Cornelia",
         memberCount: 2,
-        canManage: false,
+        canManage: soberana,
         views: [
           { id: DEMO_CONSOLIDATED, name: "Consolidado", subtitle: "Visão consolidada demonstrativa", initials: "🏛", consolidated: true },
           { id: DEMO_CORNELIA, name: "Cornelia", subtitle: "Vesta · carteira demonstrativa", initials: "C" },

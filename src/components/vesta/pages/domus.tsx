@@ -115,6 +115,8 @@ export function DomusPage({
     const current = extScopes[profileId] ?? { seeConsolidado: false, seePersonae: [] };
     const next = { ...current, seeConsolidado: !current.seeConsolidado };
     setExtScopes((s) => ({ ...s, [profileId]: next }));
+    // Personas de demonstração não existem no banco — escopo fica só local
+    if (profileId.startsWith("demo-")) { flashSaved(); return; }
     saveExtScopeMutation.mutate({ profileId, scope: next });
   };
 
@@ -128,6 +130,7 @@ export function DomusPage({
         : [...current.seePersonae, targetProfileId],
     };
     setExtScopes((s) => ({ ...s, [ownerProfileId]: next }));
+    if (ownerProfileId.startsWith("demo-")) { flashSaved(); return; }
     saveExtScopeMutation.mutate({ profileId: ownerProfileId, scope: next });
   };
 
@@ -138,10 +141,35 @@ export function DomusPage({
       .filter((v): v is string => Boolean(v)),
   );
 
+  // Domus Exemplum: demonstração fixa no app, gerível pela soberana (dados locais)
+  const isDemoDomus = initialDomusId === "demo-exemplum";
+  const DEMO_EXEMPLUM_MEMBERS = [
+    {
+      id: "demo-cornelia-membership",
+      domus_id: "demo-exemplum",
+      profile_id: "demo-cornelia",
+      papel: "vesta",
+      created_at: "2026-01-01",
+      domus: { nome: "Domus Exemplum" },
+      profile: { nome: "Cornelia", email: "cornelia@domus-exemplum.vesta" },
+    },
+    {
+      id: "demo-marcus-membership",
+      domus_id: "demo-exemplum",
+      profile_id: "demo-marcus",
+      papel: "membro",
+      created_at: "2026-01-02",
+      domus: { nome: "Domus Exemplum" },
+      profile: { nome: "Marcus", email: "marcus@domus-exemplum.vesta" },
+    },
+  ];
+
   // Membros de outros Domus (não cinthia/paulo)
-  const externalMembers = (adminData?.members ?? []).filter(
-    (m: any) => !knownUUIDs.has(m.profile_id),
-  );
+  const externalMembers = isDemoDomus
+    ? DEMO_EXEMPLUM_MEMBERS
+    : (adminData?.members ?? []).filter(
+        (m: any) => !knownUUIDs.has(m.profile_id),
+      );
 
 
   const saveScopeMutation = useMutation({
@@ -182,7 +210,9 @@ export function DomusPage({
     saveScopeMutation.mutate({ id: owner, scope: nextScope });
   };
 
-  const domusList = (adminData?.domus ?? []).filter((domus) => domus.id === initialDomusId);
+  const domusList = isDemoDomus
+    ? [{ id: "demo-exemplum", nome: "Domus Exemplum", slug: "exemplum", descricao: null, created_at: "2026-01-01" }]
+    : (adminData?.domus ?? []).filter((domus) => domus.id === initialDomusId);
 
   // Domus ativo
   const activeDomusId = initialDomusId ?? domusList[0]?.id ?? null;
