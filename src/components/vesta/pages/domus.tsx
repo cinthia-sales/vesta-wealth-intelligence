@@ -523,7 +523,7 @@ export function DomusPage({
                         fontStyle: "italic",
                       }}
                     >
-                      Vesta local — vê automaticamente todas as carteiras do Domus{" "}
+                      Vesta local — vê automaticamente todas as carteiras do{" "}
                       {domusNome}.
                     </div>
                   ) : (
@@ -541,7 +541,7 @@ export function DomusPage({
                           checked={extScope.seeConsolidado}
                           onChange={() => toggleExtConsolidado(m.profile_id)}
                         />
-                        <span>Ver consolidado do Domus {domusNome}</span>
+                        <span>Ver consolidado do {domusNome}</span>
                       </label>
 
                       {otherMembers.map((other: any) => {
