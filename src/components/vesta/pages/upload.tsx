@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { type LocalSnapshot, type RFAtivo, STORAGE_KEYS } from "@/data/vesta-users";
 import { supabase } from "@/integrations/supabase/client";
+import { detectarBanco, processarArquivo, parsearPDF, type AtivoImportado } from "@/lib/bankParsers";
 
 type ParsedClasse = "RF" | "ACAO" | "FII" | "FIAGRO" | "ETF" | "FUNDO" | "PREVIDENCIA" | "COE" | "RV";
 type ParsedRow = {
@@ -242,7 +243,7 @@ async function inflateRaw(bytes: Uint8Array): Promise<Uint8Array> {
   if (typeof DecompressionStream === "undefined") {
     throw new Error("Este navegador não consegue descompactar XLSX. Exporte em CSV/TXT ou use Chrome/Edge atualizado.");
   }
-  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+  const stream = new Blob([bytes as unknown as ArrayBuffer]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
   return new Uint8Array(await new Response(stream).arrayBuffer());
 }
 
@@ -446,9 +447,36 @@ async function uploadOriginalFilesToStorage(accountId: AccountId, dataRef: strin
   return uploaded;
 }
 
+function tipoToClasse(tipo: string): ParsedClasse {
+  switch (tipo) {
+    case "Previdência": return "PREVIDENCIA";
+    case "FIA": return "ACAO";
+    case "FII": return "FII";
+    case "Fundo RV":
+    case "Fundo RF": return "FUNDO";
+    case "COE": return "COE";
+    default: return "RF";
+  }
+}
+
+function ativoImportadoToRow(a: AtivoImportado): ParsedRow {
+  return {
+    ativo: a.nome,
+    valor: a.valor,
+    taxa: a.taxa || undefined,
+    venc: a.vencimento || undefined,
+    classe: tipoToClasse(a.tipo),
+    rentabilidadeBruta: a.rentab12m || undefined,
+    secao: a.banco,
+  };
+}
+
 async function parseInputFile(file: File): Promise<ParsedFile> {
-  if (!/\.(xlsx|csv|txt|json)$/i.test(file.name)) {
-    throw new Error("Formato nao suportado. Use XLSX/CSV/TXT da XP ou JSON Vesta.");
+  if (/\.xls$/i.test(file.name)) {
+    throw new Error(`"${file.name}" está no formato XLS antigo. No portal XP, exporte em XLSX (Excel 2007+) ou CSV.`);
+  }
+  if (!/\.(xlsx|csv|txt|json|pdf)$/i.test(file.name)) {
+    throw new Error(`"${file.name}": formato não reconhecido. Use XLSX, CSV, PDF ou TXT exportado da XP/BTG/C6/Brasilprev.`);
   }
   if (/\.(json)$/i.test(file.name)) {
     const snapshot = JSON.parse(await file.text()) as LocalSnapshot;
@@ -457,9 +485,34 @@ async function parseInputFile(file: File): Promise<ParsedFile> {
     }
     return { rows: [], snapshot, dataRef: snapshot.data_referencia };
   }
-  return /\.(xlsx)$/i.test(file.name)
-    ? parseXlsx(file)
-    : { rows: parseCsv(await file.text()) };
+  if (/\.(pdf)$/i.test(file.name)) {
+    try {
+      const resultado = await parsearPDF(file);
+      if (resultado.erros.length > 0 && resultado.ativos.length === 0)
+        throw new Error(resultado.erros.join(" | "));
+      return { rows: resultado.ativos.map(ativoImportadoToRow) };
+    } catch (e) {
+      throw new Error(`"${file.name}": ${(e as Error).message}`);
+    }
+  }
+  if (/\.(xlsx)$/i.test(file.name)) {
+    try {
+      return await parseXlsx(file);
+    } catch (e) {
+      throw new Error(`"${file.name}": ${(e as Error).message}`);
+    }
+  }
+
+  // CSV / TXT — detectar banco e usar parser multi-banco
+  const texto = await file.text();
+  const banco = detectarBanco(file.name, texto);
+  if (banco !== "XP" && banco !== "Genérico") {
+    const resultado = processarArquivo(file.name, texto);
+    if (resultado.erros.length > 0 && resultado.ativos.length === 0)
+      throw new Error(resultado.erros.join(" | "));
+    return { rows: resultado.ativos.map(ativoImportadoToRow) };
+  }
+  return { rows: parseCsv(texto) };
 }
 
 function rowMergeKey(row: ParsedRow): string {
@@ -728,9 +781,9 @@ export function UploadPage({
   return (
     <>
       <div className="ph">
-        <h1>Importar posição XP</h1>
+        <h1>Importar posição</h1>
         <p>
-          Suba o CSV/TXT exportado do portal XP. Após aplicar, todos os simuladores passam a
+          Suba o extrato da XP (PDF ou XLSX/CSV), BTG, C6 Bank ou Brasilprev. Após aplicar, todos os simuladores passam a
           usar os dados do arquivo automaticamente.
         </p>
       </div>
@@ -797,13 +850,13 @@ export function UploadPage({
           pointerEvents: isConsolidatedTarget ? "none" : "auto",
         }}
       >
-        <div style={{ fontSize: 15, marginBottom: 6 }}>📥 Arraste os arquivos XP aqui</div>
+        <div style={{ fontSize: 15, marginBottom: 6 }}>📥 Arraste os arquivos aqui</div>
         <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 10 }}>
-          Pode mandar varios XLSX/CSV/TXT juntos, ou um JSON Vesta mastigado para aplicar direto.
+          XP (PDF, XLSX ou CSV), BTG, C6 Bank, Brasilprev — ou um JSON Vesta para aplicar direto.
         </div>
         <input
           type="file"
-          accept=".xlsx,.csv,.txt,.json"
+          accept=".xlsx,.csv,.txt,.json,.pdf"
           multiple
           disabled={isConsolidatedTarget}
           onChange={(e) => {
@@ -842,65 +895,103 @@ export function UploadPage({
           </div>
           {history.length === 0 ? (
             <div style={{ padding: 16, fontSize: 13, color: "var(--muted)" }}>
-              Ainda nao ha historico para {targetAccountName ?? "esta carteira"}. Ao aplicar um extrato, o resumo mensal e o arquivo original ficam guardados aqui.
+              Ainda não há histórico para {targetAccountName ?? "esta carteira"}. Ao aplicar um extrato, o resumo mensal e o arquivo original ficam guardados aqui.
             </div>
-          ) : (
-            <div style={{ overflowX: "auto" }}>
-              <table className="tbl">
-                <thead>
-                  <tr>
-                    <th>Data</th>
-                    <th>Arquivo</th>
-                    <th className="r">Total</th>
-                    <th className="r">Variacao</th>
-                    <th className="r">RF</th>
-                    <th className="r">RV</th>
-                    <th>Original</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {history.map((entry, index) => {
-                    const previous = history[index + 1];
-                    const delta = previous ? entry.total - previous.total : 0;
-                    return (
-                      <tr key={entry.id}>
-                        <td>{fmtDateBR(entry.dataRef)}</td>
-                        <td>
-                          <strong>{entry.fileName}</strong>
-                          <div style={{ color: "var(--muted)", fontSize: 11 }}>
-                            {entry.rfCount} RF - {entry.rvCount} RV
-                          </div>
-                        </td>
-                        <td className="r">{fmtR(entry.total)}</td>
-                        <td className="r" style={{ color: !previous ? "var(--muted)" : delta >= 0 ? "var(--good, #4E7A5C)" : "var(--accent)" }}>
-                          {previous ? fmtDelta(delta) : "-"}
-                        </td>
-                        <td className="r">{fmtR(entry.rf)}</td>
-                        <td className="r">{fmtR(entry.rv)}</td>
-                        <td>
-                          <button
-                            type="button"
-                            onClick={() => downloadArchivedFile(entry.id).catch((err) => setArchiveError((err as Error).message))}
-                            style={{
-                              fontSize: 11,
-                              border: "1px solid rgba(255,255,255,.18)",
-                              background: "transparent",
-                              color: "var(--muted)",
-                              borderRadius: 6,
-                              padding: "4px 8px",
-                              cursor: "pointer",
-                            }}
-                          >
-                            baixar
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+          ) : (() => {
+            // Agrupar por ano
+            const byYear = new Map<string, EvolutionEntry[]>();
+            history.forEach((e) => {
+              const year = e.dataRef.slice(0, 4) || "—";
+              if (!byYear.has(year)) byYear.set(year, []);
+              byYear.get(year)!.push(e);
+            });
+            const years = Array.from(byYear.keys()).sort((a, b) => b.localeCompare(a));
+            return (
+              <div style={{ overflowX: "auto" }}>
+                <table className="tbl">
+                  <thead>
+                    <tr>
+                      <th>Mês</th>
+                      <th>Arquivo</th>
+                      <th className="r">Total</th>
+                      <th className="r">Variação</th>
+                      <th className="r">RF</th>
+                      <th className="r">RV</th>
+                      <th>Original</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {years.map((year) => {
+                      const entries = byYear.get(year)!;
+                      return entries.map((entry, idxInYear) => {
+                        const globalIdx = history.indexOf(entry);
+                        const previous = history[globalIdx + 1];
+                        const delta = previous ? entry.total - previous.total : 0;
+                        const isFirstInYear = idxInYear === 0;
+                        return (
+                          <>
+                            {isFirstInYear && (
+                              <tr key={`year-${year}`}>
+                                <td
+                                  colSpan={7}
+                                  style={{
+                                    fontSize: 11,
+                                    fontWeight: 700,
+                                    letterSpacing: ".08em",
+                                    textTransform: "uppercase",
+                                    color: "var(--accent)",
+                                    background: "rgba(161,29,62,.06)",
+                                    padding: "6px 10px",
+                                    borderTop: "1px solid rgba(255,255,255,.06)",
+                                  }}
+                                >
+                                  {year}
+                                </td>
+                              </tr>
+                            )}
+                            <tr key={entry.id}>
+                              <td style={{ whiteSpace: "nowrap" }}>
+                                {fmtDateBR(entry.dataRef)}
+                              </td>
+                              <td>
+                                <strong>{entry.fileName}</strong>
+                                <div style={{ color: "var(--muted)", fontSize: 11 }}>
+                                  {entry.rfCount} RF · {entry.rvCount} RV
+                                </div>
+                              </td>
+                              <td className="r">{fmtR(entry.total)}</td>
+                              <td className="r" style={{ color: !previous ? "var(--muted)" : delta >= 0 ? "var(--good, #4E7A5C)" : "var(--accent)", fontWeight: previous ? 600 : 400 }}>
+                                {previous ? fmtDelta(delta) : "—"}
+                              </td>
+                              <td className="r">{fmtR(entry.rf)}</td>
+                              <td className="r">{fmtR(entry.rv)}</td>
+                              <td>
+                                <button
+                                  type="button"
+                                  onClick={() => downloadArchivedFile(entry.id).catch((err) => setArchiveError((err as Error).message))}
+                                  style={{
+                                    fontSize: 11,
+                                    border: "1px solid rgba(255,255,255,.18)",
+                                    background: "transparent",
+                                    color: "var(--muted)",
+                                    borderRadius: 6,
+                                    padding: "4px 8px",
+                                    cursor: "pointer",
+                                  }}
+                                >
+                                  baixar
+                                </button>
+                              </td>
+                            </tr>
+                          </>
+                        );
+                      });
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            );
+          })()}
         </div>
       )}
 

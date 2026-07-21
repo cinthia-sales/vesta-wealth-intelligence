@@ -337,7 +337,8 @@ export function DomusPage({
     ...externalMembers.filter(
       (m: any) => m.domus_id === activeDomusId || m.domus?.nome === activeDomus?.nome,
     ),
-  ];
+    // Vestas sempre acima dos membros comuns
+  ].sort((a: any, b: any) => (b.papel === "vesta" ? 1 : 0) - (a.papel === "vesta" ? 1 : 0));
 
   return (
     <>

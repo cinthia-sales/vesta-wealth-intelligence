@@ -30,7 +30,7 @@ function parseMoney(value: string) {
 }
 
 function splitReferencia(pm: string) {
-  const normalized = pm.replace(/\s*[Â·-]\s*Importado XP\s*/gi, "").replace(/\s*Importado XP\s*/gi, "").replace(/\s+/g, " ").trim();
+  const normalized = pm.replace(/\s*[·-]\s*Importado XP\s*/gi, "").replace(/\s*Importado XP\s*/gi, "").replace(/\s+/g, " ").trim();
   const pmMatch = normalized.match(/PM\s*(R\$\s*[\d.,]+)/i) ?? normalized.match(/^(R\$\s*[\d.,]+)/i);
   const cotMatch = normalized.match(/Cot\.?\s*(R\$\s*[\d.,]+)/i);
   return { pm: pmMatch?.[1] ?? "", cotacao: cotMatch?.[1] ?? "" };

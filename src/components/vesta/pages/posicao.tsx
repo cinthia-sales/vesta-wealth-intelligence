@@ -26,12 +26,12 @@ function splitReferencia(pm: string) {
   if (!normalized) return { pm: "—", cotacao: "—", qtd: "—" };
   const pmMatch = normalized.match(/PM\s*(R\$\s*[\d.,]+)/i) ?? normalized.match(/^(R\$\s*[\d.,]+)/i);
   const cotMatch = normalized.match(/Cot\.?\s*(R\$\s*[\d.,]+)/i);
-  const qtdMatch = normalized.match(/([\d.]+)\s*(cotas|ações|aÃ§Ãµes|títulos|titulos)/i);
+  const qtdMatch = normalized.match(/([\d.]+)\s*(cotas|ações|ações|títulos|titulos)/i);
   const aplicadoMatch = normalized.match(/Aplicado\s*(R\$\s*[\d.,]+)/i);
   return {
     pm: pmMatch?.[1] ?? aplicadoMatch?.[1] ?? normalized,
     cotacao: cotMatch?.[1] ?? "—",
-    qtd: qtdMatch ? `${qtdMatch[1]} ${qtdMatch[2].replace("aÃ§Ãµes", "ações")}` : "—",
+    qtd: qtdMatch ? `${qtdMatch[1]} ${qtdMatch[2].replace("ações", "ações")}` : "—",
   };
 }
 
@@ -64,7 +64,7 @@ function statusDot(status: Filter) {
 
 function StatusInline({ status }: { status: Filter }) {
   return (
-    <span className="position-dot-only" title={ST[status]}>
+    <span className="position-dot-only" title={ST[status as keyof typeof ST]}>
       <span className={"dot " + statusDot(status)} style={{ marginTop: 0 }} />
     </span>
   );
@@ -256,6 +256,7 @@ function SensibilidadeModal({ s, onClose }: { s: Sensibilidade; onClose: () => v
 export function PosicaoPage({ profileId }: { profileId: ProfileId }) {
   const u = getUser(profileId);
   const [f, setF] = useState<Filter>("todos");
+  const [fRV, setFRV] = useState<Filter>("todos");
   const [sel, setSel] = useState<Sensibilidade | null>(null);
   const [lockVersion, setLockVersion] = useState(0);
   const rfDecorada = u.rf_ativos.map((r) => {
@@ -271,14 +272,21 @@ export function PosicaoPage({ profileId }: { profileId: ProfileId }) {
   const total = list.reduce((s, r) => s + r.v, 0);
   const rfCounts = rfDecorada.reduce(
     (acc, r) => {
-      acc[r.statusCalculado] += 1;
+      const k = r.statusCalculado as string;
+      acc[k] = (acc[k] ?? 0) + 1;
       return acc;
     },
-    { intocavel: 0, urgente: 0, monitorar: 0 } as Record<"intocavel" | "urgente" | "monitorar", number>,
+    { intocavel: 0, urgente: 0, monitorar: 0 } as Record<string, number>,
   );
   const lockedCount = rfDecorada.filter((r) => r.locked).length;
   const rv = u.rv_ativos ?? [];
   const showRV = u.rv > 0 && rv.length > 0;
+  const rvDecorada = rv.map((r) => ({ ...r, statusCalculado: classifyRV(r) }));
+  const rvCounts = rvDecorada.reduce(
+    (acc, r) => { acc[r.statusCalculado] = (acc[r.statusCalculado] ?? 0) + 1; return acc; },
+    { intocavel: 0, urgente: 0, monitorar: 0 } as Record<string, number>,
+  );
+  const rvList = fRV === "todos" ? rvDecorada : rvDecorada.filter((r) => r.statusCalculado === fRV);
 
   const openSens = (nome: string, classe?: string) => {
     const s = getSensibilidade(nome, classe);
@@ -399,7 +407,26 @@ export function PosicaoPage({ profileId }: { profileId: ProfileId }) {
       {showRV && (
         <div className="card">
           <div className="card-hdr">
-            Renda variável <span>{rv.length} posições · {fmtR(u.rv)}</span>
+            Renda variável <span>{rvList.length} posições · {fmtR(u.rv)}</span>
+          </div>
+          <div className="filter-row position-filter-row">
+            {(() => {
+              const fbRV = (id: Filter, label: string, count?: number, dot?: "dg" | "dr" | "dw") => (
+                <button key={id} className={"fbtn" + (fRV === id ? " on" : "")} onClick={() => setFRV(id)}>
+                  {dot && <span className={"dot " + dot} />}
+                  {label}
+                  {typeof count === "number" && <span className="filter-count">{count}</span>}
+                </button>
+              );
+              return (
+                <>
+                  {fbRV("todos", "Todos", rvDecorada.length)}
+                  {fbRV("intocavel", "Bons", rvCounts.intocavel, "dg")}
+                  {fbRV("urgente", "Urgentes", rvCounts.urgente, "dr")}
+                  {fbRV("monitorar", "Monitorar", rvCounts.monitorar, "dw")}
+                </>
+              );
+            })()}
           </div>
           <div style={{ overflowX: "auto" }}>
             <table className="tbl">
@@ -415,13 +442,13 @@ export function PosicaoPage({ profileId }: { profileId: ProfileId }) {
               </tr>
               </thead>
               <tbody>
-                {rv.map((r) => {
+                {rvList.map((r) => {
                   const ticker = r.n.split(" ")[0].replace(/[^A-Z0-9]/g, "");
                   const paysDiv = DIVIDEND_TICKERS.has(ticker);
                   const ref = splitReferencia(r.pm);
                   const precoPM = precoVsPM(ref);
                   const rvLocked = isAssetLocked(profileId, r.n);
-                  const rvStatus = classifyRV(r);
+                  const rvStatus = r.statusCalculado;
                   return (
                   <tr key={r.n} style={rowStyle} onClick={() => openSens(r.n, r.cls)}>
                     <td>

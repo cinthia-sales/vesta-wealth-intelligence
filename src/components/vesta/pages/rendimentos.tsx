@@ -66,7 +66,7 @@ function snapshotKey(profileId: ProfileId): string {
 }
 
 function classeProvento(classe: NonNullable<LocalSnapshot["proventos"]>[number]["classe"]): Provento["classe"] {
-  return (classe === "Ação" ? "AÃ§Ã£o" : classe) as Provento["classe"];
+  return (classe === "Ação" ? "Ação" : classe) as Provento["classe"];
 }
 
 function proventosImportados(profileId: ProfileId): Provento[] {
@@ -102,10 +102,10 @@ function parseBRL(value: string) {
 }
 
 function splitReferencia(pm: string) {
-  const normalized = pm.replace(/\s*[Â·-]\s*Importado XP\s*/gi, "").replace(/\s*Importado XP\s*/gi, "").replace(/\s+/g, " ").trim();
+  const normalized = pm.replace(/\s*[·-]\s*Importado XP\s*/gi, "").replace(/\s*Importado XP\s*/gi, "").replace(/\s+/g, " ").trim();
   const pmMatch = normalized.match(/PM\s*(R\$\s*[\d.,]+)/i) ?? normalized.match(/^(R\$\s*[\d.,]+)/i);
   const cotMatch = normalized.match(/Cot\.?\s*(R\$\s*[\d.,]+)/i);
-  const qtdMatch = normalized.match(/([\d.]+)\s*(cotas|ações|aÃ§Ãµes|aÃƒÂ§ÃƒÂµes|títulos|titulos)/i);
+  const qtdMatch = normalized.match(/([\d.]+)\s*(cotas|ações|ações|aÃƒÂ§ÃƒÂµes|títulos|titulos)/i);
   return {
     pm: pmMatch ? parseBRL(pmMatch[1]) : null,
     cotacao: cotMatch ? parseBRL(cotMatch[1]) : null,

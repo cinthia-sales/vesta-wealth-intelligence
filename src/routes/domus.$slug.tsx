@@ -15,15 +15,19 @@ type PublicDomus = { id: string; nome: string; slug: string; descricao: string |
 
 export const Route = createFileRoute("/domus/$slug")({
   ssr: false,
+  validateSearch: (s: Record<string, unknown>) => ({
+    pedido: s.pedido === "1" || s.pedido === "true" || s.pedido === true,
+  }),
   component: DomusEntradaPage,
 });
 
 function DomusEntradaPage() {
   const { slug } = Route.useParams();
+  const search = Route.useSearch();
   const navigate = useNavigate();
 
   const [domus, setDomus] = useState<PublicDomus | null>(null);
-  const [mode, setMode] = useState<"login" | "pedido">("login");
+  const [mode, setMode] = useState<"login" | "pedido">(search.pedido ? "pedido" : "login");
   const [bootstrapMode, setBootstrapMode] = useState(false);
 
   // login

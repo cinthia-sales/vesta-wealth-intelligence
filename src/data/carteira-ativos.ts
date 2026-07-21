@@ -49,11 +49,22 @@ export const CARTEIRA: AtivoCarteira[] = [
   { id: "debjf",    dono: "paulo", classe: "rf", nome: "DEB J&F FEV/2028 · 15,15% pré",   valorMercado: 94830, taxaBruta: 15.15, isento: true, vencimento: "02/2028", intocavel: true },
   { id: "debjalles",dono: "paulo", classe: "rf", nome: "DEB Jalles DEZ/2031 · IPCA+8,5%", valorMercado: 70642, taxaBruta: 14.5, isento: true, vencimento: "12/2031", intocavel: true },
 
-  /* ── RF Cínthia ── */
-  { id: "lcixp",  dono: "cinthia", classe: "rf", nome: "LCI XP MAI/2027 · 89% CDI",        valorMercado: 225494, taxaBruta: 13.13, isento: true, vencimento: "05/2027" },
-  { id: "lcd36",  dono: "cinthia", classe: "rf", nome: "LCD BRDE FEV/2036 · 92,5% CDI",    valorMercado: 106961, taxaBruta: 13.64, isento: true, vencimento: "02/2036" },
-  { id: "lcabb",  dono: "cinthia", classe: "rf", nome: "LCA Bocom BBM OUT/2030 · 92,7%",   valorMercado: 86312,  taxaBruta: 13.67, isento: true, vencimento: "10/2030" },
-  { id: "lcaori", dono: "cinthia", classe: "rf", nome: "LCA Original ABR/2030 · 94% CDI",  valorMercado: 19553,  taxaBruta: 13.87, isento: true, vencimento: "04/2030", intocavel: true },
+  /* ── RF Cínthia (posição 14/07/2026) ── */
+  { id: "c-lcabb",   dono: "cinthia", classe: "rf", nome: "LCA Bocom BBM OUT/2030 · 92,7% CDI", valorMercado: 86733, taxaBruta: 13.68, isento: true, vencimento: "10/2030" },
+  { id: "c-lcd36a",  dono: "cinthia", classe: "rf", nome: "LCD BRDE FEV/2036 lote 1 · 92,5% CDI", valorMercado: 57956, taxaBruta: 13.64, isento: true, vencimento: "02/2036" },
+  { id: "c-lcd36b",  dono: "cinthia", classe: "rf", nome: "LCD BRDE FEV/2036 lote 2 · 92,5% CDI", valorMercado: 49526, taxaBruta: 13.64, isento: true, vencimento: "02/2036" },
+  { id: "c-deb-ter", dono: "cinthia", classe: "rf", nome: "DEB Tereos JUN/2027 · IPCA+11,55%",    valorMercado: 69199, taxaBruta: 16.19, isento: true, vencimento: "06/2027", intocavel: true },
+  { id: "c-deb-jf1", dono: "cinthia", classe: "rf", nome: "DEB J&F FEV/2028 lote 1 · 15,15%",    valorMercado: 68593, taxaBruta: 15.15, isento: true, vencimento: "02/2028", intocavel: true },
+  { id: "c-deb-jf2", dono: "cinthia", classe: "rf", nome: "DEB J&F FEV/2028 lote 2 · 15,15%",    valorMercado: 60279, taxaBruta: 15.15, isento: true, vencimento: "02/2028", intocavel: true },
+  { id: "c-lca-a30a",dono: "cinthia", classe: "rf", nome: "LCA Original ABR/2030 lote 1 · 94% CDI", valorMercado: 19649, taxaBruta: 13.87, isento: true, vencimento: "04/2030", intocavel: true },
+  { id: "c-lca-a30b",dono: "cinthia", classe: "rf", nome: "LCA Original ABR/2030 lote 2 · 95% CDI", valorMercado: 31906, taxaBruta: 14.02, isento: true, vencimento: "04/2030", intocavel: true },
+  { id: "c-lca-a30c",dono: "cinthia", classe: "rf", nome: "LCA Original ABR/2030 lote 3 · 95% CDI", valorMercado: 3080,  taxaBruta: 14.02, isento: true, vencimento: "04/2030", intocavel: true },
+  { id: "c-lca-m29a",dono: "cinthia", classe: "rf", nome: "LCA Original MAI/2029 lote 1 · 93% CDI", valorMercado: 21407, taxaBruta: 13.74, isento: true, vencimento: "05/2029", intocavel: true },
+  { id: "c-lca-m29b",dono: "cinthia", classe: "rf", nome: "LCA Original MAI/2029 lote 2 · 95% CDI", valorMercado: 15274, taxaBruta: 14.02, isento: true, vencimento: "05/2029", intocavel: true },
+  { id: "c-lca-m30", dono: "cinthia", classe: "rf", nome: "LCA Original MAR/2030 · 94% CDI",        valorMercado: 16640, taxaBruta: 13.87, isento: true, vencimento: "03/2030", intocavel: true },
+  { id: "c-lca-m28", dono: "cinthia", classe: "rf", nome: "LCA Original MAI/2028 · 94% CDI",        valorMercado: 3074,  taxaBruta: 13.87, isento: true, vencimento: "05/2028" },
+  { id: "c-lca-o26", dono: "cinthia", classe: "rf", nome: "LCA Original OUT/2026 · 94% CDI",        valorMercado: 4884,  taxaBruta: 13.87, isento: true, vencimento: "10/2026" },
+  { id: "c-lcd-m30", dono: "cinthia", classe: "rf", nome: "LCD BRDE MAI/2030 · 93,5% CDI",          valorMercado: 1158,  taxaBruta: 13.79, isento: true, vencimento: "05/2030" },
 ];
 
 /* ── Histórico anual (%) para a linha dura retrospectiva ── */

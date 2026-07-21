@@ -183,6 +183,8 @@ import {
   salvarGiro,
   type AtivoCarteira,
 } from "@/data/carteira-ativos";
+import { getUser } from "@/data/vesta-users";
+import type { ProfileId } from "@/lib/profile-derive";
 
 /* ═══════════════════════════════════════════════════════════
    Custo de Oportunidade — tela unificada
@@ -288,12 +290,50 @@ function veredito(a: AtivoCarteira | null, cagrNec: number | null, bGanha5: bool
 const VCOLOR = { MANTER: "#5B8A6A", MONITORAR: "#B8892A", MIGRAR: "#A85555" } as const;
 const VBG = { MANTER: "#F0F6F2", MONITORAR: "#FDF8EA", MIGRAR: "#FAF1F1" } as const;
 
+/* Constrói AtivoCarteira[] a partir de getUser(profileId) para perfis sem entrada em CARTEIRA */
+function buildCarteiraFromProfile(profileId: ProfileId): AtivoCarteira[] {
+  try {
+    const u = getUser(profileId);
+    const parseV = (v: string | number) =>
+      typeof v === "number" ? v : Number(String(v).replace(/[^\d,]/g, "").replace(",", ".")) || 0;
+    const rf: AtivoCarteira[] = (u.rf_ativos ?? []).map((a, i) => ({
+      id: `rf-${i}`,
+      dono: profileId as "paulo" | "cinthia",
+      classe: "rf" as const,
+      nome: a.n,
+      valorMercado: a.v,
+      taxaBruta: a.t ?? undefined,
+      isento: true,
+      vencimento: a.venc || undefined,
+    }));
+    const rv: AtivoCarteira[] = (u.rv_ativos ?? []).map((a, i) => ({
+      id: `rv-${i}`,
+      dono: profileId as "paulo" | "cinthia",
+      classe: "rv" as const,
+      nome: a.n,
+      valorMercado: parseV(a.v),
+    }));
+    return [...rv, ...rf];
+  } catch {
+    return [];
+  }
+}
+
 /* ═══════════ COMPONENT ═══════════ */
-export function OportunidadePage() {
+export function OportunidadePage({ profileId }: { profileId?: ProfileId }) {
+  // Build carteira filtered to current profile
+  const carteiraLocal: AtivoCarteira[] = profileId
+    ? (CARTEIRA.some((a) => a.dono === (profileId as string))
+        ? CARTEIRA.filter((a) => a.dono === (profileId as string))
+        : buildCarteiraFromProfile(profileId))
+    : CARTEIRA;
+
+  const defaultOrigemId = carteiraLocal[0]?.id ?? "manual";
+
   /* origem */
-  const [origemId, setOrigemId] = useState("vale3");
+  const [origemId, setOrigemId] = useState(defaultOrigemId);
   const manual = origemId === "manual";
-  const ativo = manual ? null : (CARTEIRA.find((a) => a.id === origemId) ?? null);
+  const ativo = manual ? null : (carteiraLocal.find((a) => a.id === origemId) ?? null);
 
   const [mValor, setMValor] = useState(100000);
   const [mNome, setMNome] = useState("Ativo manual");
@@ -322,7 +362,7 @@ export function OportunidadePage() {
   const [preTaxa, setPreTaxa] = useState(15.15);
   const [acaoDy, setAcaoDy] = useState(6);
   const [acaoApre, setAcaoApre] = useState(5);
-  const [cartDestId, setCartDestId] = useState("lcixp");
+  const [cartDestId, setCartDestId] = useState(() => carteiraLocal.find((a) => a.classe === "rf")?.id ?? "");
 
   const [hz, setHz] = useState(5);
   const [selic, setSelic] = useState<number[]>([...SELIC_DEF]);
@@ -355,8 +395,8 @@ export function OportunidadePage() {
   const taxaRealCurvaA = taxaCurvaOverride ?? ativo?.taxaRealCurva ?? null;
   const taxaRealMercadoA = taxaMercadoOverride ?? ativo?.taxaRealMercado ?? null;
 
-  const cartDest = CARTEIRA.find((a) => a.id === cartDestId);
-  const retroCartDest = CARTEIRA.find((a) => a.id === cartDestId);
+  const cartDest = carteiraLocal.find((a) => a.id === cartDestId);
+  const retroCartDest = carteiraLocal.find((a) => a.id === cartDestId);
   const retroParams = {
     pctCdi: retroPctCdi,
     ipcaReal: retroIpcaReal,
@@ -486,7 +526,7 @@ export function OportunidadePage() {
             <label>Selecionar da carteira</label>
             <select style={inputSt} value={origemId} onChange={(e) => {
               const nextId = e.target.value;
-              const nextAtivo = CARTEIRA.find((a) => a.id === nextId);
+              const nextAtivo = carteiraLocal.find((a) => a.id === nextId);
               setOrigemId(nextId);
               setRetroDesde(nextAtivo?.anoCompra ?? 2021);
               setADy(null);
@@ -499,21 +539,20 @@ export function OportunidadePage() {
               setVCurvaOverride(null);
               setBuscaMsg("");
             }}>
-              <optgroup label="Renda Variável — Paulo">
-                {CARTEIRA.filter((a) => a.classe === "rv").map((a) => (
-                  <option key={a.id} value={a.id}>{a.nome} · {fmtR(a.valorMercado)}</option>
-                ))}
-              </optgroup>
-              <optgroup label="Renda Fixa — Paulo">
-                {CARTEIRA.filter((a) => a.classe === "rf" && a.dono === "paulo").map((a) => (
-                  <option key={a.id} value={a.id}>{a.nome} · {fmtR(a.valorMercado)}</option>
-                ))}
-              </optgroup>
-              <optgroup label="Renda Fixa — Cínthia">
-                {CARTEIRA.filter((a) => a.classe === "rf" && a.dono === "cinthia").map((a) => (
-                  <option key={a.id} value={a.id}>{a.nome} · {fmtR(a.valorMercado)}</option>
-                ))}
-              </optgroup>
+              {carteiraLocal.filter((a) => a.classe === "rv").length > 0 && (
+                <optgroup label="Renda Variável">
+                  {carteiraLocal.filter((a) => a.classe === "rv").map((a) => (
+                    <option key={a.id} value={a.id}>{a.nome} · {fmtR(a.valorMercado)}</option>
+                  ))}
+                </optgroup>
+              )}
+              {carteiraLocal.filter((a) => a.classe === "rf").length > 0 && (
+                <optgroup label="Renda Fixa">
+                  {carteiraLocal.filter((a) => a.classe === "rf").map((a) => (
+                    <option key={a.id} value={a.id}>{a.nome} · {fmtR(a.valorMercado)}</option>
+                  ))}
+                </optgroup>
+              )}
               <optgroup label="—">
                 <option value="manual">✎ Entrada manual…</option>
               </optgroup>
@@ -803,7 +842,7 @@ export function OportunidadePage() {
           {tipoB === "carteira" && (
             <div className="fld"><label style={lblSt}>Ativo destino</label>
               <select style={inputSt} value={cartDestId} onChange={(e) => setCartDestId(e.target.value)}>
-                {CARTEIRA.filter((a) => a.classe === "rf" && a.id !== origemId).map((a) => (
+                {carteiraLocal.filter((a) => a.classe === "rf" && a.id !== origemId).map((a) => (
                   <option key={a.id} value={a.id}>{a.nome} · {a.taxaBruta}%</option>
                 ))}
               </select></div>

@@ -89,7 +89,8 @@ function PublicEntry() {
   }
 
   function handlePedido() {
-    if (selected) navigate({ to: "/domus/$slug", params: { slug: selected.slug } });
+    if (selected)
+      navigate({ to: "/domus/$slug", params: { slug: selected.slug }, search: { pedido: true } });
   }
 
   return (
@@ -182,10 +183,11 @@ function PublicEntry() {
                 <div style={selectedCardStyle}>
                   <div style={selectedKickerStyle}>{vestaLabel(selected)}</div>
                   <div style={selectedTitleStyle}>{nomeDomus(selected)}</div>
-                  <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 24, lineHeight: 1.5 }}>
-                    Este Domus esta sob supervisao da Vesta. Ela aprova o acesso e define as visoes permitidas.
+                  <div style={ornamentStyle}>✦</div>
+                  <div style={{ fontSize: 13.5, color: "var(--muted)", margin: "0 auto 26px", lineHeight: 1.6, maxWidth: 320 }}>
+                    Este Domus está sob supervisão da Vesta. Ela aprova o acesso e define as visões permitidas.
                   </div>
-                  <button onClick={handlePedido} style={primaryButtonStyle}>
+                  <button onClick={handlePedido} style={{ ...primaryButtonStyle, width: "100%" }}>
                     Pedir entrada neste Domus
                   </button>
                 </div>
@@ -265,24 +267,35 @@ const selectedCardStyle: CSSProperties = {
   background: "white",
   border: "1.5px solid var(--accent)",
   borderTop: "none",
-  borderRadius: "0 0 12px 12px",
-  padding: "28px 28px 24px",
+  borderRadius: "0 0 14px 14px",
+  padding: "34px 32px 30px",
   textAlign: "center",
+  boxShadow: "0 16px 38px rgba(42,15,20,.12)",
 };
 
 const selectedKickerStyle: CSSProperties = {
   fontSize: 10,
-  letterSpacing: ".22em",
-  color: "var(--muted)",
+  letterSpacing: ".24em",
+  color: "var(--accent)",
   fontFamily: "var(--font-display)",
-  marginBottom: 8,
+  marginBottom: 10,
   textTransform: "uppercase",
+  opacity: 0.85,
 };
 
 const selectedTitleStyle: CSSProperties = {
   fontFamily: "var(--font-elegant)",
-  fontSize: 28,
+  fontSize: 32,
   color: "#2A0F14",
-  marginBottom: 6,
-  fontWeight: 400,
+  marginBottom: 4,
+  fontWeight: 300,
+  letterSpacing: ".02em",
+};
+
+const ornamentStyle: CSSProperties = {
+  color: "var(--accent)",
+  fontSize: 11,
+  opacity: 0.55,
+  margin: "8px 0 14px",
+  letterSpacing: ".5em",
 };
