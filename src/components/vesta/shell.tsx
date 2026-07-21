@@ -18,6 +18,7 @@ import { DomusPage } from "@/components/vesta/pages/domus";
 import { RVPage } from "@/components/vesta/pages/rv";
 import { OportunidadePage } from "@/components/vesta/pages/oportunidade";
 import { AuditoriaPage } from "@/components/vesta/pages/auditoria";
+import { RaioXPage } from "@/components/vesta/pages/raiox";
 import { carregarGiros, removerGiro } from "@/data/carteira-ativos";
 import { isAssetLocked } from "@/data/asset-locks";
 
@@ -342,6 +343,14 @@ const NAV_ICONS: Record<string, ReactElement> = {
       <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83" />
     </svg>
   ),
+  raiox: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <circle cx="11" cy="11" r="7" />
+      <path d="M16.5 16.5L21 21" />
+      <path d="M8 11h6" />
+      <path d="M11 8v6" />
+    </svg>
+  ),
   aporte: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
       <line x1="12" y1="5" x2="12" y2="19" />
@@ -388,6 +397,7 @@ type PageKey =
   | "regras"
   | "upload"
   | "drivers"
+  | "raiox"
   | "aporte"
   | "rendimentos"
   | "domus"
@@ -567,7 +577,15 @@ export function VestaShell({
   );
 
   const topItem = (key: PageKey, label: string, className = "") => (
-    <button className={[page === key ? "on" : "", className].filter(Boolean).join(" ")} onClick={() => goTo(key)}>{label}</button>
+    <button
+      className={[page === key ? "on" : "", className].filter(Boolean).join(" ")}
+      onClick={() => {
+        setMoreOpen(false);
+        goTo(key);
+      }}
+    >
+      {label}
+    </button>
   );
 
   return (
@@ -711,6 +729,7 @@ export function VestaShell({
               {item("secundario", "Saída secundário")}
               <div className="nav-sec">Sistema</div>
               {item("regras", "Regras — não mexer")}
+              {item("raiox", "Raio-X do ativo")}
               {item("drivers", "Influenciadores")}
             </>
           )}
@@ -765,6 +784,7 @@ export function VestaShell({
         <nav className="context-nav" aria-label="Navegação da carteira">
           {topItem("home", "Visão geral")}
           {hasFullPortfolio && topItem("posicao", "Posição")}
+          {hasFullPortfolio && topItem("raiox", "Raio-X")}
           {topItem("alertas", `Alertas (${totalAlertas})`)}
           {hasFullPortfolio && topItem("projecao", "Projeção patrimônio")}
           <span className="context-nav__spacer" />
@@ -801,7 +821,7 @@ export function VestaShell({
               <HomePage profileId={profileId} overrideName={profileName ?? loggedName} loggedName={loggedName} />
             )}
             {page === "posicao" && <PosicaoPage profileId={profileId} />}
-            {page === "breakeven" && <BreakevenTabs profileId={profileId} />}
+            {page === "breakeven" && <BreakevenTabs profileId={profileId} bcbCdi={bcbCdi} bcbIpca={bcbIpca} />}
             {page === "equiv" && <EquivPage />}
             {page === "validador" && <ValidadorPage />}
             {page === "projecao" && <ProjecaoPage profileId={profileId} />}
@@ -815,6 +835,7 @@ export function VestaShell({
               />
             )}
             {page === "drivers" && <DriversPage />}
+            {page === "raiox" && <RaioXPage />}
             {page === "aporte" && <AportePage />}
             {page === "rendimentos" && <RendimentosPage profileId={profileId} />}
             {page === "rv" && <RVPage />}
@@ -829,7 +850,7 @@ export function VestaShell({
                 activeProfileId={profileId}
               />
             )}
-            {!["home", "posicao", "breakeven", "auditoria", "equiv", "validador", "projecao", "secundario", "alertas", "regras", "upload", "drivers", "aporte", "rendimentos", "domus", "rv", "oportunidade"].includes(page) && (
+            {!["home", "posicao", "breakeven", "auditoria", "raiox", "equiv", "validador", "projecao", "secundario", "alertas", "regras", "upload", "drivers", "aporte", "rendimentos", "domus", "rv", "oportunidade"].includes(page) && (
               <div className="ph">
                 <h1>Em breve</h1>
                 <p>Este módulo será migrado nas próximas rodadas.</p>
@@ -861,6 +882,11 @@ function GirosRegistradosPanel() {
         const bkMeses = g.ganhoMesEstimado > 0 && g.custoSaida > 0
           ? Math.ceil(g.custoSaida / g.ganhoMesEstimado)
           : 0;
+        const passivo = g.passivoOportunidade ?? 0;
+        const metaReal = g.custoSaida + passivo;
+        const bkReal = g.breakevenComPassivoMes ?? (
+          g.ganhoMesEstimado > 0 && metaReal > 0 ? Math.ceil(metaReal / g.ganhoMesEstimado) : 0
+        );
         return (
           <div
             key={g.id}
@@ -877,6 +903,9 @@ function GirosRegistradosPanel() {
                 {g.custoSaida > 0
                   ? ` paga custo de saída em ${bkMeses} ${bkMeses === 1 ? "mês" : "meses"}`
                   : " sem custo de saída"} ·
+                {passivo > 0
+                  ? ` passivo R$ ${Math.round(passivo).toLocaleString("pt-BR")} · breakeven real ${bkReal} ${bkReal === 1 ? "mês" : "meses"} ·`
+                  : ""}
                 registrado {new Date(g.criadoEm).toLocaleDateString("pt-BR")}
               </div>
             </div>

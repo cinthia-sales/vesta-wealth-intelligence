@@ -3,6 +3,7 @@ import { useState } from "react";
 import { getUser } from "@/data/vesta-users";
 import { DIVIDEND_TICKERS } from "@/data/dividendos";
 import { getSensibilidade, type Sensibilidade } from "@/data/sensibilidade";
+import { cadastroDoTexto } from "@/data/cadastro-ativos";
 import type { ProfileId } from "@/lib/profile-derive";
 import { getAssetLockReason, isAssetLocked, removeAssetLock, setAssetLocked } from "@/data/asset-locks";
 
@@ -102,6 +103,8 @@ function classifyRV(r: NonNullable<ReturnType<typeof getUser>["rv_ativos"]>[numb
 }
 
 function SensibilidadeModal({ s, onClose }: { s: Sensibilidade; onClose: () => void }) {
+  const cadastro = cadastroDoTexto(s.titulo);
+
   return (
     <div
       onClick={onClose}
@@ -156,6 +159,25 @@ function SensibilidadeModal({ s, onClose }: { s: Sensibilidade; onClose: () => v
         <p style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.55, margin: "10px 0 14px" }}>
           {s.resumo}
         </p>
+
+        {cadastro && (
+          <div
+            style={{
+              fontSize: 12,
+              padding: "10px 12px",
+              background: "rgba(255,255,255,.03)",
+              border: "1px solid rgba(255,255,255,.08)",
+              borderRadius: 8,
+              color: "var(--muted)",
+              marginBottom: 14,
+              lineHeight: 1.55,
+            }}
+          >
+            <strong style={{ color: "var(--accent)" }}>Cadastro Vesta:</strong>{" "}
+            {cadastro.tipo}. <strong>Benchmark:</strong> {cadastro.benchmark}.{" "}
+            <strong>Métricas:</strong> {cadastro.metricas.join(" · ")}.
+          </div>
+        )}
 
         {s.observacao && (
           <div

@@ -143,6 +143,8 @@ export type GiroRegistrado = {
   custoSaida: number;
   ganhoMesEstimado: number;
   horizonteAnos: number;
+  passivoOportunidade?: number;
+  breakevenComPassivoMes?: number | null;
 };
 
 const GIROS_KEY = "vesta.giros.registrados";
