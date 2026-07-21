@@ -1,5 +1,4 @@
 {
   "buildCommand": "bun run build:vercel",
-  "installCommand": "bun install",
-  "framework": null
+  "installCommand": "bun install"
 }
