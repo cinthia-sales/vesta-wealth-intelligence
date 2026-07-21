@@ -514,7 +514,10 @@ export function VestaShell({
   };
   useEffect(() => { void atualizarBCB(); }, []);
   // profileName = nome do perfil visualizado (pode ser membro diferente do logado)
-  const meta = getProfileMeta(profileId, profileName ?? loggedName);
+  // Fallback para u.nome do snapshot quando o caller não sabe o nome do membro
+  const userData = getUser(profileId);
+  const resolvedProfileName = profileName ?? (userData?.nome !== loggedName ? userData?.nome : undefined) ?? loggedName;
+  const meta = getProfileMeta(profileId, resolvedProfileName);
   const isFamily = profileId === "familiar" || profileId.startsWith("domus:");
   const loggedPersona = loggedAs ? getPersonaInfo(loggedAs) : null;
   const isVesta = loggedRole === "vesta" || loggedPersona?.role === "vesta";
