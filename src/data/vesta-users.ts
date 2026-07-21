@@ -350,19 +350,33 @@ function mergeSnapshot(base: UserData, snap: LocalSnapshot): UserData {
     kpi4_label: snap.kpi4_label && snap.kpi4_label !== "Status" ? snap.kpi4_label : importedStatusLabel,
     kpi4_val: snapKpiValue && snapKpiValue !== "em branco" ? snapKpiValue : importedStatusValue,
     kpi4_sub: snap.kpi4_sub && !/aguardando/i.test(snap.kpi4_sub) ? snap.kpi4_sub : importedStatusSub,
-    donut_data: snap.donut_data ?? (() => {
+    donut_data: (() => {
+      // Se o snapshot só tem 2 blobs genéricos [rf, rv], ignora e regenera
+      const snapIsGeneric2Blob = snap.donut_data?.length === 2;
+      const useSnap = snap.donut_data && !snapIsGeneric2Blob;
+      if (useSnap) return snap.donut_data!;
       if (total <= 0) return base.donut_data;
-      // Quando RV > 70% do total, quebra os top-FIIs como segmentos individuais
       const rvPct = total > 0 ? rv / total : 0;
+      // RV domina (>70%): quebra por posições RV individuais + blob RF
       if (rvPct > 0.7 && (snap.rv_ativos?.length ?? 0) > 0) {
         const sorted = [...(snap.rv_ativos ?? [])].sort((a, b) => parseValor(String(b.v)) - parseValor(String(a.v)));
         const top = sorted.slice(0, 6);
         const restVal = sorted.slice(6).reduce((s, a) => s + parseValor(String(a.v)), 0);
         return [...top.map(a => parseValor(String(a.v))), ...(rf > 0 ? [rf] : []), ...(restVal > 0 ? [restVal] : [])];
       }
+      // RF domina (>=50%): quebra por ativos RF individuais + blob RV
+      if (rvPct < 0.5 && (snap.rf_ativos?.length ?? 0) > 0) {
+        const sorted = [...(snap.rf_ativos ?? [])].sort((a, b) => b.v - a.v);
+        const top = sorted.slice(0, 7);
+        const restVal = sorted.slice(7).reduce((s, a) => s + a.v, 0);
+        return [...top.map(a => a.v), ...(rv > 0 ? [rv] : []), ...(restVal > 0 ? [restVal] : [])];
+      }
       return rv > 0 ? [rf, rv] : [rf];
     })(),
-    donut_labels: snap.donut_labels ?? (() => {
+    donut_labels: (() => {
+      const snapIsGeneric2Blob = snap.donut_labels?.length === 2;
+      const useSnap = snap.donut_labels && !snapIsGeneric2Blob;
+      if (useSnap) return snap.donut_labels!;
       if (total <= 0) return base.donut_labels;
       const rvPct = total > 0 ? rv / total : 0;
       if (rvPct > 0.7 && (snap.rv_ativos?.length ?? 0) > 0) {
@@ -371,9 +385,24 @@ function mergeSnapshot(base: UserData, snap: LocalSnapshot): UserData {
         const restVal = sorted.slice(6).reduce((s, a) => s + parseValor(String(a.v)), 0);
         return [...top.map(a => String(a.n ?? "").split(" ")[0].replace(/[^a-zA-Z0-9]/g, "").slice(0, 8).toUpperCase()), ...(rf > 0 ? ["RF"] : []), ...(restVal > 0 ? ["Demais"] : [])];
       }
+      if (rvPct < 0.5 && (snap.rf_ativos?.length ?? 0) > 0) {
+        const sorted = [...(snap.rf_ativos ?? [])].sort((a, b) => b.v - a.v);
+        const top = sorted.slice(0, 7);
+        const restVal = sorted.slice(7).reduce((s, a) => s + a.v, 0);
+        // Label curto: pega a primeira palavra após qualificadores (LCA, LCD, DEB, CDB...)
+        const shortLabel = (n: string) => {
+          const parts = n.replace(/\[.*?\]/g, "").trim().split(/\s+/);
+          // ex: "LCA Bocom BBM out/30" → "LCA Bocom"
+          return parts.slice(0, 2).join(" ").slice(0, 12);
+        };
+        return [...top.map(a => shortLabel(String(a.n ?? ""))), ...(rv > 0 ? ["RV"] : []), ...(restVal > 0 ? ["Demais RF"] : [])];
+      }
       return rv > 0 ? ["Renda fixa", "Renda variável"] : ["Renda fixa"];
     })(),
-    donut_colors: snap.donut_colors ?? (() => {
+    donut_colors: (() => {
+      const snapIsGeneric2Blob = snap.donut_colors?.length === 2;
+      const useSnap = snap.donut_colors && !snapIsGeneric2Blob;
+      if (useSnap) return snap.donut_colors!;
       if (total <= 0) return base.donut_colors;
       const rvPct = total > 0 ? rv / total : 0;
       if (rvPct > 0.7 && (snap.rv_ativos?.length ?? 0) > 0) {
@@ -382,6 +411,13 @@ function mergeSnapshot(base: UserData, snap: LocalSnapshot): UserData {
         const restVal = sorted.slice(6).reduce((s, a) => s + parseValor(String(a.v)), 0);
         const palette = ["#3E5E7A","#2A7A6B","#5E3E7A","#7A5E3E","#3E7A5E","#7A3E5E","#8BB8CC"];
         return [...top.map((_, i) => palette[i] ?? palette[palette.length - 1]), ...(rf > 0 ? ["#A11D3E"] : []), ...(restVal > 0 ? ["#A0B0C0"] : [])];
+      }
+      if (rvPct < 0.5 && (snap.rf_ativos?.length ?? 0) > 0) {
+        const sorted = [...(snap.rf_ativos ?? [])].sort((a, b) => b.v - a.v);
+        const top = sorted.slice(0, 7);
+        const restVal = sorted.slice(7).reduce((s, a) => s + a.v, 0);
+        const palette = ["#A11D3E","#C4783A","#7A3A5E","#5E3A7A","#3A5E7A","#2A7A6B","#7A5E3A","#8B6A4A","#4A6B8B"];
+        return [...top.map((_, i) => palette[i] ?? palette[palette.length - 1]), ...(rv > 0 ? ["#3E5E7A"] : []), ...(restVal > 0 ? ["#A0B0C0"] : [])];
       }
       return rv > 0 ? ["#A11D3E", "#3E5E7A"] : ["#A11D3E"];
     })(),
