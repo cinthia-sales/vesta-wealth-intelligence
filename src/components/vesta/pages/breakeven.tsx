@@ -541,6 +541,101 @@ function salvarBreakeven(profileId: ProfileId, be: BreakevenReal | null) {
   else window.localStorage.setItem(storageKey(profileId), JSON.stringify(be));
 }
 
+// ---- Sugestão de ativo para o picker ------------------------------------
+type AtivoSugestao = {
+  nome: string;
+  valor: number;
+  taxaAno: number; // %/ano calculado (campo t); 0 para RV
+  venc: string;    // "DD/MM/YYYY" ou "MM/YYYY"; "" para RV
+  status: string;
+  tipo: "RF" | "RV";
+};
+
+function prazoMesesDeVenc(venc: string): number {
+  const parts = venc.replace(/\s/g, "").split("/");
+  let month: number, year: number;
+  if (parts.length === 3) { month = parseInt(parts[1]); year = parseInt(parts[2]); }
+  else if (parts.length === 2) { month = parseInt(parts[0]); year = parseInt(parts[1]); }
+  else return 0;
+  const now = new Date();
+  const vencDate = new Date(year, month - 1, 28);
+  const diffMs = vencDate.getTime() - now.getTime();
+  return Math.max(0, Math.round(diffMs / (1000 * 60 * 60 * 24 * 30.44)));
+}
+
+function vencFormatado(venc: string): string {
+  const parts = venc.split("/");
+  if (parts.length === 3) return `${parts[1].padStart(2,"0")}/${parts[2]}`;
+  if (parts.length === 2) return `${parts[0].padStart(2,"0")}/${parts[1]}`;
+  return venc;
+}
+
+function statusDotBk(s: string) {
+  if (s === "urgente") return "#dc2626";
+  if (s === "monitorar" || s === "planejar") return "#d97706";
+  return "#16a34a";
+}
+
+// ---- Conversor % CDI → %/ano com IR (LCI/LCA isento; CDB tributado) --------
+let _cdiConvId = 0;
+function CdiConversor({ onChange }: { onChange: (patch: Partial<LinhaGrupo>) => void }) {
+  const [id] = useState(() => "cdiconv-" + (++_cdiConvId));
+  const [pctCdi, setPctCdi] = useState("");
+  const [isento, setIsento] = useState(true);
+  const [ir, setIr] = useState(15);
+  const CDI_BASE = 14.75;
+
+  const bruto = pctCdi ? (CDI_BASE * Number(pctCdi)) / 100 : null;
+  const liquido = bruto !== null ? (isento ? bruto : bruto * (1 - ir / 100)) : null;
+
+  return (
+    <div style={{ fontSize: 11, background: "rgba(0,0,0,.03)", borderRadius: 6, padding: "8px 10px", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+      <span style={{ color: "var(--muted)", opacity: .8 }}>% CDI:</span>
+      <input
+        type="number"
+        step={1}
+        value={pctCdi}
+        placeholder="ex: 93"
+        style={{ width: 60, fontSize: 11, padding: "2px 6px", borderRadius: 4, border: "1px solid var(--border, #ccc)", background: "var(--card, #fff)" }}
+        onChange={(e) => setPctCdi(e.target.value)}
+      />
+      <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer", color: "var(--muted)" }}>
+        <input type="radio" name={id} checked={isento} onChange={() => setIsento(true)} />
+        isento (LCI/LCA/DEB)
+      </label>
+      <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer", color: "var(--muted)" }}>
+        <input type="radio" name={id} checked={!isento} onChange={() => setIsento(false)} />
+        tributado (CDB) IR
+        <select
+          value={ir}
+          disabled={isento}
+          onChange={(e) => setIr(Number(e.target.value))}
+          style={{ fontSize: 11, borderRadius: 3, border: "1px solid var(--border, #ccc)", padding: "1px 3px" }}
+        >
+          <option value={15}>15% (&gt;24m)</option>
+          <option value={17.5}>17,5% (12–24m)</option>
+          <option value={20}>20% (6–12m)</option>
+          <option value={22.5}>22,5% (&lt;6m)</option>
+        </select>
+      </label>
+      {liquido !== null && (
+        <>
+          <span style={{ color: "var(--muted)", opacity: .6 }}>→</span>
+          <strong style={{ color: "var(--text)" }}>{liquido.toFixed(2).replace(".", ",")}%/ano</strong>
+          {!isento && <span style={{ color: "var(--muted)", opacity: .7 }}>(bruto {bruto!.toFixed(2).replace(".", ",")}%)</span>}
+          <button
+            type="button"
+            onClick={() => { if (liquido) onChange({ taxaMercado: +liquido.toFixed(2), taxaCurva: +liquido.toFixed(2) }); }}
+            style={{ fontSize: 11, background: "var(--accent)", color: "#fff", border: "none", borderRadius: 4, padding: "2px 10px", cursor: "pointer", fontWeight: 600 }}
+          >
+            aplicar
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ---- Cartão de linha (reutilizado para grupo A e B) ----------------------
 function CartaoLinha({
   linha,
@@ -548,13 +643,30 @@ function CartaoLinha({
   onChange,
   onRemove,
   removivel,
+  ativos,
 }: {
   linha: LinhaGrupo;
   idx: number;
   onChange: (patch: Partial<LinhaGrupo>) => void;
   onRemove: () => void;
   removivel: boolean;
+  ativos: AtivoSugestao[];
 }) {
+  const [pickerAberto, setPickerAberto] = useState(false);
+
+  const selecionarAtivo = (a: AtivoSugestao) => {
+    if (a.tipo === "RF") {
+      const prazoMeses = prazoMesesDeVenc(a.venc);
+      const duration = Math.max(0.1, +(prazoMeses / 12).toFixed(1));
+      onChange({ desc: a.nome, capital: a.valor, taxaMercado: +a.taxaAno.toFixed(2), taxaCurva: +a.taxaAno.toFixed(2), duration, prazoMeses });
+    } else {
+      // RV: preenche capital + DY estimado (usuário pode ajustar)
+      const dy = +a.taxaAno.toFixed(2);
+      onChange({ desc: a.nome, capital: a.valor, taxaMercado: dy, taxaCurva: dy });
+    }
+    setPickerAberto(false);
+  };
+
   return (
     <div
       style={{
@@ -570,23 +682,109 @@ function CartaoLinha({
         <strong style={{ fontFamily: "var(--font-display)", fontSize: 13 }}>
           Linha {idx + 1}
         </strong>
-        {removivel && (
-          <button
-            type="button"
-            onClick={onRemove}
-            style={{
-              fontSize: 11,
-              color: "var(--muted)",
-              background: "transparent",
-              border: "none",
-              cursor: "pointer",
-              textDecoration: "underline",
-            }}
-          >
-            remover
-          </button>
-        )}
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          {ativos.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setPickerAberto((v) => !v)}
+              style={{
+                fontSize: 11,
+                color: "var(--accent)",
+                background: "transparent",
+                border: "1px solid var(--accent)",
+                borderRadius: 999,
+                padding: "2px 10px",
+                cursor: "pointer",
+                letterSpacing: ".04em",
+                fontFamily: "var(--font-display)",
+              }}
+            >
+              {pickerAberto ? "fechar" : "⊕ escolher da carteira"}
+            </button>
+          )}
+          {removivel && (
+            <button
+              type="button"
+              onClick={onRemove}
+              style={{
+                fontSize: 11,
+                color: "var(--muted)",
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                textDecoration: "underline",
+              }}
+            >
+              remover
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* Picker de ativos da carteira */}
+      {pickerAberto && (
+        <div
+          style={{
+            border: "1px solid var(--border, #E5DFD3)",
+            borderRadius: 6,
+            background: "var(--surface, #f9f7f2)",
+            overflow: "hidden",
+          }}
+        >
+          <div style={{ padding: "6px 10px", fontSize: 10, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--muted)", borderBottom: "1px solid var(--border, #E5DFD3)" }}>
+            Ativos de renda fixa desta carteira
+          </div>
+          {ativos.map((a, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => selecionarAtivo(a)}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "8px 1fr auto",
+                gap: "0 10px",
+                alignItems: "center",
+                width: "100%",
+                padding: "8px 10px",
+                background: "transparent",
+                border: "none",
+                borderBottom: i < ativos.length - 1 ? "1px solid var(--border, #E5DFD3)" : "none",
+                cursor: "pointer",
+                textAlign: "left",
+              }}
+            >
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: statusDotBk(a.status), display: "inline-block", flexShrink: 0 }} />
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text)", lineHeight: 1.3, display: "flex", alignItems: "center", gap: 5 }}>
+                  {a.nome}
+                  <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: ".05em", padding: "1px 5px", borderRadius: 3, background: a.tipo === "RF" ? "#e0f2fe" : "#fef3c7", color: a.tipo === "RF" ? "#0369a1" : "#92400e" }}>
+                    {a.tipo}
+                  </span>
+                </div>
+                <div style={{ fontSize: 11, color: "var(--muted)" }}>
+                  {a.tipo === "RF" && a.venc
+                    ? `venc ${vencFormatado(a.venc)} · ${prazoMesesDeVenc(a.venc)}m restantes`
+                    : /^[A-Z]{4}11$/.test(String(a.nome).split(" ")[0])
+                      ? `FII · DY estimado ~${a.taxaAno}%/ano`
+                      : a.taxaAno > 10
+                        ? `Fundo DI · ~${a.taxaAno}%/ano (100% CDI)`
+                        : `Ação · DY estimado ~${a.taxaAno}%/ano`}
+                </div>
+              </div>
+              <div style={{ textAlign: "right", flexShrink: 0 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>
+                  {fmtR(a.valor)}
+                </div>
+                {a.tipo === "RF" && a.taxaAno > 0
+                  ? <div style={{ fontSize: 11, color: "#16a34a" }}>{a.taxaAno.toFixed(2)}% a.a.</div>
+                  : <div style={{ fontSize: 11, color: "var(--muted)" }}>RV</div>
+                }
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+
       <label className="bk-field">
         Descrição
         <input
@@ -645,6 +843,8 @@ function CartaoLinha({
           />
         </label>
       </div>
+      {/* Conversor CDI → %/ano */}
+      <CdiConversor onChange={onChange} />
     </div>
   );
 }
@@ -663,12 +863,51 @@ function SimuladorTrocaBreakeven({
 }) {
   const [custo, setCusto] = useState(breakevenExistente?.custo ?? 0);
   const [nome, setNome] = useState(breakevenExistente?.nome ?? "");
+  const [batchAberto, setBatchAberto] = useState(false);
+  const [batchSel, setBatchSel] = useState<Set<string>>(new Set());
   const [grupoA, setGrupoA] = useState<LinhaGrupo[]>(
     breakevenExistente?.grupoA ?? [novaLinha()],
   );
   const [grupoB, setGrupoB] = useState<LinhaGrupo[]>(
     breakevenExistente?.grupoB ?? [novaLinha()],
   );
+
+  // Ativos de RF + RV da carteira atual para o picker
+  const ativosCarteira = useMemo((): AtivoSugestao[] => {
+    const parseV = (v: string | number) =>
+      typeof v === "number" ? v : Number(String(v).replace(/[^\d,-]/g, "").replace(/\./g, "").replace(",", ".")) || 0;
+    try {
+      const u = getUser(profileId);
+      const rf: AtivoSugestao[] = (u.rf_ativos ?? [])
+        .map((a: any) => ({
+          nome: a.n,
+          valor: typeof a.v === "number" ? a.v : parseV(a.v),
+          taxaAno: a.t ?? 0,
+          venc: a.venc ?? "",
+          status: a.s ?? "",
+          tipo: "RF" as const,
+        }))
+        .filter((a: AtivoSugestao) => a.valor > 0);
+      const rv: AtivoSugestao[] = (u.rv_ativos ?? [])
+        .map((a: any) => {
+          const ticker = String(a.n ?? "").split(" ")[0].replace(/[^A-Z0-9]/g, "");
+          const isFII = /^[A-Z]{4}11$/.test(ticker);
+          const isCDIFund = /FIF RF|Referenciada DI|DI CP RL|FIDC|fundo.*di|renda fixa/i.test(String(a.n ?? "")) || (a.cls ?? "").toLowerCase().includes("fundo");
+          return {
+            nome: a.n,
+            valor: parseV(a.v),
+            taxaAno: isFII ? 6 : isCDIFund ? 14.75 : 2, // DY: FII ~6%, fundo DI ~14.75%, ação ~2%
+            venc: "",
+            status: a.s ?? "",
+            tipo: "RV" as const,
+          };
+        })
+        .filter((a: AtivoSugestao) => a.valor > 0);
+      return [...rf, ...rv];
+    } catch {
+      return [];
+    }
+  }, [profileId]);
 
   const capitalA = grupoA.reduce((s, l) => s + l.capital, 0);
   const capitalB = grupoB.reduce((s, l) => s + l.capital, 0);
@@ -779,9 +1018,88 @@ function SimuladorTrocaBreakeven({
 
           {/* Grupo A */}
           <div style={{ display: "grid", gap: 8 }}>
-            <div style={{ fontFamily: "var(--font-display)", fontSize: 13, letterSpacing: ".04em", textTransform: "uppercase", color: "#dc2626" }}>
-              Grupo A — de onde o dinheiro sai
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ fontFamily: "var(--font-display)", fontSize: 13, letterSpacing: ".04em", textTransform: "uppercase", color: "#dc2626" }}>
+                Grupo A — de onde o dinheiro sai
+              </div>
+              {ativosCarteira.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => { setBatchAberto((v) => !v); setBatchSel(new Set()); }}
+                  style={{ fontSize: 11, color: "#dc2626", background: "transparent", border: "1px solid #dc2626", borderRadius: 999, padding: "2px 10px", cursor: "pointer", fontFamily: "var(--font-display)" }}
+                >
+                  {batchAberto ? "fechar" : "☑ selecionar vários"}
+                </button>
+              )}
             </div>
+
+            {/* Batch picker para selecionar múltiplos ativos */}
+            {batchAberto && (
+              <div style={{ border: "1px solid #dc2626", borderRadius: 8, overflow: "hidden", background: "var(--surface, #f9f7f2)" }}>
+                <div style={{ padding: "6px 10px", fontSize: 10, letterSpacing: ".06em", textTransform: "uppercase", color: "#dc2626", borderBottom: "1px solid rgba(220,38,38,.2)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span>Selecione os ativos do Grupo A</span>
+                  <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, cursor: "pointer" }}>
+                    <input
+                      type="checkbox"
+                      checked={batchSel.size === ativosCarteira.length}
+                      onChange={(e) => setBatchSel(e.target.checked ? new Set(ativosCarteira.map((a) => a.nome)) : new Set())}
+                    />
+                    todos
+                  </label>
+                </div>
+                {ativosCarteira.map((a, i) => (
+                  <label
+                    key={i}
+                    style={{ display: "grid", gridTemplateColumns: "28px 8px 1fr auto", gap: "0 8px", alignItems: "center", padding: "8px 10px", borderBottom: i < ativosCarteira.length - 1 ? "1px solid var(--border, #E5DFD3)" : "none", cursor: "pointer", background: batchSel.has(a.nome) ? "rgba(220,38,38,.05)" : "transparent" }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={batchSel.has(a.nome)}
+                      onChange={(e) => setBatchSel((prev) => { const s = new Set(prev); e.target.checked ? s.add(a.nome) : s.delete(a.nome); return s; })}
+                    />
+                    <span style={{ width: 7, height: 7, borderRadius: "50%", background: statusDotBk(a.status), display: "inline-block" }} />
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>{a.nome}</div>
+                      <div style={{ fontSize: 11, color: "var(--muted)" }}>
+                        {a.tipo === "RF" && a.venc
+                          ? `RF · venc ${vencFormatado(a.venc)} · ${a.taxaAno.toFixed(2)}%`
+                          : /^[A-Z]{4}11$/.test(String(a.nome).split(" ")[0])
+                            ? `FII · DY ~${a.taxaAno}%/ano`
+                            : a.taxaAno > 10
+                              ? `Fundo DI · ~${a.taxaAno}%/ano`
+                              : `Ação · DY ~${a.taxaAno}%/ano`}
+                      </div>
+                    </div>
+                    <div style={{ textAlign: "right", fontSize: 12, fontWeight: 600 }}>{fmtR(a.valor)}</div>
+                  </label>
+                ))}
+                <div style={{ padding: "10px", borderTop: "1px solid rgba(220,38,38,.2)", display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                  <button
+                    type="button"
+                    disabled={batchSel.size === 0}
+                    onClick={() => {
+                      const selecionados = ativosCarteira.filter((a) => batchSel.has(a.nome));
+                      const novasLinhas: LinhaGrupo[] = selecionados.map((a) => {
+                        const l = novaLinha();
+                        if (a.tipo === "RF") {
+                          const prazoMeses = prazoMesesDeVenc(a.venc);
+                          return { ...l, desc: a.nome, capital: a.valor, taxaMercado: +a.taxaAno.toFixed(2), taxaCurva: +a.taxaAno.toFixed(2), duration: Math.max(0.1, +(prazoMeses / 12).toFixed(1)), prazoMeses };
+                        }
+                        const dy = +a.taxaAno.toFixed(2);
+                        return { ...l, desc: a.nome, capital: a.valor, taxaMercado: dy, taxaCurva: dy };
+                      });
+                      setGrupoA(novasLinhas);
+                      setBatchAberto(false);
+                      setBatchSel(new Set());
+                    }}
+                    style={{ fontSize: 12, background: batchSel.size > 0 ? "#dc2626" : "#ccc", color: "#fff", border: "none", borderRadius: 6, padding: "6px 16px", cursor: batchSel.size > 0 ? "pointer" : "default", fontWeight: 600 }}
+                  >
+                    Preencher Grupo A com {batchSel.size} ativo{batchSel.size !== 1 ? "s" : ""}
+                  </button>
+                </div>
+              </div>
+            )}
+
             {grupoA.map((l, idx) => (
               <CartaoLinha
                 key={l.id}
@@ -790,6 +1108,7 @@ function SimuladorTrocaBreakeven({
                 onChange={(p) => setLinhaA(l.id, p)}
                 onRemove={() => setGrupoA((prev) => (prev.length === 1 ? prev : prev.filter((x) => x.id !== l.id)))}
                 removivel={grupoA.length > 1}
+                ativos={ativosCarteira}
               />
             ))}
             <button
@@ -814,6 +1133,7 @@ function SimuladorTrocaBreakeven({
                 onChange={(p) => setLinhaB(l.id, p)}
                 onRemove={() => setGrupoB((prev) => (prev.length === 1 ? prev : prev.filter((x) => x.id !== l.id)))}
                 removivel={grupoB.length > 1}
+                ativos={ativosCarteira}
               />
             ))}
             <button

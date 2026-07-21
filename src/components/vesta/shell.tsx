@@ -17,6 +17,7 @@ import { RendimentosPage } from "@/components/vesta/pages/rendimentos";
 import { DomusPage } from "@/components/vesta/pages/domus";
 import { RVPage } from "@/components/vesta/pages/rv";
 import { OportunidadePage } from "@/components/vesta/pages/oportunidade";
+import { AuditoriaPage } from "@/components/vesta/pages/auditoria";
 import { carregarGiros, removerGiro } from "@/data/carteira-ativos";
 import { isAssetLocked } from "@/data/asset-locks";
 
@@ -70,7 +71,7 @@ export function ProfileSelector({
   if (groupByDomus) {
     for (const e of extraCards) {
       const key = e.domus?.nome ?? "Sem Domus";
-      if (key === MALTA_FURTADO) continue; // esses jÃ¡ aparecem como hardcoded
+      if (key === MALTA_FURTADO) continue; // esses já aparecem como hardcoded
       if (!extrasByDomus.has(key)) extrasByDomus.set(key, []);
       extrasByDomus.get(key)!.push(e);
     }
@@ -106,7 +107,7 @@ export function ProfileSelector({
           </div>
           <div className="ps-card-desc" style={{ margin: "6px 0 10px" }}>
             {e.domus?.nome ?? "Domus"}
-            <br />visÃ£o individual
+            <br />visão individual
             <br />&nbsp;
           </div>
           <div
@@ -122,11 +123,11 @@ export function ProfileSelector({
 
   return (
     <div id="profile-screen">
-      <div className="ps-vesta">âœ¦ Vesta âœ¦</div>
-      <div className="ps-title">GuardiÃ£ do PatrimÃ´nio</div>
+      <div className="ps-vesta">✦ Vesta ✦</div>
+      <div className="ps-title">Guardiã do Patrimônio</div>
       <div className="ps-subtitle">
         {loggedAs
-          ? `Entrou como ${getPersonaInfo(loggedAs).name} Â· selecione a visÃ£o`
+          ? `Entrou como ${getPersonaInfo(loggedAs).name} · selecione a visão`
           : "Selecione o perfil de acesso"}
       </div>
 
@@ -143,9 +144,9 @@ export function ProfileSelector({
                     <div>
                       <div className="ps-card-name">FAMILIAR DOMUS</div>
                       <div className="ps-card-desc" style={{ margin: "6px 0 10px" }}>
-                        VisÃ£o consolidada das carteiras e todas as ferramentas
+                        Visão consolidada das carteiras e todas as ferramentas
                       </div>
-                      <div className="ps-card-badge ps-badge-fam">Acesso total Â· VestÃ¦ Tantum</div>
+                      <div className="ps-card-badge ps-badge-fam">Acesso total · Vestæ Tantum</div>
                     </div>
                   </div>
                 )}
@@ -153,9 +154,9 @@ export function ProfileSelector({
                   <div className="ps-card" onClick={() => onSelect("cinthia")}>
                     <div className="ps-avatar ps-av-cinthia">C</div>
                     <div>
-                      <div className="ps-card-name">CÃNTHIA&nbsp;VESTA</div>
+                      <div className="ps-card-name">CÍNTHIA&nbsp;VESTA</div>
                       <div className="ps-card-desc" style={{ margin: "6px 0 10px" }}>
-                        Carteira XP 6414212<br />visÃ£o individual<br />&nbsp;
+                        Carteira XP 6414212<br />visão individual<br />&nbsp;
                       </div>
                       <div className="ps-card-badge ps-badge-ind">Individual&nbsp;Infinitus</div>
                     </div>
@@ -167,7 +168,7 @@ export function ProfileSelector({
                     <div>
                       <div className="ps-card-name">PAULO EFFLUXUS</div>
                       <div className="ps-card-desc" style={{ margin: "6px 0 10px" }}>
-                        Carteira XP 5296823<br />visÃ£o individual<br />&nbsp;
+                        Carteira XP 5296823<br />visão individual<br />&nbsp;
                       </div>
                       <div className="ps-card-badge ps-badge-ind">Individual Restrictus</div>
                     </div>
@@ -180,7 +181,7 @@ export function ProfileSelector({
           {Array.from(extrasByDomus.entries()).map(([domusNome, members]) => (
             <div key={domusNome} style={{ width: "100%" }}>
               <div className="ps-domus-header">
-                {domusNome.replace(/^fam[Ã­i]lia\s+/i, "Domus ").toUpperCase()}
+                {domusNome.replace(/^fam[íi]lia\s+/i, "Domus ").toUpperCase()}
               </div>
               <div className="ps-profiles">
                 {members.map((e) => <ExtraCard key={e.id} e={e} />)}
@@ -197,9 +198,9 @@ export function ProfileSelector({
               <div>
                 <div className="ps-card-name">FAMILIAR DOMUS</div>
                 <div className="ps-card-desc" style={{ margin: "6px 0 10px" }}>
-                  VisÃ£o consolidada&nbsp;das carteiras&nbsp;{"\n"}e todas as ferramentas
+                  Visão consolidada&nbsp;das carteiras&nbsp;{"\n"}e todas as ferramentas
                 </div>
-                <div className="ps-card-badge ps-badge-fam">Acesso total -&nbsp;VestÃ¦ Tantum</div>
+                <div className="ps-card-badge ps-badge-fam">Acesso total -&nbsp;Vestæ Tantum</div>
               </div>
             </div>
           )}
@@ -207,9 +208,9 @@ export function ProfileSelector({
             <div className="ps-card" onClick={() => onSelect("cinthia")}>
               <div className="ps-avatar ps-av-cinthia">C</div>
               <div>
-                <div className="ps-card-name">CÃNTHIA&nbsp;VESTA</div>
+                <div className="ps-card-name">CÍNTHIA&nbsp;VESTA</div>
                 <div className="ps-card-desc" style={{ margin: "6px 0 10px" }}>
-                  Carteira XP 6414212<br />visÃ£o individual<br />&nbsp;
+                  Carteira XP 6414212<br />visão individual<br />&nbsp;
                 </div>
                 <div className="ps-card-badge ps-badge-ind">Individual&nbsp;Infinitus</div>
               </div>
@@ -221,7 +222,7 @@ export function ProfileSelector({
               <div>
                 <div className="ps-card-name">PAULO EFFLUXUS</div>
                 <div className="ps-card-desc" style={{ margin: "6px 0 10px" }}>
-                  Carteira XP 5296823<br />visÃ£o individual<br />&nbsp;
+                  Carteira XP 5296823<br />visão individual<br />&nbsp;
                 </div>
                 <div className="ps-card-badge ps-badge-ind">Individual Restrictus</div>
               </div>
@@ -232,10 +233,10 @@ export function ProfileSelector({
       )}
 
       <div className="ps-ornament">
-        Domus Malta Furtado Â· 2026
+        Domus Malta Furtado · 2026
         {onLogout && (
           <>
-            {" Â· "}
+            {" · "}
             <a
               onClick={onLogout}
               style={{ cursor: "pointer", textDecoration: "underline", color: "var(--accent)" }}
@@ -252,11 +253,11 @@ export function ProfileSelector({
             <p className="public-domus-kicker">Persona sem dados</p>
             <h3>{waiting.profile?.nome ?? "Novo membro"}</h3>
             <p style={{ lineHeight: 1.6 }}>
-              A Vesta jÃ¡ aprovou o acesso, mas ainda nÃ£o subimos os documentos XP dessa persona.
+              A Vesta já aprovou o acesso, mas ainda não subimos os documentos XP dessa persona.
               Quando o extrato for carregado, a carteira dela aparece aqui como as outras.
             </p>
             <p style={{ fontSize: 12, color: "var(--muted)" }}>
-              {waiting.profile?.email} Â· {waiting.domus?.nome ?? "Domus"} Â· {waiting.papel}
+              {waiting.profile?.email} · {waiting.domus?.nome ?? "Domus"} · {waiting.papel}
             </p>
             <button onClick={() => setWaiting(null)}>Entendido</button>
           </div>
@@ -391,7 +392,8 @@ type PageKey =
   | "rendimentos"
   | "domus"
   | "rv"
-  | "oportunidade";
+  | "oportunidade"
+  | "auditoria";
 
 const PROFILE_META: Record<"familiar" | "cinthia" | "paulo", { name: string; sub: string; avatarBg: string; avatarColor: string; content: ReactNode }> = {
   familiar: {
@@ -402,7 +404,7 @@ const PROFILE_META: Record<"familiar" | "cinthia" | "paulo", { name: string; sub
     content: <span style={{ fontSize: 14 }}>ðŸ›</span>,
   },
   cinthia: {
-    name: "CÃNTHIA VESTA",
+    name: "CÍNTHIA VESTA",
     sub: "XP 6414212",
     avatarBg: "rgba(161,29,62,.08)",
     avatarColor: "var(--accent)",
@@ -490,7 +492,7 @@ export function VestaShell({
     window.addEventListener("pointerup", up);
   };
 
-  /* CDI (sÃ©rie 4389) e IPCA 12m (sÃ©rie 13522) direto do Banco Central */
+  /* CDI (série 4389) e IPCA 12m (série 13522) direto do Banco Central */
   const [bcbCdi, setBcbCdi] = useState<number | null>(null);
   const [bcbIpca, setBcbIpca] = useState<number | null>(null);
   const [bcbLive, setBcbLive] = useState(false);
@@ -518,7 +520,7 @@ export function VestaShell({
   const isVesta = loggedRole === "vesta" || loggedPersona?.role === "vesta";
   const canManageDomus = isVesta && profileId !== "paulo";
   const isMember = profileId.startsWith("member:");
-  // Nome de exibiÃ§Ã£o: usa loggedName (real do banco) ou fallback para getPersonaInfo
+  // Nome de exibição: usa loggedName (real do banco) ou fallback para getPersonaInfo
   const displayName = loggedName ?? (loggedAs ? getPersonaInfo(loggedAs).name : "Membro");
   const userData = getUser(profileId);
   const hasImportedPortfolio = userData.total > 0 || userData.rf_ativos.length > 0 || (userData.rv_ativos?.length ?? 0) > 0;
@@ -541,7 +543,7 @@ export function VestaShell({
       : `${totalAlertas} alertas`;
   const alertaBreakdown = [
     { key: "r", count: alertaCounts.r, color: "var(--danger)", title: "Urgentes" },
-    { key: "w", count: alertaCounts.w, color: "var(--warning)", title: "AtenÃ§Ã£o" },
+    { key: "w", count: alertaCounts.w, color: "var(--warning)", title: "Atenção" },
     { key: "g", count: alertaCounts.g, color: "var(--success)", title: "Positivos" },
   ];
 
@@ -696,16 +698,18 @@ export function VestaShell({
             </span>,
           )}
 
+          {!isFamily && item("upload", "Importar arquivos")}
+
           {hasFullPortfolio && (
             <>
               <div className="nav-sec">Decidir</div>
               {item("breakeven", "Custo de oportunidade")}
+              {item("auditoria", "Auditoria de ações")}
               {item("projecao", "Projeção patrimônio")}
               {item("secundario", "Saída secundário")}
               <div className="nav-sec">Sistema</div>
               {item("regras", "Regras — não mexer")}
               {item("drivers", "Influenciadores")}
-              {!isFamily && item("upload", "Importar arquivos")}
             </>
           )}
 
@@ -731,7 +735,7 @@ export function VestaShell({
         {page === "domus" && (
           <nav className="management-header">
             <button onClick={onBackToHall ?? onSwitchProfile}>â† Hall</button>
-            <strong>Vesta Â· GestÃ£o do Domus</strong>
+            <strong>Vesta · Gestão do Domus</strong>
             <span />
             {onLogout && <button onClick={onLogout}>Sair</button>}
           </nav>
@@ -748,7 +752,7 @@ export function VestaShell({
               {isFamily 
                 ? `Visão do Domus ·\u00A0\n${gestoraName ?? "Cinthia"} VESTA como gestora\nPatrimonium Consolidatum` 
                 : `Carteira ${meta.name}\u00A0${
-                    profileId === "paulo" ? "\nPost Reformam\u00A0Â·\u00A0MMXXVI\u00A0" : 
+                    profileId === "paulo" ? "\nPost Reformam\u00A0·\u00A0MMXXVI\u00A0" : 
                     profileId === "cinthia" ? "\nCustos Ignis et Patrimonni" : ""
                   }`}
             </div>
@@ -812,7 +816,8 @@ export function VestaShell({
             {page === "aporte" && <AportePage />}
             {page === "rendimentos" && <RendimentosPage profileId={profileId} />}
             {page === "rv" && <RVPage />}
-            {page === "oportunidade" && <OportunidadePage />}
+            {page === "oportunidade" && <OportunidadePage profileId={profileId} />}
+            {page === "auditoria" && <AuditoriaPage profileId={profileId} />}
             {page === "domus" && canManageDomus && scopes && onUpdateScopes && (
               <DomusPage
                 scopes={scopes}
@@ -822,10 +827,10 @@ export function VestaShell({
                 activeProfileId={profileId}
               />
             )}
-            {!["home", "posicao", "breakeven", "equiv", "validador", "projecao", "secundario", "alertas", "regras", "upload", "drivers", "aporte", "rendimentos", "domus", "rv", "oportunidade"].includes(page) && (
+            {!["home", "posicao", "breakeven", "auditoria", "equiv", "validador", "projecao", "secundario", "alertas", "regras", "upload", "drivers", "aporte", "rendimentos", "domus", "rv", "oportunidade"].includes(page) && (
               <div className="ph">
                 <h1>Em breve</h1>
-                <p>Este mÃ³dulo serÃ¡ migrado nas prÃ³ximas rodadas.</p>
+                <p>Este módulo será migrado nas próximas rodadas.</p>
               </div>
             )}
             {children}
@@ -848,7 +853,7 @@ function GirosRegistradosPanel() {
     <div className="card" style={{ marginBottom: 14 }}>
       <div className="card-hdr">
         Giros registrados no Custo de Oportunidade
-        <span>{giros.length} pendente(s) de execuÃ§Ã£o</span>
+        <span>{giros.length} pendente(s) de execução</span>
       </div>
       {giros.map((g) => {
         const bkMeses = g.ganhoMesEstimado > 0 && g.custoSaida > 0
@@ -865,11 +870,11 @@ function GirosRegistradosPanel() {
             <div style={{ flex: 1, minWidth: 220 }}>
               <b>{g.origem}</b> â†’ {g.destino}
               <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 2 }}>
-                Capital R$ {Math.round(g.capital).toLocaleString("pt-BR")} Â·
-                ganho estimado +R$ {Math.round(g.ganhoMesEstimado).toLocaleString("pt-BR")}/mÃªs Â·
+                Capital R$ {Math.round(g.capital).toLocaleString("pt-BR")} ·
+                ganho estimado +R$ {Math.round(g.ganhoMesEstimado).toLocaleString("pt-BR")}/mês ·
                 {g.custoSaida > 0
-                  ? ` paga custo de saÃ­da em ${bkMeses} ${bkMeses === 1 ? "mÃªs" : "meses"}`
-                  : " sem custo de saÃ­da"} Â·
+                  ? ` paga custo de saída em ${bkMeses} ${bkMeses === 1 ? "mês" : "meses"}`
+                  : " sem custo de saída"} ·
                 registrado {new Date(g.criadoEm).toLocaleDateString("pt-BR")}
               </div>
             </div>
@@ -925,7 +930,7 @@ function parseMoneyFromText(value: string) {
 }
 
 function splitPMCotacao(value: string) {
-  const normalized = value.replace(/\s*[Â··-]\s*Importado XP\s*/gi, "").replace(/\s*Importado XP\s*/gi, "").replace(/\s+/g, " ").trim();
+  const normalized = value.replace(/\s*[··-]\s*Importado XP\s*/gi, "").replace(/\s*Importado XP\s*/gi, "").replace(/\s+/g, " ").trim();
   return {
     pm: normalized.match(/PM\s*(R\$\s*[\d.,]+)/i)?.[1] ?? normalized.match(/^(R\$\s*[\d.,]+)/i)?.[1] ?? "",
     cotacao: normalized.match(/Cot\.?\s*(R\$\s*[\d.,]+)/i)?.[1] ?? "",
@@ -947,10 +952,21 @@ function rfTaxaLabel(a: NonNullable<ReturnType<typeof getUser>["rf_ativos"]>[num
   return a.venc ? `vence ${a.venc}` : "taxa a conferir";
 }
 
+function cdiPctParaAtivo(a: NonNullable<ReturnType<typeof getUser>["rf_ativos"]>[number]): number {
+  if (typeof a.cdi === "number") return a.cdi;
+  const text = `${a.n} ${a.nota ?? ""}`;
+  if (/Brasilprev/i.test(text)) return 85;
+  if (/Previdên|Previd/i.test(text)) return 90;
+  return 100;
+}
+
 function taxaRFAnual(a: NonNullable<ReturnType<typeof getUser>["rf_ativos"]>[number], cdiRef: number) {
   if (typeof a.t === "number") return a.t;
+  const text = `${a.n} ${a.nota ?? ""}`;
+  if (/NTN-B|IPCA\s*\+/i.test(text)) return 5.5 + 5; // IPCA atual + cupom padrão
   if (typeof a.cdi === "number") return (a.cdi / 100) * cdiRef;
-  if (/LFT|Tesouro Selic|Selic/i.test(a.n)) return cdiRef;
+  if (/CDI|Selic|LFT|FIDC|CDB|LCA|LCI|LCD|XPAG|LFTB|Previdên|Previd|Brasilprev/i.test(text))
+    return (cdiPctParaAtivo(a) / 100) * cdiRef;
   return 0;
 }
 
@@ -973,7 +989,7 @@ function rvEconomiaPM(a: NonNullable<ReturnType<typeof getUser>["rv_ativos"]>[nu
   const ref = splitPMCotacao(a.pm);
   const pm = parseMoneyFromText(ref.pm);
   const cotacao = parseMoneyFromText(ref.cotacao);
-  const qtdMatch = a.pm.match(/([\d.]+)\s*(cotas|ações|aÃ§Ãµes|titulos|títulos)/i);
+  const qtdMatch = a.pm.match(/([\d.]+)\s*(cotas|ações|ações|titulos|títulos)/i);
   const qtd = qtdMatch ? Number(qtdMatch[1].replace(/\./g, "")) : null;
   const atual = parseBRLText(a.v);
   if (pm === null || cotacao === null) return { atual, investido: null, delta: null, deltaPct: null };
@@ -1001,9 +1017,8 @@ function projectedRF10(a: NonNullable<ReturnType<typeof getUser>["rf_ativos"]>[n
       taxa = ipca + (Number.isFinite(real) ? real : 5);
     } else if (/pré|prefix|LTN|Daycoval/i.test(text)) {
       taxa = a.t ?? 12;
-    } else if (a.cdi != null || /CDI|Selic|FIDC|CDB|LCA|LCI|LCD|XPAG|LFTB|Previdência|Brasilprev/i.test(text)) {
-      const cdiPct = a.cdi ?? 100;
-      taxa = (cdi * cdiPct) / 100;
+    } else if (a.cdi != null || /CDI|Selic|FIDC|CDB|LCA|LCI|LCD|XPAG|LFTB|Previdên|Previd|Brasilprev/i.test(text)) {
+      taxa = (cdi * cdiPctParaAtivo(a)) / 100;
     } else {
       // Mantem compatibilidade com a pagina Projecao patrimonio:
       // ativo sem taxa/indexador claro fica sem crescimento automatico.
@@ -1106,52 +1121,40 @@ function SugestaoGiroCarteira({ profileId }: { profileId: ProfileId }) {
         </div>
         <div className="card carrego-simulator" style={{ marginBottom: 14, background: "rgba(255,255,255,.62)" }}>
           <div className="card-hdr">
-            Carrego alvo do giro <span>{carregoAlvo.toFixed(1).replace(".", ",")}% a.a.</span>
+            Situação atual da carteira
           </div>
           <div className="kpi-row" style={{ marginBottom: 14 }}>
             <div className="kpi">
-              <div className="kpi-l">Renda recorrente estimada</div>
+              <div className="kpi-l">Carrego atual</div>
               <div className={"kpi-v " + (carregoAtual < 10 ? "bad" : carregoAtual < 13.3 ? "warn" : "good")}>
                 {carregoAtual.toFixed(2).replace(".", ",")}%
               </div>
-              <div className="kpi-s">juros/proventos; não mede perda contra PM</div>
+              <div className="kpi-s">taxa média que a carteira gera hoje em juros + proventos</div>
             </div>
             <div className="kpi">
-              <div className="kpi-l">Taxa da Projeção patrimônio</div>
+              <div className="kpi-l">Taxa de crescimento estimada</div>
               <div className="kpi-v good">{taxaProjecaoPatrimonio.toFixed(2).replace(".", ",")}%</div>
-              <div className="kpi-s">régua comparável para 10 anos</div>
+              <div className="kpi-s">projeção de crescimento real do patrimônio em 10 anos</div>
             </div>
             <div className="kpi">
-              <div className="kpi-l">Fluxo com giro</div>
-              <div className="kpi-v good">{carregoComGiro.toFixed(2).replace(".", ",")}%</div>
-              <div className="kpi-s">fluxo anual; não é CAGR da carteira</div>
-            </div>
-          </div>
-          <div className="kpi-row" style={{ marginBottom: 14 }}>
-            <div className="kpi">
-              <div className="kpi-l">RV contra preço médio</div>
+              <div className="kpi-l">RV vs preço médio pago</div>
               <div className={"kpi-v " + (rvEconomia.delta < 0 ? "bad" : "good")}>
                 {rvEconomia.delta >= 0 ? "+" : ""}{fmtRk(rvEconomia.delta)}
               </div>
-              <div className="kpi-s">principal marcado; provento não recompõe sozinho</div>
+              <div className="kpi-s">{rvEconomia.delta >= 0 ? "lucro latente na renda variável" : "perda latente na renda variável"}</div>
             </div>
             <div className="kpi">
-              <div className="kpi-l">Bloco candidato vs PM</div>
-              <div className={"kpi-v " + (rvCandidataEconomia.delta < 0 ? "bad" : "good")}>
-                {rvCandidataEconomia.delta >= 0 ? "+" : ""}{fmtRk(rvCandidataEconomia.delta)}
-              </div>
-              <div className="kpi-s">perda já embutida antes da decisão de venda</div>
-            </div>
-            <div className="kpi">
-              <div className="kpi-l">Patrimônio base em 10 anos</div>
+              <div className="kpi-l">Patrimônio sem mexer em 10 anos</div>
               <div className="kpi-v">{fmtRk(patrimonioAtual10)}</div>
-              <div className="kpi-s">mesma lógica da Projeção patrimônio</div>
+              <div className="kpi-s">se continuar como está hoje</div>
             </div>
-            <div className="kpi">
-              <div className="kpi-l">Com giro em 10 anos</div>
-              <div className="kpi-v good">{fmtRk(patrimonioGiro10)}</div>
-              <div className="kpi-s">base igual; só o bloco candidato muda: {ganhoProjetado10 >= 0 ? "+" : ""}{fmtRk(ganhoProjetado10)}</div>
-            </div>
+          </div>
+
+          <div className="card-hdr" style={{ marginBottom: 10 }}>
+            Simulação de giro — meta de carrego <span>{carregoAlvo.toFixed(1).replace(".", ",")}% a.a.</span>
+          </div>
+          <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 10 }}>
+            Arraste para simular: se os ativos candidatos fossem trocados por ativos que rendem {carregoAlvo.toFixed(1).replace(".", ",")}% ao ano, quanto a carteira ganharia?
           </div>
           <input
             type="range"
@@ -1162,10 +1165,29 @@ function SugestaoGiroCarteira({ profileId }: { profileId: ProfileId }) {
             onChange={(e) => setCarregoAlvo(Number(e.target.value))}
             style={{ width: "100%" }}
           />
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--muted)", marginTop: 6 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--muted)", marginTop: 4, marginBottom: 14 }}>
             <span>9% fraco</span>
             <span>13,3% = 90% CDI</span>
             <span>20% agressivo</span>
+          </div>
+          <div className="kpi-row" style={{ marginBottom: 0 }}>
+            <div className="kpi">
+              <div className="kpi-l">Carrego após giro</div>
+              <div className="kpi-v good">{carregoComGiro.toFixed(2).replace(".", ",")}%</div>
+              <div className="kpi-s">nova taxa média se fizer o giro</div>
+            </div>
+            <div className="kpi">
+              <div className="kpi-l">Perda embutida no bloco a girar</div>
+              <div className={"kpi-v " + (rvCandidataEconomia.delta < 0 ? "bad" : "good")}>
+                {rvCandidataEconomia.delta >= 0 ? "+" : ""}{fmtRk(rvCandidataEconomia.delta)}
+              </div>
+              <div className="kpi-s">quanto os ativos candidatos estão abaixo do preço pago</div>
+            </div>
+            <div className="kpi">
+              <div className="kpi-l">Patrimônio com giro em 10 anos</div>
+              <div className="kpi-v good">{fmtRk(patrimonioGiro10)}</div>
+              <div className="kpi-s">ganho adicional vs. não mexer: {ganhoProjetado10 >= 0 ? "+" : ""}{fmtRk(ganhoProjetado10)}</div>
+            </div>
           </div>
         </div>
         <div className="g2" style={{ marginBottom: 14 }}>
@@ -1308,7 +1330,7 @@ function BreakevenTabs({ profileId }: { profileId: ProfileId }) {
         {tabBtn("aporte", "Acelerar com aporte")}
       </div>
       {tab === "sugestao" && <SugestaoGiroCarteira profileId={profileId} />}
-      {tab === "oportunidade" && <OportunidadePage />}
+      {tab === "oportunidade" && <OportunidadePage profileId={profileId} />}
       {tab === "giros" && (
         <>
           <GirosRegistradosPanel />
