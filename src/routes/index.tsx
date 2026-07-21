@@ -89,8 +89,7 @@ function PublicEntry() {
   }
 
   function handlePedido() {
-    if (selected)
-      navigate({ to: "/domus/$slug", params: { slug: selected.slug }, search: { pedido: true } });
+    if (selected) navigate({ to: "/domus/$slug", params: { slug: selected.slug } });
   }
 
   return (
