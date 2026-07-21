@@ -124,6 +124,9 @@ export function RaioXPage() {
   const [cotacao, setCotacao] = useState<Cotacao | null>(null);
   const [buscaMsg, setBuscaMsg] = useState("");
   const [nota, setNota] = useState<NotaLocal>(() => carregarNota(codigos[0] ?? "VALE3"));
+  // Autocomplete: busca na B3 inteira via brapi; ativos da casa primeiro em negrito
+  const [sugestoes, setSugestoes] = useState<{ ticker: string; nome?: string; meu: boolean }[]>([]);
+  const [sugAbertas, setSugAbertas] = useState(false);
 
   const normalizado = codigo.toUpperCase().trim();
   const cadastro = cadastroDoCodigo(normalizado);
@@ -143,6 +146,32 @@ export function RaioXPage() {
     setNota(next);
     salvarNota(normalizado, next);
   };
+
+  // Autocomplete: mescla ativos da casa (topo, negrito) com a B3 inteira via brapi
+  useEffect(() => {
+    const termo = codigo.toUpperCase().trim();
+    if (termo.length < 2) {
+      setSugestoes(codigos.map((c) => ({ ticker: c, meu: true })));
+      return;
+    }
+    const meus = codigos
+      .filter((c) => c.includes(termo))
+      .map((c) => ({ ticker: c, meu: true }));
+    setSugestoes(meus);
+    const t = setTimeout(async () => {
+      try {
+        const r = await fetch(`https://brapi.dev/api/quote/list?search=${termo}&limit=10`);
+        const json = await r.json();
+        const daB3 = (json?.stocks ?? [])
+          .filter((s: any) => !codigos.includes(String(s.stock).toUpperCase()))
+          .map((s: any) => ({ ticker: String(s.stock).toUpperCase(), nome: s.name, meu: false }));
+        setSugestoes([...meus, ...daB3]);
+      } catch {
+        /* B3 fora do ar — as sugestões da casa continuam */
+      }
+    }, 400);
+    return () => clearTimeout(t);
+  }, [codigo, codigos]);
 
   // Busca automática: dispara 600ms após parar de digitar um ticker plausível
   useEffect(() => {
@@ -193,13 +222,14 @@ export function RaioXPage() {
           Ativo em análise <span>cadastro + posição + tese</span>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "minmax(220px, 1fr) auto", gap: 10, alignItems: "end" }}>
-          <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12, color: "var(--muted-foreground)" }}>
-            Código do ativo
+          <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12, color: "var(--muted-foreground)", position: "relative" }}>
+            Código ou nome do ativo
             <input
-              list="raiox-codigos"
               value={codigo}
-              onChange={(e) => setCodigoAtivo(e.target.value)}
-              placeholder="ex.: VALE3, PSSA3, ITSA4"
+              onChange={(e) => { setCodigoAtivo(e.target.value); setSugAbertas(true); }}
+              onFocus={() => setSugAbertas(true)}
+              onBlur={() => setTimeout(() => setSugAbertas(false), 150)}
+              placeholder="ex.: VALE3, weg, petro, hglg…"
               style={{
                 border: "1px solid var(--border)",
                 borderRadius: 9,
@@ -209,9 +239,45 @@ export function RaioXPage() {
                 background: "#fff",
               }}
             />
-            <datalist id="raiox-codigos">
-              {codigos.map((c) => <option key={c} value={c} />)}
-            </datalist>
+            {sugAbertas && sugestoes.length > 0 && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: "100%",
+                  left: 0,
+                  right: 0,
+                  zIndex: 50,
+                  background: "#fff",
+                  border: "1px solid var(--border)",
+                  borderRadius: 9,
+                  marginTop: 4,
+                  maxHeight: 260,
+                  overflowY: "auto",
+                  boxShadow: "0 10px 26px rgba(42,15,20,.14)",
+                }}
+              >
+                {sugestoes.slice(0, 14).map((s) => (
+                  <div
+                    key={s.ticker}
+                    onMouseDown={() => { setCodigoAtivo(s.ticker); setSugAbertas(false); }}
+                    style={{
+                      padding: "9px 12px",
+                      cursor: "pointer",
+                      fontSize: 13,
+                      display: "flex",
+                      justifyContent: "space-between",
+                      gap: 10,
+                      fontWeight: s.meu ? 700 : 400,
+                      borderTop: "1px solid rgba(161,29,62,.06)",
+                      color: "var(--text)",
+                    }}
+                  >
+                    <span>{s.ticker}{s.meu ? " · na carteira" : ""}</span>
+                    {s.nome && <span style={{ color: "var(--muted)", fontWeight: 400, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.nome}</span>}
+                  </div>
+                ))}
+              </div>
+            )}
           </label>
           <button
             onClick={buscarCotacao}
