@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { CARTEIRA } from "@/data/carteira-ativos";
 import { CADASTRO_ATIVOS, cadastroDoCodigo, codigoAtivo, type CadastroAtivo } from "@/data/cadastro-ativos";
@@ -143,6 +143,14 @@ export function RaioXPage() {
     setNota(next);
     salvarNota(normalizado, next);
   };
+
+  // Busca automática: dispara 600ms após parar de digitar um ticker plausível
+  useEffect(() => {
+    if (normalizado.length < 4) return;
+    const t = setTimeout(() => void buscarCotacao(), 600);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [normalizado]);
 
   const buscarCotacao = async () => {
     if (!normalizado) return;
