@@ -579,10 +579,7 @@ export function VestaShell({
   const topItem = (key: PageKey, label: string, className = "") => (
     <button
       className={[page === key ? "on" : "", className].filter(Boolean).join(" ")}
-      onClick={() => {
-        setMoreOpen(false);
-        goTo(key);
-      }}
+      onClick={() => goTo(key)}
     >
       {label}
     </button>
