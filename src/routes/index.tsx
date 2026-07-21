@@ -13,7 +13,7 @@ type DomusPublic = {
 
 export const Route = createFileRoute("/")({
   validateSearch: (s: Record<string, unknown>) => ({
-    cadastro: s.cadastro === "1" || s.cadastro === "true",
+    cadastro: s.cadastro === "1" || s.cadastro === "true" || s.cadastro === true,
   }),
   beforeLoad: async ({ search }) => {
     if (!search.cadastro) throw redirect({ to: "/auth" });
