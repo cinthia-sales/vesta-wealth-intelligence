@@ -525,7 +525,6 @@ export function VestaShell({
   const isMember = profileId.startsWith("member:");
   // Nome de exibição: usa loggedName (real do banco) ou fallback para getPersonaInfo
   const displayName = loggedName ?? (loggedAs ? getPersonaInfo(loggedAs).name : "Membro");
-  const userData = getUser(profileId);
   const hasImportedPortfolio = userData.total > 0 || userData.rf_ativos.length > 0 || (userData.rv_ativos?.length ?? 0) > 0;
   const hasFullPortfolio = !isMember || profileId.startsWith("member:demo-") || profileId === "member:luiza-abrantes" || hasImportedPortfolio;
   const alertas = userData.alertas_list;
