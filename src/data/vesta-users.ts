@@ -20,6 +20,7 @@ export type LocalSnapshot = {
   rf: number;
   rv: number;
   rf_ativos: RFAtivo[];
+  rv_ativos?: UserData["rv_ativos"];
 };
 
 export const STORAGE_KEYS = {
@@ -263,6 +264,7 @@ function mergeSnapshot(base: UserData, snap: LocalSnapshot): UserData {
     rf_pct: total > 0 ? (rf / total) * 100 : 0,
     rv_pct: total > 0 ? (rv / total) * 100 : 0,
     rf_ativos: snap.rf_ativos,
+    rv_ativos: snap.rv_ativos ?? base.rv_ativos,
     data_referencia: snap.data_referencia,
   };
 }
@@ -452,15 +454,15 @@ export function isKnownProfileId(id: ProfileId): id is KnownProfileId {
   return id === "paulo" || id === "cinthia" || id === "familiar";
 }
 
-function loadMemberFromStorage(uuid: string): UserData {
-  if (typeof window === "undefined") return EMPTY_MEMBER;
+function loadMemberFromStorage(uuid: string, base: UserData = EMPTY_MEMBER): UserData {
+  if (typeof window === "undefined") return base;
   try {
     const raw = window.localStorage.getItem("vesta_posicao_" + uuid);
-    if (!raw) return EMPTY_MEMBER;
+    if (!raw) return base;
     const snap: LocalSnapshot = JSON.parse(raw);
-    return mergeSnapshot(EMPTY_MEMBER, snap);
+    return mergeSnapshot(base, snap);
   } catch {
-    return EMPTY_MEMBER;
+    return base;
   }
 }
 
@@ -514,8 +516,8 @@ function buildDomusConsolidated(domusId: string): UserData {
 
 export function getUser(id: ProfileId): UserData {
   if (id === "member:luiza-abrantes") return LUIZA_ABRANTES;
-  if (id === "member:demo-cornelia") return CORNELIA_DEMO;
-  if (id === "member:demo-marcus") return MARCUS_DEMO;
+  if (id === "member:demo-cornelia") return loadMemberFromStorage("demo-cornelia", CORNELIA_DEMO);
+  if (id === "member:demo-marcus") return loadMemberFromStorage("demo-marcus", MARCUS_DEMO);
   if (id === "paulo") return loadFromStorage("paulo", PAULO);
   if (id === "cinthia") return loadFromStorage("cinthia", CINTHIA);
   if (id.startsWith("member:")) return loadMemberFromStorage(id.slice("member:".length));

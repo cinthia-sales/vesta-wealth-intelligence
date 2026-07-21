@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { type LocalSnapshot, type RFAtivo, STORAGE_KEYS } from "@/data/vesta-users";
 
-type ParsedRow = { ativo: string; valor: number; taxa?: string; venc?: string };
+type ParsedRow = { ativo: string; valor: number; taxa?: string; venc?: string; classe?: "RF" | "RV" };
+type ParsedFile = { rows: ParsedRow[]; dataRef?: string };
 type AccountId = string;
 
 function storageKey(accountId: AccountId): string {
@@ -36,7 +37,7 @@ function parseCsv(text: string): ParsedRow[] {
 }
 
 function isRF(row: ParsedRow): boolean {
-  return !!(row.venc && row.taxa);
+  return row.classe === "RF" || !!(row.venc && row.taxa);
 }
 
 function toRFAtivo(row: ParsedRow): RFAtivo {
@@ -51,6 +52,18 @@ function toRFAtivo(row: ParsedRow): RFAtivo {
   };
 }
 
+function toRVAtivo(row: ParsedRow) {
+  return {
+    n: row.ativo,
+    v: "R$ " + Math.round(row.valor).toLocaleString("pt-BR"),
+    pm: "Importado XP",
+    r: row.taxa ?? "—",
+    rc: "neutral",
+    cls: "RV/Fundo",
+    sb: "sb-a",
+  };
+}
+
 function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
 }
@@ -59,6 +72,166 @@ function fmtDateBR(iso: string): string {
   if (!iso) return "—";
   const [y, m, d] = iso.split("-");
   return `${d}/${m}/${y}`;
+}
+
+function moneyToNumber(value: string): number {
+  const cleaned = value.replace(/[R$\s.]/g, "").replace(",", ".").replace(/[^\d.-]/g, "");
+  return Number(cleaned) || 0;
+}
+
+function dateBRToISO(value: string): string | undefined {
+  const match = value.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+  if (!match) return undefined;
+  return `${match[3]}-${match[2]}-${match[1]}`;
+}
+
+function normalizeLabel(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+async function inflateRaw(bytes: Uint8Array): Promise<Uint8Array> {
+  if (typeof DecompressionStream === "undefined") {
+    throw new Error("Este navegador não consegue descompactar XLSX. Exporte em CSV/TXT ou use Chrome/Edge atualizado.");
+  }
+  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+function readU16(view: DataView, offset: number): number {
+  return view.getUint16(offset, true);
+}
+
+function readU32(view: DataView, offset: number): number {
+  return view.getUint32(offset, true);
+}
+
+async function unzipXlsx(buffer: ArrayBuffer): Promise<Map<string, string>> {
+  const bytes = new Uint8Array(buffer);
+  const view = new DataView(buffer);
+  let eocd = -1;
+  for (let i = bytes.length - 22; i >= 0; i--) {
+    if (readU32(view, i) === 0x06054b50) {
+      eocd = i;
+      break;
+    }
+  }
+  if (eocd < 0) throw new Error("XLSX inválido: diretório central não encontrado.");
+
+  const totalEntries = readU16(view, eocd + 10);
+  let centralOffset = readU32(view, eocd + 16);
+  const decoder = new TextDecoder("utf-8");
+  const files = new Map<string, string>();
+
+  for (let i = 0; i < totalEntries; i++) {
+    if (readU32(view, centralOffset) !== 0x02014b50) break;
+    const method = readU16(view, centralOffset + 10);
+    const compressedSize = readU32(view, centralOffset + 20);
+    const fileNameLength = readU16(view, centralOffset + 28);
+    const extraLength = readU16(view, centralOffset + 30);
+    const commentLength = readU16(view, centralOffset + 32);
+    const localOffset = readU32(view, centralOffset + 42);
+    const name = decoder.decode(bytes.slice(centralOffset + 46, centralOffset + 46 + fileNameLength));
+
+    const localNameLength = readU16(view, localOffset + 26);
+    const localExtraLength = readU16(view, localOffset + 28);
+    const dataStart = localOffset + 30 + localNameLength + localExtraLength;
+    const compressed = bytes.slice(dataStart, dataStart + compressedSize);
+
+    if (name.endsWith(".xml")) {
+      const content = method === 0 ? compressed : method === 8 ? await inflateRaw(compressed) : null;
+      if (content) files.set(name, decoder.decode(content));
+    }
+
+    centralOffset += 46 + fileNameLength + extraLength + commentLength;
+  }
+
+  return files;
+}
+
+function cellText(cell: Element, sharedStrings: string[]): string {
+  const type = cell.getAttribute("t");
+  if (type === "inlineStr") {
+    return Array.from(cell.getElementsByTagName("t")).map((t) => t.textContent ?? "").join("");
+  }
+  const raw = cell.getElementsByTagName("v")[0]?.textContent ?? "";
+  if (type === "s") return sharedStrings[Number(raw)] ?? "";
+  return raw;
+}
+
+function colIndex(ref: string): number {
+  const letters = ref.replace(/[^A-Z]/gi, "").toUpperCase();
+  return letters.split("").reduce((sum, letter) => sum * 26 + letter.charCodeAt(0) - 64, 0) - 1;
+}
+
+function rowsFromSheetXml(sheetXml: string, sharedXml?: string): string[][] {
+  const parser = new DOMParser();
+  const sharedStrings = sharedXml
+    ? Array.from(parser.parseFromString(sharedXml, "application/xml").getElementsByTagName("si")).map((si) =>
+        Array.from(si.getElementsByTagName("t")).map((t) => t.textContent ?? "").join(""),
+      )
+    : [];
+  const sheet = parser.parseFromString(sheetXml, "application/xml");
+  return Array.from(sheet.getElementsByTagName("row")).map((row) => {
+    const cells: string[] = [];
+    Array.from(row.getElementsByTagName("c")).forEach((cell) => {
+      const ref = cell.getAttribute("r") ?? "";
+      cells[colIndex(ref)] = cellText(cell, sharedStrings).trim();
+    });
+    return cells;
+  });
+}
+
+async function parseXlsx(file: File): Promise<ParsedFile> {
+  const files = await unzipXlsx(await file.arrayBuffer());
+  const sheetXml = files.get("xl/worksheets/sheet1.xml");
+  if (!sheetXml) throw new Error("XLSX sem planilha principal reconhecida.");
+  const rows = rowsFromSheetXml(sheetXml, files.get("xl/sharedStrings.xml"));
+  let section = "";
+  let header: string[] | null = null;
+  let dataRef: string | undefined;
+  const parsed: ParsedRow[] = [];
+
+  for (const row of rows) {
+    const first = row[0]?.trim() ?? "";
+    const joined = row.filter(Boolean).join(" ");
+    dataRef ||= dateBRToISO(joined);
+
+    const firstKey = normalizeLabel(first);
+    if (/fundos de investimentos|fundos imobiliarios|tesouro direto|renda fixa|acoes|coe|previdencia/.test(firstKey)) {
+      section = first;
+      header = null;
+      continue;
+    }
+    if (row.some((cell) => normalizeLabel(cell) === "posicao")) {
+      header = row.map((cell) => cell.toLowerCase());
+      continue;
+    }
+    if (!header || !first || first === " ") continue;
+
+    const normalizedHeader = header.map(normalizeLabel);
+    const valorIndex = normalizedHeader.findIndex((cell) => /posicao|valor liquido|saldo bruto/.test(cell));
+    const vencIndex = header.findIndex((cell) => /vencimento/.test(cell));
+    const taxaIndex = header.findIndex((cell) => /taxa|rentabilidade|indexador/.test(cell));
+    const valor = moneyToNumber(row[valorIndex] ?? "");
+    if (!valor) continue;
+
+    const sectionKey = normalizeLabel(section);
+    const classe: "RF" | "RV" = /tesouro|renda fixa|fundos de investimentos|pos-fixado|prefixado|inflacao/.test(sectionKey)
+      ? "RF"
+      : "RV";
+    parsed.push({
+      ativo: first,
+      valor,
+      venc: vencIndex >= 0 ? row[vencIndex] || undefined : undefined,
+      taxa: taxaIndex >= 0 ? row[taxaIndex] || undefined : undefined,
+      classe,
+    });
+  }
+
+  return { rows: parsed, dataRef };
 }
 
 export function UploadPage({
@@ -85,12 +258,14 @@ export function UploadPage({
     setAplicado(null);
     setNomeArquivo(file.name);
     try {
-      if (!/\.(csv|txt)$/i.test(file.name))
+      if (!/\.(xlsx|csv|txt)$/i.test(file.name))
         throw new Error("Formato não suportado. Use CSV/TXT exportado do portal XP.");
-      const text = await file.text();
-      const parsed = parseCsv(text);
-      if (parsed.length === 0) throw new Error("Nenhuma linha válida encontrada.");
-      setRows(parsed);
+      const parsed = /\.(xlsx)$/i.test(file.name)
+        ? await parseXlsx(file)
+        : { rows: parseCsv(await file.text()) };
+      if (parsed.rows.length === 0) throw new Error("Nenhuma linha válida encontrada.");
+      setRows(parsed.rows);
+      if (parsed.dataRef) setDataRef(parsed.dataRef);
     } catch (e: unknown) {
       setRows([]);
       setErro(e instanceof Error ? e.message : "Erro ao ler o arquivo.");
@@ -116,6 +291,7 @@ export function UploadPage({
       rf,
       rv,
       rf_ativos: rfRows.map(toRFAtivo),
+      rv_ativos: rvRows.map(toRVAtivo),
     };
     const key = storageKey(account);
     window.localStorage.setItem(key, JSON.stringify(snap));
@@ -196,7 +372,7 @@ export function UploadPage({
         </div>
         <input
           type="file"
-          accept=".csv,.txt"
+          accept=".xlsx,.csv,.txt"
           onChange={(e) => {
             const f = e.target.files?.[0];
             if (f) handleFile(f);
