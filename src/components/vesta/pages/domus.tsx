@@ -17,6 +17,7 @@ import {
   saveMemberVisibilityScope,
   updateJoinRequestStatus,
 } from "@/lib/domus.functions";
+import { podeSerVesta } from "@/lib/profile-derive";
 import { useState, useEffect } from "react";
 
 const domusLabel = (name: string) => {
@@ -337,8 +338,12 @@ export function DomusPage({
     ...externalMembers.filter(
       (m: any) => m.domus_id === activeDomusId || m.domus?.nome === activeDomus?.nome,
     ),
-    // Vestas sempre acima dos membros comuns
-  ].sort((a: any, b: any) => (b.papel === "vesta" ? 1 : 0) - (a.papel === "vesta" ? 1 : 0));
+    // Vestas sempre acima dos membros comuns (nome masculino nunca é vesta)
+  ].sort(
+    (a: any, b: any) =>
+      (b.papel === "vesta" && podeSerVesta(b.profile?.nome) ? 1 : 0) -
+      (a.papel === "vesta" && podeSerVesta(a.profile?.nome) ? 1 : 0),
+  );
 
   return (
     <>
@@ -638,7 +643,10 @@ export function DomusPage({
           <div style={{ padding: 16, display: "grid", gap: 14 }}>
             {activeExternalMembers.map((m: any) => {
               const memberNameKey = `${m.profile?.nome ?? ""} ${m.profile?.email ?? ""}`.toLowerCase();
-              const isVesta = m.papel === "vesta" && (!isLocalFurtadoDomus || /cristina/.test(memberNameKey));
+              const isVesta =
+                m.papel === "vesta" &&
+                podeSerVesta(m.profile?.nome) &&
+                (!isLocalFurtadoDomus || /cristina/.test(memberNameKey));
               const extScope = extScopes[m.profile_id] ?? {
                 seeConsolidado: false,
                 seePersonae: [],

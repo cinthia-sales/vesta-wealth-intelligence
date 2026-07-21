@@ -12,6 +12,15 @@ import {
 export type KnownProfileId = "cinthia" | "paulo" | "familiar";
 export type ProfileId = KnownProfileId | `member:${string}` | `domus:${string}`;
 
+// Regra da casa: só existe UMA vesta local por Domus e nome masculino nunca é
+// vesta. Heurística: primeiro nome terminado em "a" (Cínthia, Luiza, Cornelia,
+// Cristina, Márcia...) pode ser vesta; Murilo/Paulo/Daniel/Marcus etc. nunca.
+export function podeSerVesta(nome?: string | null): boolean {
+  const primeiro = (nome ?? "").trim().split(/\s+/)[0]?.toLowerCase() ?? "";
+  if (!primeiro) return false;
+  return primeiro.endsWith("a");
+}
+
 export type ActiveProfileView = {
   id: ProfileId;
   name: string;

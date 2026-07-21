@@ -7,7 +7,7 @@ import { EntryHall, type HallDomus, type HallPending } from "@/components/vesta/
 import { getUser, registerDomusProfiles } from "@/data/vesta-users";
 import { supabase } from "@/integrations/supabase/client";
 import { ACCESS_ACCOUNTS, ACCESS_AUTH_KEY, ACCESS_DEFAULT_PASSWORD, getAccessAccount } from "@/lib/vesta-access-keys";
-import type { ProfileId } from "@/lib/profile-derive";
+import { podeSerVesta, type ProfileId } from "@/lib/profile-derive";
 import {
   DEFAULT_SCOPES,
   getPersonaInfo,
@@ -75,7 +75,10 @@ function isAbrantesMember(member: any): boolean {
 }
 
 function memberPapel(member: any): string {
-  return isLuizaMember(member) && isAbrantesMember(member) ? "vesta" : member?.papel;
+  const papel = isLuizaMember(member) && isAbrantesMember(member) ? "vesta" : member?.papel;
+  // Nome masculino nunca é vesta local, mesmo que o banco diga o contrário
+  if (papel === "vesta" && !podeSerVesta(member?.profile?.nome)) return "membro";
+  return papel;
 }
 
 function normalizeMemberPapel(member: any): any {
