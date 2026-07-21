@@ -4,38 +4,76 @@ import { getUser } from "@/data/vesta-users";
 import type { ProfileId } from "@/lib/profile-derive";
 
 type Sev = "r" | "w" | "g";
+
 const SEV_LABEL: Record<Sev, string> = { r: "urgente", w: "atenção", g: "positivo" };
 const SEV_CLASS: Record<Sev, string> = { r: "sb-r", w: "sb-w", g: "sb-g" };
+const DOT_CLASS: Record<Sev, string> = { r: "dr", w: "dw", g: "dg" };
+
+function badgeDotClass(bc: string) {
+  if (bc.includes("sb-r")) return "dr";
+  if (bc.includes("sb-g") || bc.includes("sb-ok")) return "dg";
+  return "dw";
+}
 
 function daysUntil(dmy: string) {
   const [d, m, y] = dmy.split("/").map(Number);
   if (!d || !m || !y) return null;
   const target = new Date(y, m - 1, d);
-  const hoje = new Date(2026, 6, 4); // ref 04/07/2026
-  return Math.round((target.getTime() - hoje.getTime()) / 86400000);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.round((target.getTime() - today.getTime()) / 86400000);
+}
+
+function parseMoney(value: string) {
+  const n = Number(value.replace(/[^\d,.-]/g, "").replace(/\./g, "").replace(",", "."));
+  return Number.isFinite(n) ? n : null;
+}
+
+function splitReferencia(pm: string) {
+  const normalized = pm.replace(/\s*[Â·-]\s*Importado XP\s*/gi, "").replace(/\s*Importado XP\s*/gi, "").replace(/\s+/g, " ").trim();
+  const pmMatch = normalized.match(/PM\s*(R\$\s*[\d.,]+)/i) ?? normalized.match(/^(R\$\s*[\d.,]+)/i);
+  const cotMatch = normalized.match(/Cot\.?\s*(R\$\s*[\d.,]+)/i);
+  return { pm: pmMatch?.[1] ?? "", cotacao: cotMatch?.[1] ?? "" };
 }
 
 export function AlertasPage({ profileId }: { profileId: ProfileId }) {
   const u = getUser(profileId);
   const [filtro, setFiltro] = useState<"todos" | Sev>("todos");
 
-  // Enriquecer com dias até vencimento quando o det tem data
   const alertas = useMemo(() => {
-    return u.alertas_list.map((a) => {
+    const base = u.alertas_list.map((a) => {
       const match = a.det.match(/(\d{2}\/\d{2}\/\d{4})/);
       const dias = match ? daysUntil(match[1]) : null;
       return { ...a, dias };
     });
+    const rvAlerts = (u.rv_ativos ?? []).flatMap((a) => {
+      const ref = splitReferencia(a.pm);
+      const pm = parseMoney(ref.pm);
+      const cotacao = parseMoney(ref.cotacao);
+      if (pm === null || cotacao === null || cotacao >= pm) return [];
+      const queda = ((cotacao / pm) - 1) * 100;
+      return [{
+        cor: "r" as const,
+        titulo: `${a.n} abaixo do PM`,
+        det: `PM ${ref.pm} · cota atual ${ref.cotacao} · diferença ${queda.toFixed(1).replace(".", ",")}% · revisar tese de RV/listado.`,
+        dias: null,
+      }];
+    });
+    return [...base, ...rvAlerts];
   }, [u]);
 
   const filtered = filtro === "todos" ? alertas : alertas.filter((a) => a.cor === filtro);
-
   const counts = {
     r: alertas.filter((a) => a.cor === "r").length,
     w: alertas.filter((a) => a.cor === "w").length,
     g: alertas.filter((a) => a.cor === "g").length,
   };
-
+  const groups: Array<{ id: Sev; title: string; hint: string }> = [
+    { id: "r", title: "Urgentes", hint: "decisão nas próximas semanas" },
+    { id: "w", title: "Atenção", hint: "monitorar / preparar" },
+    { id: "g", title: "Positivos", hint: "ganhos garantidos / provisionados" },
+  ];
+  const visibleGroups = groups.filter((g) => counts[g.id] > 0);
   const proximosVenc = u.vencimentos.slice(0, 5);
 
   const fb = (id: typeof filtro, label: string, count?: number) => (
@@ -51,35 +89,57 @@ export function AlertasPage({ profileId }: { profileId: ProfileId }) {
     <>
       <div className="ph">
         <h1>Alertas</h1>
-        <p>
-          Situações da carteira que exigem decisão. Ordenadas por severidade e proximidade de
-          vencimento.
-        </p>
+        <p>Situações da carteira que exigem decisão, separadas por severidade.</p>
       </div>
 
-      <div className="kpi-row">
-        <div className="kpi">
-          <div className="kpi-l">Urgentes</div>
-          <div className="kpi-v bad">{counts.r}</div>
-          <div className="kpi-s">decisão nas próximas semanas</div>
+      <div className="card alert-summary-card" style={{ marginBottom: 14 }}>
+        <div className="card-hdr">
+          Resumo dos alertas <span>{alertas.length} alerta(s)</span>
         </div>
-        <div className="kpi">
-          <div className="kpi-l">Atenção</div>
-          <div className="kpi-v warn">{counts.w}</div>
-          <div className="kpi-s">monitorar / preparar</div>
+        <div className="alert-legend">
+          <span>
+            <span className="dot dr" /> vermelho: decidir
+          </span>
+          <span>
+            <span className="dot dw" /> laranja: monitorar
+          </span>
+          <span>
+            <span className="dot dg" /> verde: ganho/travado
+          </span>
         </div>
-        <div className="kpi">
-          <div className="kpi-l">Positivos</div>
-          <div className="kpi-v good">{counts.g}</div>
-          <div className="kpi-s">ganhos garantidos / provisionados</div>
-        </div>
-        <div className="kpi">
-          <div className="kpi-l">Próximo vencimento</div>
-          <div className="kpi-v blue">
-            {proximosVenc[0]?.det.match(/(\d{2}\/\d{2}\/\d{4})/)?.[1] ?? "—"}
+        {visibleGroups.length === 0 ? (
+          <div className="aitem">
+            <div className="dot dg" />
+            <div>
+              <div className="aitem-name">Sem alertas ativos</div>
+              <div className="aitem-det">Nenhuma situação relevante apareceu para esta carteira.</div>
+            </div>
           </div>
-          <div className="kpi-s">{proximosVenc[0]?.nome ?? ""}</div>
-        </div>
+        ) : (
+          visibleGroups.map((g) => (
+            <div className={"alert-severity-card " + g.id} key={g.id}>
+              <div className={"dot " + DOT_CLASS[g.id]} />
+              <div>
+                <div className="aitem-name">
+                  {g.title}: {counts[g.id]}
+                </div>
+                <div className="aitem-det">{g.hint}</div>
+              </div>
+            </div>
+          ))
+        )}
+        {proximosVenc[0] && (
+          <div className="alert-severity-card w">
+            <div className="dot dw" />
+            <div>
+              <div className="aitem-name">Próximo vencimento</div>
+              <div className="aitem-det">
+                {proximosVenc[0].nome} ·{" "}
+                {proximosVenc[0].det.match(/(\d{2}\/\d{2}\/\d{4})/)?.[1] ?? "data a confirmar"}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="card" style={{ marginBottom: 14 }}>
@@ -88,9 +148,9 @@ export function AlertasPage({ profileId }: { profileId: ProfileId }) {
         </div>
         <div className="filter-row">
           {fb("todos", "Todos", alertas.length)}
-          {fb("r", "🔴 Urgentes", counts.r)}
-          {fb("w", "🟡 Atenção", counts.w)}
-          {fb("g", "🟢 Positivos", counts.g)}
+          {fb("r", "Urgentes", counts.r)}
+          {fb("w", "Atenção", counts.w)}
+          {counts.g > 0 && fb("g", "Positivos", counts.g)}
         </div>
 
         {filtered.length === 0 && (
@@ -100,18 +160,23 @@ export function AlertasPage({ profileId }: { profileId: ProfileId }) {
         )}
 
         {filtered.map((a, i) => (
-          <div key={i} className={"alert-full " + a.cor} style={{ marginBottom: 10 }}>
-            <div className="alert-full-hdr">
-              <span className={"sb " + SEV_CLASS[a.cor]}>{SEV_LABEL[a.cor]}</span>
-              <strong className="alert-full-ttl">{a.titulo}</strong>
-              {a.dias !== null && a.dias !== undefined && a.dias >= 0 && (
-                <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--muted)" }}>
-                  em {a.dias} dias
-                </span>
-              )}
+          <div className={"alert-full " + a.cor} key={i}>
+            <div className="alert-full-grid">
+              <div className={"dot " + DOT_CLASS[a.cor]} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="alert-full-hdr">
+                <span className={"sb " + SEV_CLASS[a.cor]}>{SEV_LABEL[a.cor]}</span>
+                <strong className="alert-full-ttl">{a.titulo}</strong>
+                {a.dias !== null && a.dias !== undefined && a.dias >= 0 && (
+                  <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--muted)" }}>
+                    em {a.dias} dias
+                  </span>
+                )}
+              </div>
+              <div className="alert-full-body">{a.det}</div>
+              <AlertAction titulo={a.titulo} cor={a.cor} />
+              </div>
             </div>
-            <div className="alert-full-body">{a.det}</div>
-            <AlertAction titulo={a.titulo} cor={a.cor} />
           </div>
         ))}
       </div>
@@ -133,7 +198,7 @@ export function AlertasPage({ profileId }: { profileId: ProfileId }) {
               {u.vencimentos.map((v, i) => (
                 <tr key={i}>
                   <td>
-                    <span style={{ marginRight: 8 }}>{v.icon}</span>
+                    <span className={"dot " + badgeDotClass(v.bc)} />
                     <strong>{v.nome}</strong>
                   </td>
                   <td style={{ color: "var(--muted)", fontSize: 12 }}>{v.det}</td>
@@ -149,22 +214,21 @@ export function AlertasPage({ profileId }: { profileId: ProfileId }) {
 }
 
 function AlertAction({ titulo, cor }: { titulo: string; cor: Sev }) {
-  // Roteia sugestões contextuais com base no título do alerta
   let msg: string | null = null;
   if (/NTN-B AGO\/2026/i.test(titulo))
-    msg = "→ Sugestão: travar em NTN-B 2035 (IPCA+7,3%) ou DEB isenta IPCA+8% antes do corte de Selic.";
+    msg = "Sugestão: travar em NTN-B 2035 (IPCA+7,3%) ou debênture isenta IPCA+8% antes do corte de Selic.";
   else if (/BPAC11/i.test(titulo))
-    msg = "→ Sugestão: revisar tese. Se stop, realizar prejuízo compensa IR de RV positiva.";
+    msg = "Sugestão: revisar tese. Se houver stop, realizar prejuízo pode compensar IR de RV positiva.";
   else if (/TGRE11/i.test(titulo))
-    msg = "→ Sugestão: fundos listados sofrem em ciclo de alta de juros — reavaliar quando Selic começar a cair.";
+    msg = "Sugestão: fundos listados sofrem em ciclo de juros altos; reavaliar quando a Selic começar a cair.";
   else if (/LCD BRDE FEV\/2036/i.test(titulo))
-    msg = "→ Ver simulador em Plano → Saída secundário.";
+    msg = "Ver simulador em Plano / Saída secundário.";
   else if (/LCI XP/i.test(titulo))
-    msg = "→ Sugestão: começar a mapear IPCA+8%+ ou pré 14%+ a partir de nov/2026.";
+    msg = "Sugestão: começar a mapear IPCA+8% ou pré 14%+ a partir de nov/2026.";
   else if (/LCA Bocom/i.test(titulo))
-    msg = "→ Ação: checar rating (Fitch/Moody's) do Banco Bocom BBM antes do próximo aporte.";
-  else if (/Proventos/i.test(titulo))
-    msg = "→ Provisionar para reinvestimento automático — evita caixa parado.";
+    msg = "Ação: checar rating do Banco Bocom BBM antes do próximo aporte.";
+  else if (/Proventos|Pingados/i.test(titulo))
+    msg = "Provisionar para reinvestimento automático e evitar caixa parado.";
 
   if (!msg) return null;
   return (

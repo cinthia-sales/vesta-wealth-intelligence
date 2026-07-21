@@ -18,7 +18,11 @@ export function HomePage({ profileId, overrideName, loggedName }: { profileId: P
   const u = getUser(profileId);
   // Saudação sempre para quem está logado, nunca para o nome da visão/consolidado
   const firstName = (loggedName ?? overrideName ?? u.nome).split(" ")[0];
+  const memberName = (overrideName ?? u.nome).split(" ")[0];
   const saud = saudacaoPorHora();
+  const hasPingados =
+    /pingado|rendimento/i.test(u.kpi4_label) ||
+    /pagadores|provento/i.test(u.kpi4_sub);
 
   if (u.total <= 0) {
     const consolidated = profileId === "familiar" || profileId.startsWith("domus:");
@@ -127,7 +131,7 @@ export function HomePage({ profileId, overrideName, loggedName }: { profileId: P
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div className="card" style={{ flex: 1 }}>
             <div className="card-hdr">
-              {profileId === "familiar" ? "Resumo familiar ✦" : `Resumo — ${firstName} ✦`}
+              {profileId === "familiar" ? "Resumo familiar" : `Carteira de ${memberName}`}
             </div>
             {u.resumo.map((r) => (
               <div className="aitem" key={r.nome}>
@@ -142,10 +146,28 @@ export function HomePage({ profileId, overrideName, loggedName }: { profileId: P
         </div>
       </div>
 
+      {hasPingados && (
+        <div className="card" style={{ marginBottom: 14 }}>
+          <div className="card-hdr">
+            Pingados — carteira de {memberName}
+            <span>{u.kpi4_sub}</span>
+          </div>
+          <div className="aitem">
+            <div className="dot dg" />
+            <div>
+              <div className="aitem-name">{u.kpi4_val} recorrentes</div>
+              <div className="aitem-det">
+                Rendimentos/proventos mapeados na posição importada. Ver detalhe em Rendimentos recorrentes.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="g2">
         <div className="card">
           <div className="card-hdr">
-            {profileId === "familiar" ? "Alertas recentes — família" : `Alertas recentes — ${firstName}`}
+            {profileId === "familiar" ? "Alertas recentes — família" : `Alertas recentes — carteira de ${memberName}`}
           </div>
           {u.alertas_list.slice(0, 4).map((a) => (
             <div className="aitem" key={a.titulo}>
@@ -206,3 +228,4 @@ function DonutSvg({ data, colors }: { data: number[]; colors: string[] }) {
     </svg>
   );
 }
+

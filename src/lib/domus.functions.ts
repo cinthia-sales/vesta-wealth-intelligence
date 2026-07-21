@@ -2,6 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+const SOVEREIGN_VESTA_EMAIL = "cinthiavr@yahoo.com.br";
+
 const slugSchema = z
   .string()
   .trim()
@@ -21,6 +23,19 @@ async function assertVesta(context: { supabase: any; userId: string }) {
   if (!data) throw new Error("Apenas a Vesta pode fazer isso.");
 }
 
+async function assertSovereignVesta(context: { supabase: any; userId: string }) {
+  await assertVesta(context);
+  const { data, error } = await context.supabase
+    .from("profiles")
+    .select("email")
+    .eq("id", context.userId)
+    .maybeSingle();
+  if (error) throw error;
+  if ((data?.email ?? "").toLowerCase() !== SOVEREIGN_VESTA_EMAIL) {
+    throw new Error("Apenas a Cinthia pode criar ou excluir Domus.");
+  }
+}
+
 export const createDomus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) =>
@@ -33,7 +48,7 @@ export const createDomus = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ context, data }) => {
-    await assertVesta(context);
+    await assertSovereignVesta(context);
     const { data: created, error } = await context.supabase
       .from("domus")
       .insert({
@@ -266,18 +281,40 @@ export const removeJoinRequest = createServerFn({ method: "POST" })
 
 export const removeMember = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ profileId: z.string().uuid() }).parse(input))
+  .inputValidator((input) => z.object({ profileId: z.string().uuid(), domusId: z.string().uuid() }).parse(input))
   .handler(async ({ context, data }) => {
     await assertVesta(context);
+    const { data: profile } = await context.supabase
+      .from("profiles")
+      .select("email")
+      .eq("id", context.userId)
+      .maybeSingle();
+    const sovereign = (profile?.email ?? "").toLowerCase() === SOVEREIGN_VESTA_EMAIL;
+    if (!sovereign) {
+      const { data: ownMembership, error: ownMembershipError } = await context.supabase
+        .from("domus_members")
+        .select("id")
+        .eq("domus_id", data.domusId)
+        .eq("profile_id", context.userId)
+        .eq("papel", "vesta")
+        .maybeSingle();
+      if (ownMembershipError) throw ownMembershipError;
+      if (!ownMembership) throw new Error("Apenas a Vesta local deste Domus pode remover pessoas.");
+    }
+    if (data.profileId === context.userId) {
+      throw new Error("Voce nao pode remover a si mesma do Domus.");
+    }
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error: scopeErr } = await supabaseAdmin
       .from("domus_visibility_scopes")
       .delete()
+      .eq("domus_id", data.domusId)
       .eq("member_profile_id", data.profileId);
     if (scopeErr) throw scopeErr;
     const { error: memberErr } = await supabaseAdmin
       .from("domus_members")
       .delete()
+      .eq("domus_id", data.domusId)
       .eq("profile_id", data.profileId);
     if (memberErr) throw memberErr;
     return { ok: true };
@@ -287,7 +324,7 @@ export const deleteDomus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ context, data }) => {
-    await assertVesta(context);
+    await assertSovereignVesta(context);
     const { error } = await context.supabase.from("domus").delete().eq("id", data.id);
     if (error) throw error;
     return { ok: true };

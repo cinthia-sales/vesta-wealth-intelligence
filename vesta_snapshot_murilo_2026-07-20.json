@@ -1,0 +1,291 @@
+{
+  "profileId": "simple-murilo",
+  "nome": "Murilo",
+  "conta": "XP 2303349",
+  "saudacao": "Carteira importada Murilo",
+  "topbar_sub": "XP 2303349 - modelo Vesta gerado dos arquivos XP",
+  "data_referencia": "2026-07-20",
+  "total": 117740.22,
+  "rf": 75434.96,
+  "rv": 42305.26,
+  "fora_ideal": 97389.94,
+  "kpi4_label": "Pingados/mes",
+  "kpi4_value": "R$ 374",
+  "kpi4_sub": "11 pagadores no extrato",
+  "donut_rf": 64.1,
+  "donut_rv": 35.9,
+  "donut_outros": 0,
+  "rf_ativos": [
+    {
+      "nome": "Riza Lotus FIF RF",
+      "emissor": "Riza Asset / XP",
+      "tipo": "Fundo DI credito privado",
+      "taxa": "CDI, taxa adm 0,25% a.a.",
+      "venc": "D+0/D+1",
+      "valor": 55084.68,
+      "risco": "medio",
+      "rc": "warn",
+      "tag": "liquidez",
+      "sb": "sb-w"
+    },
+    {
+      "nome": "Tesouro Selic 2031",
+      "emissor": "Tesouro Nacional",
+      "tipo": "LFT",
+      "taxa": "Selic + taxa pequena",
+      "venc": "01/03/2031",
+      "valor": 20350.28,
+      "risco": "baixo",
+      "rc": "ok",
+      "tag": "liquidez soberana",
+      "sb": "sb-g"
+    }
+  ],
+  "rv_ativos": [
+    {
+      "ticker": "KNCR11",
+      "classe": "FII",
+      "nome": "KNCR11",
+      "valor": 7706.34,
+      "dy": 12.16,
+      "nota": "rendimento mensal importado",
+      "rc": "ok"
+    },
+    {
+      "ticker": "KNSC11",
+      "classe": "FII",
+      "nome": "KNSC11",
+      "valor": 5233.8,
+      "dy": 12.29,
+      "nota": "rendimento mensal importado",
+      "rc": "ok"
+    },
+    {
+      "ticker": "HSML11",
+      "classe": "FII",
+      "nome": "HSML11",
+      "valor": 4888.8,
+      "dy": 10.31,
+      "nota": "rendimento mensal importado",
+      "rc": "ok"
+    },
+    {
+      "ticker": "RBRR11",
+      "classe": "FII",
+      "nome": "RBRR11",
+      "valor": 3389.32,
+      "dy": 15.27,
+      "nota": "rendimento mensal importado",
+      "rc": "ok"
+    },
+    {
+      "ticker": "JURO11",
+      "classe": "FII",
+      "nome": "JURO11",
+      "valor": 2915.7,
+      "dy": 0.0,
+      "nota": "sem provento recente no extrato",
+      "rc": "warn"
+    },
+    {
+      "ticker": "KDIF11",
+      "classe": "FII",
+      "nome": "KDIF11",
+      "valor": 2680.26,
+      "dy": 14.28,
+      "nota": "rendimento mensal importado",
+      "rc": "ok"
+    },
+    {
+      "ticker": "KNRI11",
+      "classe": "FII",
+      "nome": "KNRI11",
+      "valor": 2653.02,
+      "dy": 10.61,
+      "nota": "rendimento mensal importado",
+      "rc": "ok"
+    },
+    {
+      "ticker": "BTLG11",
+      "classe": "FII",
+      "nome": "BTLG11",
+      "valor": 2565.0,
+      "dy": 9.47,
+      "nota": "rendimento mensal importado",
+      "rc": "warn"
+    },
+    {
+      "ticker": "IFRA11",
+      "classe": "FII",
+      "nome": "IFRA11",
+      "valor": 2503.17,
+      "dy": 12.3,
+      "nota": "rendimento mensal importado",
+      "rc": "ok"
+    },
+    {
+      "ticker": "BDIF11",
+      "classe": "FII",
+      "nome": "BDIF11",
+      "valor": 2294.72,
+      "dy": 0.0,
+      "nota": "sem provento recente no extrato",
+      "rc": "warn"
+    },
+    {
+      "ticker": "VISC11",
+      "classe": "FII",
+      "nome": "VISC11",
+      "valor": 2106.8,
+      "dy": 9.09,
+      "nota": "rendimento mensal importado",
+      "rc": "warn"
+    },
+    {
+      "ticker": "CPTI11",
+      "classe": "FII",
+      "nome": "CPTI11",
+      "valor": 1819.65,
+      "dy": 15.93,
+      "nota": "rendimento mensal importado",
+      "rc": "ok"
+    },
+    {
+      "ticker": "PSEC11",
+      "classe": "FII",
+      "nome": "PSEC11",
+      "valor": 1548.68,
+      "dy": 11.93,
+      "nota": "rendimento mensal importado",
+      "rc": "ok"
+    }
+  ],
+  "proventos": [
+    {
+      "ticker": "KNCR11",
+      "classe": "FII",
+      "valor_posicao": 7706.34,
+      "provento_mes": 78.1,
+      "evento": "Rendimento XP - ultimos lancamentos",
+      "data_pagamento": "2026-07-20"
+    },
+    {
+      "ticker": "KNSC11",
+      "classe": "FII",
+      "valor_posicao": 5233.8,
+      "provento_mes": 53.6,
+      "evento": "Rendimento XP - ultimos lancamentos",
+      "data_pagamento": "2026-07-20"
+    },
+    {
+      "ticker": "HSML11",
+      "classe": "FII",
+      "valor_posicao": 4888.8,
+      "provento_mes": 42.0,
+      "evento": "Rendimento XP - ultimos lancamentos",
+      "data_pagamento": "2026-07-20"
+    },
+    {
+      "ticker": "RBRR11",
+      "classe": "FII",
+      "valor_posicao": 3389.32,
+      "provento_mes": 43.12,
+      "evento": "Rendimento XP - ultimos lancamentos",
+      "data_pagamento": "2026-07-20"
+    },
+    {
+      "ticker": "KDIF11",
+      "classe": "FII",
+      "valor_posicao": 2680.26,
+      "provento_mes": 31.9,
+      "evento": "Rendimento XP - ultimos lancamentos",
+      "data_pagamento": "2026-07-20"
+    },
+    {
+      "ticker": "KNRI11",
+      "classe": "FII",
+      "valor_posicao": 2653.02,
+      "provento_mes": 23.46,
+      "evento": "Rendimento XP - ultimos lancamentos",
+      "data_pagamento": "2026-07-20"
+    },
+    {
+      "ticker": "BTLG11",
+      "classe": "FII",
+      "valor_posicao": 2565.0,
+      "provento_mes": 20.25,
+      "evento": "Rendimento XP - ultimos lancamentos",
+      "data_pagamento": "2026-07-20"
+    },
+    {
+      "ticker": "IFRA11",
+      "classe": "FII",
+      "valor_posicao": 2503.17,
+      "provento_mes": 25.65,
+      "evento": "Rendimento XP - ultimos lancamentos",
+      "data_pagamento": "2026-07-20"
+    },
+    {
+      "ticker": "VISC11",
+      "classe": "FII",
+      "valor_posicao": 2106.8,
+      "provento_mes": 15.96,
+      "evento": "Rendimento XP - ultimos lancamentos",
+      "data_pagamento": "2026-07-20"
+    },
+    {
+      "ticker": "CPTI11",
+      "classe": "FII",
+      "valor_posicao": 1819.65,
+      "provento_mes": 24.15,
+      "evento": "Rendimento XP - ultimos lancamentos",
+      "data_pagamento": "2026-07-20"
+    },
+    {
+      "ticker": "PSEC11",
+      "classe": "FII",
+      "valor_posicao": 1548.68,
+      "provento_mes": 15.4,
+      "evento": "Rendimento XP - ultimos lancamentos",
+      "data_pagamento": "2026-07-20"
+    }
+  ],
+  "alertas_list": [
+    {
+      "cor": "w",
+      "t": "Riza Lotus concentra 46,8% da carteira",
+      "d": "Fundo DI/credito privado ficou em R$ 55.085; comparar contra LC/LCI/CDI e alternativas com prazo."
+    },
+    {
+      "cor": "w",
+      "t": "FIIs geram renda, mas exigem raio-X",
+      "d": "Proventos recentes somaram R$ 374 no mes; avaliar qualidade, risco de cota e recorrencia por fundo."
+    },
+    {
+      "cor": "g",
+      "t": "Tesouro Selic reduz risco de caixa",
+      "d": "LFT mar/2031 preserva liquidez e estabilidade para parte defensiva da carteira."
+    }
+  ],
+  "vencimentos": [
+    {
+      "data": "2031-03-01",
+      "label": "Tesouro Selic 2031",
+      "valor": 20350.28,
+      "icon": "TD"
+    },
+    {
+      "data": "liquidez",
+      "label": "Riza Lotus - resgate curto",
+      "valor": 55084.68,
+      "icon": "RF"
+    }
+  ],
+  "resumo": {
+    "alocacao": "RF 64.1% / FIIs 35.9%",
+    "observacao": "Snapshot gerado de PosicaoDetalhada.xlsx e Extrato Ultimos Lancamentos.xlsx.",
+    "proventos_mes": 373.59,
+    "riza_valor": 55084.68,
+    "riza_rentabilidade_liquida": "29,25%"
+  }
+}

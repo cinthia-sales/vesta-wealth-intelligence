@@ -2,6 +2,13 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { isBootstrapAvailable } from "@/lib/auth.functions";
+import {
+  ACCESS_AUTH_KEY,
+  ACCESS_DEFAULT_PASSWORD,
+  getAccessAccount,
+  normalizeAccessEmail,
+  validateAccessPassword,
+} from "@/lib/vesta-access-keys";
 import vestaLineart from "@/assets/vesta-lineart.png";
 
 type PublicDomus = { id: string; nome: string; slug: string; descricao: string | null };
@@ -52,6 +59,21 @@ function DomusEntradaPage() {
     e.preventDefault();
     setError(null);
     setBusy(true);
+    const normalizedEmail = normalizeAccessEmail(email);
+    const accessAccount = getAccessAccount(normalizedEmail);
+    if (accessAccount) {
+      if (!validateAccessPassword(normalizedEmail, password)) {
+        setBusy(false);
+        setError(`Senha incorreta. A senha inicial desses acessos é ${ACCESS_DEFAULT_PASSWORD}.`);
+        return;
+      }
+      await supabase.auth.signOut();
+      window.localStorage.setItem(ACCESS_AUTH_KEY, normalizedEmail);
+      setBusy(false);
+      navigate({ to: "/app" });
+      return;
+    }
+    window.localStorage.removeItem(ACCESS_AUTH_KEY);
     const { error: signInErr } = await supabase.auth.signInWithPassword({
       email: email.trim(),
       password,
@@ -144,13 +166,13 @@ function DomusEntradaPage() {
                 </label>
               )}
               <label>
-                Email
+                Email ou usuário
                 <input
-                  type="email"
+                  type={bootstrapMode ? "email" : "text"}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  autoComplete="email"
+                  autoComplete={bootstrapMode ? "email" : "username"}
                 />
               </label>
               <label>

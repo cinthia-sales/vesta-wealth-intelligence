@@ -1,4 +1,5 @@
 import { PROVENTOS, type Provento } from "@/data/dividendos";
+import { STORAGE_KEYS, type LocalSnapshot } from "@/data/vesta-users";
 import type { ProfileId } from "@/lib/profile-derive";
 
 function fmtR(n: number) {
@@ -15,6 +16,7 @@ const FREQ_BADGE: Record<string, string> = {
 
 // Alternativa segura — LCA 92% CDI isenta (mesmo benchmark usado no Validador)
 const LCA_BENCH = 13.57;
+const IPCA_REF = 4.64;
 
 // Ajustes específicos por ticker (come-cotas, apreciação histórica recente ao ano)
 type Ajuste = { come_cotas?: number; aprec_hist?: number; nota_extra?: string };
@@ -57,16 +59,112 @@ const VERDICT_COLOR: Record<"verde" | "amarelo" | "vermelho", { bg: string; fg: 
 };
 
 
-export function RendimentosPage({ profileId }: { profileId: ProfileId }) {
-  // Cinthia = só RF isento, sem proventos de RV. Familiar/Paulo = usa PROVENTOS do Paulo.
-  const list = profileId === "cinthia" || profileId.startsWith("member:")
-    ? []
-    : PROVENTOS.filter((p) => p.provento_ano > 0);
+function snapshotKey(profileId: ProfileId): string {
+  const normalized = profileId.startsWith("member:") ? profileId.slice("member:".length) : profileId;
+  if (normalized === "paulo" || normalized === "cinthia") return STORAGE_KEYS[normalized];
+  return "vesta_posicao_" + normalized;
+}
 
+function classeProvento(classe: NonNullable<LocalSnapshot["proventos"]>[number]["classe"]): Provento["classe"] {
+  return (classe === "Ação" ? "AÃ§Ã£o" : classe) as Provento["classe"];
+}
+
+function proventosImportados(profileId: ProfileId): Provento[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(snapshotKey(profileId));
+    const snap = raw ? JSON.parse(raw) as LocalSnapshot : null;
+    return (snap?.proventos ?? [])
+      .filter((p) => p.provento_mes > 0)
+      .map((p) => {
+        const valor_posicao = p.valor_posicao || 0;
+        const provento_ano = p.provento_mes * 12;
+        return {
+          ticker: p.ticker,
+          classe: classeProvento(p.classe),
+          dono: profileId === "cinthia" ? "Cinthia" : "Paulo",
+          valor_posicao,
+          dy_pct: valor_posicao > 0 ? (provento_ano / valor_posicao) * 100 : 0,
+          provento_ano,
+          provento_mes: p.provento_mes,
+          freq: "mensal",
+          nota: [p.evento, p.data_pagamento ? `pag. ${p.data_pagamento}` : null].filter(Boolean).join(" - ") || "Importado XP",
+        };
+      });
+  } catch {
+    return [];
+  }
+}
+
+function parseBRL(value: string) {
+  const n = Number(value.replace(/[^\d,.-]/g, "").replace(/\./g, "").replace(",", "."));
+  return Number.isFinite(n) ? n : null;
+}
+
+function splitReferencia(pm: string) {
+  const normalized = pm.replace(/\s*[Â·-]\s*Importado XP\s*/gi, "").replace(/\s*Importado XP\s*/gi, "").replace(/\s+/g, " ").trim();
+  const pmMatch = normalized.match(/PM\s*(R\$\s*[\d.,]+)/i) ?? normalized.match(/^(R\$\s*[\d.,]+)/i);
+  const cotMatch = normalized.match(/Cot\.?\s*(R\$\s*[\d.,]+)/i);
+  const qtdMatch = normalized.match(/([\d.]+)\s*(cotas|ações|aÃ§Ãµes|aÃƒÂ§ÃƒÂµes|títulos|titulos)/i);
+  return {
+    pm: pmMatch ? parseBRL(pmMatch[1]) : null,
+    cotacao: cotMatch ? parseBRL(cotMatch[1]) : null,
+    qtd: qtdMatch ? Number(qtdMatch[1].replace(/\./g, "")) : null,
+  };
+}
+
+function loadSnapshot(profileId: ProfileId): LocalSnapshot | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(snapshotKey(profileId));
+    return raw ? JSON.parse(raw) as LocalSnapshot : null;
+  } catch {
+    return null;
+  }
+}
+
+export function RendimentosPage({ profileId }: { profileId: ProfileId }) {
+  const snapshot = loadSnapshot(profileId);
+  const importados = proventosImportados(profileId);
+  // Cinthia = so RF isento, sem proventos de RV. Familiar/Paulo usa a base fixa quando nao ha importacao recente.
+  const list = importados.length > 0
+    ? importados
+    : profileId === "cinthia" || profileId.startsWith("member:")
+      ? []
+      : PROVENTOS.filter((p) => p.provento_ano > 0);
   const total_ano = list.reduce((s, p) => s + p.provento_ano, 0);
   const total_mes = total_ano / 12;
   const total_pos = list.reduce((s, p) => s + p.valor_posicao, 0);
   const dy_medio = total_pos > 0 ? (total_ano / total_pos) * 100 : 0;
+  const rvByTicker = new Map((snapshot?.rv_ativos ?? []).map((a) => [a.n.split(" ")[0].replace(/[^A-Z0-9]/g, ""), a]));
+  const economico = list
+    .map((p) => {
+      const rv = rvByTicker.get(p.ticker);
+      if (!rv) return null;
+      const ref = splitReferencia(rv.pm);
+      if (ref.pm === null || ref.cotacao === null || ref.qtd === null || ref.qtd <= 0) return null;
+      const investido = ref.pm * ref.qtd;
+      const atual = ref.cotacao * ref.qtd;
+      const perdaPreco = atual - investido;
+      const resultado = perdaPreco + p.provento_ano;
+      const ipcaMinimo = investido * (IPCA_REF / 100);
+      const resultadoVsIpca = resultado - ipcaMinimo;
+      return { p, rv, ref, investido, atual, perdaPreco, resultado, ipcaMinimo, resultadoVsIpca };
+    })
+    .filter(Boolean) as Array<{
+      p: Provento;
+      rv: NonNullable<LocalSnapshot["rv_ativos"]>[number];
+      ref: { pm: number | null; cotacao: number | null; qtd: number | null };
+      investido: number;
+      atual: number;
+      perdaPreco: number;
+      resultado: number;
+      ipcaMinimo: number;
+      resultadoVsIpca: number;
+    }>;
+  const destruidores = economico.filter((x) => x.resultadoVsIpca < 0);
+  const resultadoEconomicoTotal = economico.reduce((s, x) => s + x.resultado, 0);
+  const ipcaMinimoTotal = economico.reduce((s, x) => s + x.ipcaMinimo, 0);
 
   const porClasse = ["FI-Agro", "FII", "ETF", "Ação"].map((cls) => {
     const items = list.filter((p) => p.classe === cls);
@@ -77,7 +175,7 @@ export function RendimentosPage({ profileId }: { profileId: ProfileId }) {
   return (
     <>
       <div className="ph">
-        <h1>💰 Rendimentos recorrentes</h1>
+        <h1><span className="money-title-icon" aria-label="dinheiro" /> Rendimentos recorrentes</h1>
         <p>
           O <strong>pingado</strong> que ninguém rastreia: dividendos, JCP e rendimentos
           isentos de FIIs/FI-Agro que caem todo mês. Estimativas com base nos últimos 12 meses.
@@ -197,6 +295,74 @@ export function RendimentosPage({ profileId }: { profileId: ProfileId }) {
               </table>
             </div>
           </div>
+
+          {economico.length > 0 && (
+            <div className="card" style={{ marginTop: 14 }}>
+              <div className="card-hdr">
+                Provento não é lucro <span>resultado econômico vs inflação</span>
+              </div>
+              <div
+                style={{
+                  margin: "0 16px 16px",
+                  padding: "14px 16px",
+                  borderRadius: 8,
+                  borderLeft: `4px solid ${destruidores.length > 0 ? "var(--danger)" : "#4E7A5C"}`,
+                  background: destruidores.length > 0 ? "var(--danger-bg)" : "rgba(74,124,89,.10)",
+                  fontSize: 13,
+                }}
+              >
+                <div style={{ fontWeight: 700, marginBottom: 6, fontSize: 14 }}>
+                  {destruidores.length > 0
+                    ? `☹ ${destruidores.length} ativo(s) pingam, mas ainda destroem patrimônio.`
+                    : "✓ Os pingados compensam preço e inflação no recorte disponível."}
+                </div>
+                <div style={{ color: "var(--muted)", lineHeight: 1.6 }}>
+                  Resultado econômico = preço atual - preço médio + proventos de 12 meses.
+                  Para preservar poder de compra, ainda precisava bater IPCA de {IPCA_REF.toFixed(2).replace(".", ",")}%.
+                  <br />
+                  No bloco com PM/cota importados: resultado econômico <strong>{fmtR(resultadoEconomicoTotal)}</strong> vs IPCA mínimo <strong>{fmtR(ipcaMinimoTotal)}</strong>.
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gap: 8, padding: "0 16px 16px" }}>
+                {economico
+                  .slice()
+                  .sort((a, b) => a.resultadoVsIpca - b.resultadoVsIpca)
+                  .map((x) => {
+                    const ruim = x.resultadoVsIpca < 0;
+                    return (
+                      <details
+                        key={x.p.ticker}
+                        style={{
+                          border: "1px solid var(--border)",
+                          borderLeft: `4px solid ${ruim ? "var(--danger)" : "#4E7A5C"}`,
+                          borderRadius: 8,
+                          padding: "10px 12px",
+                          background: "var(--card)",
+                        }}
+                      >
+                        <summary style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 10, listStyle: "none" }}>
+                          <span className={"dot " + (ruim ? "dr" : "dg")} style={{ margin: 0 }} />
+                          <strong>{ruim ? "☹" : "✓"} {x.p.ticker}</strong>
+                          <span style={{ color: "var(--muted)", fontSize: 12 }}>
+                            pingou {fmtR(x.p.provento_ano)}/ano, preço {fmtR(x.perdaPreco)}
+                          </span>
+                          <span style={{ marginLeft: "auto", color: ruim ? "var(--danger)" : "#4E7A5C", fontWeight: 700 }}>
+                            vs IPCA: {fmtR(x.resultadoVsIpca)}
+                          </span>
+                        </summary>
+                        <div style={{ marginTop: 10, color: "var(--muted)", fontSize: 12, lineHeight: 1.6 }}>
+                          Comprado a PM de {fmtR(x.ref.pm ?? 0)} e marcado a {fmtR(x.ref.cotacao ?? 0)} em {x.ref.qtd?.toLocaleString("pt-BR")} cotas.
+                          A perda/ganho de preço é {fmtR(x.perdaPreco)}. Somando proventos de 12 meses, o resultado econômico fica em <strong>{fmtR(x.resultado)}</strong>.
+                          Para apenas preservar inflação, precisaria de aproximadamente <strong>{fmtR(x.ipcaMinimo)}</strong> no período.
+                          {ruim && " Ou seja: o pingado não pagou a perda da cota nem a inflação; numa proteção IPCA simples, estaria melhor."}
+                        </div>
+                      </details>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
 
           {/* ===== VALE O DIVIDENDO? — Raio-X por ativo ===== */}
           {(() => {
@@ -353,3 +519,5 @@ export function RendimentosPage({ profileId }: { profileId: ProfileId }) {
     </>
   );
 }
+
+

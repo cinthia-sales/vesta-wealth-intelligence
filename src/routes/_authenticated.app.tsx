@@ -24,6 +24,7 @@ const PAULO_EMAIL = "phfurtadovr@yahoo.com.br";
 const LUIZA_EMAIL = "lu.abrantes@gmail.com";
 const DANIEL_EMAIL = "dmalta256@gmail.com";
 const SIMPLE_MALTA_DOMUS_ID = "simple-malta-furtado";
+const SIMPLE_FURTADO_DOMUS_ID = "simple-furtado";
 const DEMO_DOMUS_ID = "demo-exemplum";
 const DEMO_CORNELIA = "member:demo-cornelia" as ProfileId;
 const DEMO_MARCUS = "member:demo-marcus" as ProfileId;
@@ -33,6 +34,27 @@ const DEMO_VIEWS: ProfileId[] = [DEMO_CONSOLIDATED, DEMO_CORNELIA, DEMO_MARCUS];
 function displayDomusName(name: string): string {
   if (/malta[\s-]*furtado/i.test(name)) return "Domus Malta-Furtado";
   return name.replace(/^fam[íi]lia\s+/i, "Domus ");
+}
+
+function isMaltaFurtadoDomus(name?: string | null): boolean {
+  return /malta[\s-]*furtado/i.test(name ?? "");
+}
+
+function isCristinaPendingVestaDomus(name?: string | null): boolean {
+  return /furtado/i.test(name ?? "") && !isMaltaFurtadoDomus(name);
+}
+
+function shouldAlwaysShowVestaGreeting(sessionData: any, simpleAccount?: ReturnType<typeof getAccessAccount> | null): boolean {
+  if (!sessionData?.profile) return false;
+  if (memberPapel(sessionData?.membership) === "vesta" || sessionData.role === "vesta") return false;
+  const profileText = `${sessionData.profile.nome ?? ""} ${sessionData.profile.email ?? ""}`.toLowerCase();
+  const simpleProfile = simpleAccount?.profile ?? "";
+  return (
+    simpleProfile === "paulo" ||
+    simpleProfile === "daniel" ||
+    simpleProfile === "marcus" ||
+    /(^|\s)(paulo|murilo|daniel|marcus|marcos)(\s|$)/.test(profileText)
+  );
 }
 
 function keyForProfile(profileId: string, email?: string | null, name?: string | null): PersonaId {
@@ -68,9 +90,42 @@ function buildSimpleSession(email: string) {
       ? { id: "simple-paulo", nome: "Paulo", email: PAULO_EMAIL, primeiro_acesso: false }
       : account?.profile === "daniel"
         ? { id: "simple-daniel", nome: "Daniel Malta Furtado", email: DANIEL_EMAIL, primeiro_acesso: false }
-        : account?.profile === "cornelia"
-          ? { id: "demo-cornelia", nome: "Cornelia", email: account.email, primeiro_acesso: false }
-          : { id: "demo-marcus", nome: "Marcus", email: account?.email ?? email.toLowerCase(), primeiro_acesso: false };
+        : account?.profile === "cristina"
+          ? { id: "simple-cristina", nome: "Cristina", email: account.email, primeiro_acesso: false }
+          : account?.profile === "cornelia"
+            ? { id: "demo-cornelia", nome: "Cornelia", email: account.email, primeiro_acesso: false }
+            : { id: "demo-marcus", nome: "Marcus", email: account?.email ?? email.toLowerCase(), primeiro_acesso: false };
+  if (account?.profile === "cristina") {
+    const members = [
+      {
+        id: "simple-cristina-membership",
+        domus_id: SIMPLE_FURTADO_DOMUS_ID,
+        profile_id: "simple-cristina",
+        papel: "vesta",
+        created_at: "2026-01-01",
+        domus: { nome: "Domus Furtado" },
+        profile: { nome: "Cristina", email: "email pendente" },
+      },
+      {
+        id: "simple-murilo-membership",
+        domus_id: SIMPLE_FURTADO_DOMUS_ID,
+        profile_id: "simple-murilo",
+        papel: "membro",
+        created_at: "2026-01-02",
+        domus: { nome: "Domus Furtado" },
+        profile: { nome: "Murilo", email: "email pendente" },
+      },
+    ];
+    return {
+      role: "vesta",
+      profile,
+      memberships: members.filter((member) => member.profile_id === profile.id),
+      members,
+      domus: [{ id: SIMPLE_FURTADO_DOMUS_ID, nome: "Domus Furtado" }],
+      requests: [],
+      scopes: [],
+    };
+  }
   if (account?.profile === "cornelia" || account?.profile === "marcus") {
     const members = [
       {
@@ -217,7 +272,7 @@ function allowedForSession(sessionData: any, scopes: ScopeMap): ProfileId[] {
   }
   if (scope.seeConsolidado && sessionData.membership?.domus_id) {
     const domusName = sessionData.membership?.domus?.nome ?? "";
-    const consolidatedId = (/malta|furtado/i.test(domusName)
+    const consolidatedId = (isMaltaFurtadoDomus(domusName)
       ? "familiar"
       : `domus:${sessionData.membership.domus_id}`) as ProfileId;
     if (!base.includes(consolidatedId)) base.unshift(consolidatedId);
@@ -231,7 +286,7 @@ function allowedForSession(sessionData: any, scopes: ScopeMap): ProfileId[] {
   // Soberana: vê todos os perfis hardcoded + todos os membros do banco
   if (isVestaSoberana(sessionData)) {
     const domusName = sessionData.membership?.domus?.nome ?? "";
-    const isMaltaFurtado = /malta|furtado/i.test(domusName);
+    const isMaltaFurtado = isMaltaFurtadoDomus(domusName);
     if (!isMaltaFurtado) return [`domus:${sessionData.membership.domus_id}`, ...memberProfiles];
     const sovereignViews: ProfileId[] = ["familiar", "cinthia", "paulo"];
     return [...sovereignViews, ...memberProfiles.filter((p) => !sovereignViews.includes(p))];
@@ -361,8 +416,8 @@ function VestaApp() {
       options.push({ id: DEMO_DOMUS_ID, nome: "Domus Exemplum" });
     }
     return options.sort((a: any, b: any) => {
-      const aMalta = /malta.*furtado/i.test(a.nome) ? 0 : 1;
-      const bMalta = /malta.*furtado/i.test(b.nome) ? 0 : 1;
+      const aMalta = isMaltaFurtadoDomus(a.nome) ? 0 : 1;
+      const bMalta = isMaltaFurtadoDomus(b.nome) ? 0 : 1;
       return aMalta - bMalta || a.nome.localeCompare(b.nome, "pt-BR");
     });
   })();
@@ -403,8 +458,16 @@ function VestaApp() {
 
   useEffect(() => {
     if (!sessionData) return;
-    if (activeSimpleAuthEmail) return;
+    const alwaysShowGreeting = shouldAlwaysShowVestaGreeting(sessionData, simpleAccessAccount);
+    if (activeSimpleAuthEmail) {
+      if (alwaysShowGreeting) setSaudacao(true);
+      return;
+    }
     if (sessionData.role === "vesta") return;
+    if (alwaysShowGreeting) {
+      setSaudacao(true);
+      return;
+    }
     let ativo = true;
     (async () => {
       const { data: userData } = await supabase.auth.getUser();
@@ -420,10 +483,11 @@ function VestaApp() {
     return () => {
       ativo = false;
     };
-  }, [sessionData, activeSimpleAuthEmail]);
+  }, [sessionData, activeSimpleAuthEmail, simpleAccessAccount]);
 
   const dispensarSaudacao = async () => {
     setSaudacao(false);
+    if (shouldAlwaysShowVestaGreeting(sessionData, simpleAccessAccount)) return;
     if (activeSimpleAuthEmail) return;
     const { data: userData } = await supabase.auth.getUser();
     const uid = userData.user?.id;
@@ -514,6 +578,7 @@ function VestaApp() {
       };
     }
     const domusSession = sessionForDomus(domus.id);
+    const hasCristinaPendingVesta = isCristinaPendingVestaDomus(domus.nome);
     const registeredProfiles = Array.from(new Set(
       domusSession.members
         .filter((member: any) => member.profile)
@@ -544,16 +609,46 @@ function VestaApp() {
         waitingForData: getUser(id).total <= 0,
       };
     });
-    const vestaMember = domusSession.members.find((m: any) => memberPapel(m) === "vesta");
+    const vestaMember = domusSession.members.find((m: any) => {
+      if (memberPapel(m) !== "vesta") return false;
+      if (!hasCristinaPendingVesta) return true;
+      const name = `${m.profile?.nome ?? ""} ${m.profile?.email ?? ""}`.toLowerCase();
+      return /cristina/.test(name);
+    });
+    const cristinaProfileId = (vestaMember?.profile_id ? `member:${vestaMember.profile_id}` : "member:simple-cristina") as ProfileId;
+    const cristinaVestaCard = hasCristinaPendingVesta
+      ? [{
+          id: cristinaProfileId,
+          name: vestaMember?.profile?.nome ?? "Cristina",
+          subtitle: vestaMember?.profile?.email && vestaMember.profile.email !== "email pendente"
+            ? "Vesta local - visao individual"
+            : "Vesta local - visao individual - email pendente",
+          initials: "C",
+          vestaLocal: true,
+          waitingForData: getUser(cristinaProfileId).total <= 0,
+        }]
+      : [];
+    const cristinaIds = new Set(cristinaVestaCard.map((view) => view.id));
+    const viewsWithoutCristina = views.filter((view) => !cristinaIds.has(view.id));
+    const firstConsolidatedIndex = viewsWithoutCristina.findIndex((view) => view.consolidated);
+    const orderedViews = firstConsolidatedIndex >= 0
+      ? [
+          ...viewsWithoutCristina.slice(0, firstConsolidatedIndex + 1),
+          ...cristinaVestaCard,
+          ...viewsWithoutCristina.slice(firstConsolidatedIndex + 1),
+        ]
+      : [...cristinaVestaCard, ...viewsWithoutCristina];
     const ownMembership = (sessionData?.memberships ?? []).find((m: any) => m.domus_id === domus.id);
     return {
       id: domus.id,
       name: domus.nome,
-      vestaName: vestaMember?.profile?.nome ?? vestaMember?.profile?.email ??
-        (/malta|furtado/i.test(domus.nome) && soberana ? (sessionData?.profile?.nome ?? undefined) : undefined),
-      memberCount: views.filter((view) => !view.consolidated).length,
+      vestaName: hasCristinaPendingVesta
+        ? (vestaMember?.profile?.nome ?? "Cristina (email pendente)")
+        : vestaMember?.profile?.nome ?? vestaMember?.profile?.email ??
+        (isMaltaFurtadoDomus(domus.nome) && soberana ? (sessionData?.profile?.nome ?? undefined) : undefined),
+      memberCount: orderedViews.filter((view) => !view.consolidated).length,
       canManage: sessionData?.role === "vesta" && (soberana || memberPapel(ownMembership) === "vesta"),
-      views,
+      views: orderedViews,
     };
   });
 
@@ -561,11 +656,12 @@ function VestaApp() {
   const hallPending: HallPending[] = sessionData?.role === "vesta"
     ? (sessionData?.requests ?? [])
         .filter((request: any) => allowedDomusIds.has(request.domus_id))
+        .filter((request: any) => request.status === "pendente")
         .map((request: any) => ({
           id: `request:${request.id}`,
           domusId: request.domus_id,
           label: request.nome,
-          detail: `${request.email}${request.mensagem ? ` · ${request.mensagem}` : ""}`,
+          detail: `${request.email}${request.mensagem ? ` - ${request.mensagem}` : ""}`,
           kind: "request" as const,
         }))
     : [];
@@ -762,3 +858,4 @@ function VestaApp() {
     </>
   );
 }
+

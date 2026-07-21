@@ -1,6 +1,7 @@
-import { type ReactElement, type ReactNode, useEffect, useState } from "react";
+﻿import { type ReactElement, type ReactNode, useEffect, useState } from "react";
 
 import { HomePage } from "@/components/vesta/pages/home";
+import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 import { PosicaoPage } from "@/components/vesta/pages/posicao";
 import { BreakevenPage } from "@/components/vesta/pages/breakeven";
 import { EquivPage } from "@/components/vesta/pages/equiv";
@@ -17,13 +18,14 @@ import { DomusPage } from "@/components/vesta/pages/domus";
 import { RVPage } from "@/components/vesta/pages/rv";
 import { OportunidadePage } from "@/components/vesta/pages/oportunidade";
 import { carregarGiros, removerGiro } from "@/data/carteira-ativos";
+import { isAssetLocked } from "@/data/asset-locks";
 
 import type { ProfileId } from "@/lib/profile-derive";
 import { getUser } from "@/data/vesta-users";
 import { getPersonaInfo, type PersonaId, type ScopeMap } from "@/state/session";
 
 /* ============================================================
-   ProfileSelector — replica exata de #profile-screen do vesta.html
+   ProfileSelector â€” replica exata de #profile-screen do vesta.html
    ============================================================ */
 export type ExtraPersona = {
   id: string;
@@ -68,7 +70,7 @@ export function ProfileSelector({
   if (groupByDomus) {
     for (const e of extraCards) {
       const key = e.domus?.nome ?? "Sem Domus";
-      if (key === MALTA_FURTADO) continue; // esses já aparecem como hardcoded
+      if (key === MALTA_FURTADO) continue; // esses jÃ¡ aparecem como hardcoded
       if (!extrasByDomus.has(key)) extrasByDomus.set(key, []);
       extrasByDomus.get(key)!.push(e);
     }
@@ -104,7 +106,7 @@ export function ProfileSelector({
           </div>
           <div className="ps-card-desc" style={{ margin: "6px 0 10px" }}>
             {e.domus?.nome ?? "Domus"}
-            <br />visão individual
+            <br />visÃ£o individual
             <br />&nbsp;
           </div>
           <div
@@ -120,11 +122,11 @@ export function ProfileSelector({
 
   return (
     <div id="profile-screen">
-      <div className="ps-vesta">✦ Vesta ✦</div>
-      <div className="ps-title">Guardiã do Patrimônio</div>
+      <div className="ps-vesta">âœ¦ Vesta âœ¦</div>
+      <div className="ps-title">GuardiÃ£ do PatrimÃ´nio</div>
       <div className="ps-subtitle">
         {loggedAs
-          ? `Entrou como ${getPersonaInfo(loggedAs).name} · selecione a visão`
+          ? `Entrou como ${getPersonaInfo(loggedAs).name} Â· selecione a visÃ£o`
           : "Selecione o perfil de acesso"}
       </div>
 
@@ -137,13 +139,13 @@ export function ProfileSelector({
               <div className="ps-profiles">
                 {canSee("familiar") && (
                   <div className="ps-card" onClick={() => onSelect("familiar")}>
-                    <div className="ps-avatar ps-av-fam" style={{ fontSize: 20 }}>🏛</div>
+                    <div className="ps-avatar ps-av-fam" style={{ fontSize: 20 }}>ðŸ›</div>
                     <div>
                       <div className="ps-card-name">FAMILIAR DOMUS</div>
                       <div className="ps-card-desc" style={{ margin: "6px 0 10px" }}>
-                        Visão consolidada das carteiras e todas as ferramentas
+                        VisÃ£o consolidada das carteiras e todas as ferramentas
                       </div>
-                      <div className="ps-card-badge ps-badge-fam">Acesso total · Vestæ Tantum</div>
+                      <div className="ps-card-badge ps-badge-fam">Acesso total Â· VestÃ¦ Tantum</div>
                     </div>
                   </div>
                 )}
@@ -151,9 +153,9 @@ export function ProfileSelector({
                   <div className="ps-card" onClick={() => onSelect("cinthia")}>
                     <div className="ps-avatar ps-av-cinthia">C</div>
                     <div>
-                      <div className="ps-card-name">CÍNTHIA&nbsp;VESTA</div>
+                      <div className="ps-card-name">CÃNTHIA&nbsp;VESTA</div>
                       <div className="ps-card-desc" style={{ margin: "6px 0 10px" }}>
-                        Carteira XP 6414212<br />visão individual<br />&nbsp;
+                        Carteira XP 6414212<br />visÃ£o individual<br />&nbsp;
                       </div>
                       <div className="ps-card-badge ps-badge-ind">Individual&nbsp;Infinitus</div>
                     </div>
@@ -165,7 +167,7 @@ export function ProfileSelector({
                     <div>
                       <div className="ps-card-name">PAULO EFFLUXUS</div>
                       <div className="ps-card-desc" style={{ margin: "6px 0 10px" }}>
-                        Carteira XP 5296823<br />visão individual<br />&nbsp;
+                        Carteira XP 5296823<br />visÃ£o individual<br />&nbsp;
                       </div>
                       <div className="ps-card-badge ps-badge-ind">Individual Restrictus</div>
                     </div>
@@ -178,7 +180,7 @@ export function ProfileSelector({
           {Array.from(extrasByDomus.entries()).map(([domusNome, members]) => (
             <div key={domusNome} style={{ width: "100%" }}>
               <div className="ps-domus-header">
-                {domusNome.replace(/^fam[íi]lia\s+/i, "Domus ").toUpperCase()}
+                {domusNome.replace(/^fam[Ã­i]lia\s+/i, "Domus ").toUpperCase()}
               </div>
               <div className="ps-profiles">
                 {members.map((e) => <ExtraCard key={e.id} e={e} />)}
@@ -191,13 +193,13 @@ export function ProfileSelector({
         <div className="ps-profiles">
           {canSee("familiar") && (
             <div className="ps-card" onClick={() => onSelect("familiar")}>
-              <div className="ps-avatar ps-av-fam" style={{ fontSize: 20 }}>🏛</div>
+              <div className="ps-avatar ps-av-fam" style={{ fontSize: 20 }}>ðŸ›</div>
               <div>
                 <div className="ps-card-name">FAMILIAR DOMUS</div>
                 <div className="ps-card-desc" style={{ margin: "6px 0 10px" }}>
-                  Visão consolidada&nbsp;das carteiras&nbsp;{"\n"}e todas as ferramentas
+                  VisÃ£o consolidada&nbsp;das carteiras&nbsp;{"\n"}e todas as ferramentas
                 </div>
-                <div className="ps-card-badge ps-badge-fam">Acesso total -&nbsp;Vestæ Tantum</div>
+                <div className="ps-card-badge ps-badge-fam">Acesso total -&nbsp;VestÃ¦ Tantum</div>
               </div>
             </div>
           )}
@@ -205,9 +207,9 @@ export function ProfileSelector({
             <div className="ps-card" onClick={() => onSelect("cinthia")}>
               <div className="ps-avatar ps-av-cinthia">C</div>
               <div>
-                <div className="ps-card-name">CÍNTHIA&nbsp;VESTA</div>
+                <div className="ps-card-name">CÃNTHIA&nbsp;VESTA</div>
                 <div className="ps-card-desc" style={{ margin: "6px 0 10px" }}>
-                  Carteira XP 6414212<br />visão individual<br />&nbsp;
+                  Carteira XP 6414212<br />visÃ£o individual<br />&nbsp;
                 </div>
                 <div className="ps-card-badge ps-badge-ind">Individual&nbsp;Infinitus</div>
               </div>
@@ -219,7 +221,7 @@ export function ProfileSelector({
               <div>
                 <div className="ps-card-name">PAULO EFFLUXUS</div>
                 <div className="ps-card-desc" style={{ margin: "6px 0 10px" }}>
-                  Carteira XP 5296823<br />visão individual<br />&nbsp;
+                  Carteira XP 5296823<br />visÃ£o individual<br />&nbsp;
                 </div>
                 <div className="ps-card-badge ps-badge-ind">Individual Restrictus</div>
               </div>
@@ -230,10 +232,10 @@ export function ProfileSelector({
       )}
 
       <div className="ps-ornament">
-        Domus Malta Furtado · 2026
+        Domus Malta Furtado Â· 2026
         {onLogout && (
           <>
-            {" · "}
+            {" Â· "}
             <a
               onClick={onLogout}
               style={{ cursor: "pointer", textDecoration: "underline", color: "var(--accent)" }}
@@ -250,11 +252,11 @@ export function ProfileSelector({
             <p className="public-domus-kicker">Persona sem dados</p>
             <h3>{waiting.profile?.nome ?? "Novo membro"}</h3>
             <p style={{ lineHeight: 1.6 }}>
-              A Vesta já aprovou o acesso, mas ainda não subimos os documentos XP dessa persona.
+              A Vesta jÃ¡ aprovou o acesso, mas ainda nÃ£o subimos os documentos XP dessa persona.
               Quando o extrato for carregado, a carteira dela aparece aqui como as outras.
             </p>
             <p style={{ fontSize: 12, color: "var(--muted)" }}>
-              {waiting.profile?.email} · {waiting.domus?.nome ?? "Domus"} · {waiting.papel}
+              {waiting.profile?.email} Â· {waiting.domus?.nome ?? "Domus"} Â· {waiting.papel}
             </p>
             <button onClick={() => setWaiting(null)}>Entendido</button>
           </div>
@@ -265,7 +267,7 @@ export function ProfileSelector({
 }
 
 /* ============================================================
-   Nav items — SVGs replicados do vesta.html
+   Nav items â€” SVGs replicados do vesta.html
    ============================================================ */
 const NAV_ICONS: Record<string, ReactElement> = {
   home: (
@@ -304,6 +306,21 @@ const NAV_ICONS: Record<string, ReactElement> = {
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
       <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
       <polyline points="17 6 23 6 23 12" />
+    </svg>
+  ),
+  projecao: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M4 19V5" />
+      <path d="M4 19h16" />
+      <path d="M7 15l3-4 3 2 5-7" />
+      <path d="M16 6h2v2" />
+    </svg>
+  ),
+  secundario: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M6 7h10a4 4 0 010 8H8" />
+      <path d="M9 4L6 7l3 3" />
+      <path d="M15 20l3-3-3-3" />
     </svg>
   ),
   regras: (
@@ -382,10 +399,10 @@ const PROFILE_META: Record<"familiar" | "cinthia" | "paulo", { name: string; sub
     sub: "Todas as carteiras",
     avatarBg: "rgba(161,29,62,.10)",
     avatarColor: "var(--accent)",
-    content: <span style={{ fontSize: 14 }}>🏛</span>,
+    content: <span style={{ fontSize: 14 }}>ðŸ›</span>,
   },
   cinthia: {
-    name: "CÍNTHIA VESTA",
+    name: "CÃNTHIA VESTA",
     sub: "XP 6414212",
     avatarBg: "rgba(161,29,62,.08)",
     avatarColor: "var(--accent)",
@@ -404,11 +421,11 @@ function getProfileMeta(profileId: ProfileId, overrideName?: string) {
   if (profileId === "familiar" || profileId === "cinthia" || profileId === "paulo") {
     return PROFILE_META[profileId];
   }
-  const name = overrideName?.split(" ")[0]?.toUpperCase() ?? "NOVUS";
+  const name = (overrideName?.split(" ")[0] ?? "Novus").toUpperCase();
   const inicial = overrideName?.charAt(0)?.toUpperCase() ?? "N";
   return {
     name,
-    sub: "Dados a importar",
+    sub: "Carteira selecionada",
     avatarBg: "rgba(120,110,95,.10)",
     avatarColor: "var(--muted)",
     content: <>{inicial}</>,
@@ -416,7 +433,7 @@ function getProfileMeta(profileId: ProfileId, overrideName?: string) {
 }
 
 /* ============================================================
-   VestaShell — sidebar + topbar + update bar + slot para page
+   VestaShell â€” sidebar + topbar + update bar + slot para page
    ============================================================ */
 export function VestaShell({
   profileId,
@@ -454,20 +471,26 @@ export function VestaShell({
 }) {
   const [page, setPage] = useState<PageKey>(initialPage);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(false);
-  const goTo = (k: PageKey) => { setPage(k); setSidebarOpen(false); setMoreOpen(false); };
-
-  useEffect(() => {
-    if (!moreOpen) return;
-    const close = (e: PointerEvent) => {
-      const t = e.target as HTMLElement | null;
-      if (t && !t.closest(".context-nav__more") && !t.closest(".context-nav__menu")) setMoreOpen(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(230);
+  const goTo = (k: PageKey) => { setPage(k); setSidebarOpen(false); };
+  const startSidebarResize = (ev: ReactPointerEvent<HTMLDivElement>) => {
+    ev.preventDefault();
+    const startX = ev.clientX;
+    const startWidth = sidebarWidth;
+    const move = (moveEv: PointerEvent) => {
+      const next = Math.min(340, Math.max(190, startWidth + moveEv.clientX - startX));
+      setSidebarWidth(next);
     };
-    document.addEventListener("pointerdown", close);
-    return () => document.removeEventListener("pointerdown", close);
-  }, [moreOpen]);
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
 
-  /* CDI (série 4389) e IPCA 12m (série 13522) direto do Banco Central */
+  /* CDI (sÃ©rie 4389) e IPCA 12m (sÃ©rie 13522) direto do Banco Central */
   const [bcbCdi, setBcbCdi] = useState<number | null>(null);
   const [bcbIpca, setBcbIpca] = useState<number | null>(null);
   const [bcbLive, setBcbLive] = useState(false);
@@ -495,17 +518,19 @@ export function VestaShell({
   const isVesta = loggedRole === "vesta" || loggedPersona?.role === "vesta";
   const canManageDomus = isVesta && profileId !== "paulo";
   const isMember = profileId.startsWith("member:");
-  const hasFullPortfolio = !isMember || profileId.startsWith("member:demo-") || profileId === "member:luiza-abrantes";
-  // Nome de exibição: usa loggedName (real do banco) ou fallback para getPersonaInfo
+  // Nome de exibiÃ§Ã£o: usa loggedName (real do banco) ou fallback para getPersonaInfo
   const displayName = loggedName ?? (loggedAs ? getPersonaInfo(loggedAs).name : "Membro");
   const userData = getUser(profileId);
+  const hasImportedPortfolio = userData.total > 0 || userData.rf_ativos.length > 0 || (userData.rv_ativos?.length ?? 0) > 0;
+  const hasFullPortfolio = !isMember || profileId.startsWith("member:demo-") || profileId === "member:luiza-abrantes" || hasImportedPortfolio;
   const alertas = userData.alertas_list;
+  const autoRVAlertas = countAutoRVAlerts(userData);
   const alertaCounts = {
-    r: alertas.filter((a) => a.cor === "r").length,
+    r: alertas.filter((a) => a.cor === "r").length + autoRVAlertas,
     w: alertas.filter((a) => a.cor === "w").length,
     g: alertas.filter((a) => a.cor === "g").length,
   };
-  const totalAlertas = alertas.length;
+  const totalAlertas = alertas.length + autoRVAlertas;
 
   useEffect(() => setPage(initialPage), [initialPage, profileId]);
   const alertaLabel =
@@ -516,7 +541,7 @@ export function VestaShell({
       : `${totalAlertas} alertas`;
   const alertaBreakdown = [
     { key: "r", count: alertaCounts.r, color: "var(--danger)", title: "Urgentes" },
-    { key: "w", count: alertaCounts.w, color: "var(--warning)", title: "Atenção" },
+    { key: "w", count: alertaCounts.w, color: "var(--warning)", title: "AtenÃ§Ã£o" },
     { key: "g", count: alertaCounts.g, color: "var(--success)", title: "Positivos" },
   ];
 
@@ -541,35 +566,40 @@ export function VestaShell({
     <button className={[page === key ? "on" : "", className].filter(Boolean).join(" ")} onClick={() => goTo(key)}>{label}</button>
   );
 
-  const moreMenu = (
-    <div className="context-nav__menu">
-      {hasFullPortfolio && topItem("posicao", "Posição")}
-      {hasFullPortfolio && topItem("breakeven", "Custo de oportunidade")}
-      {hasFullPortfolio && topItem("projecao", "Projeção")}
-      {!isFamily && topItem("upload", "Importar posição mensal")}
-      {topItem("alertas", `Alertas (${totalAlertas})`)}
-      {hasFullPortfolio && topItem("rendimentos", "Rendimentos")}
-      {hasFullPortfolio && topItem("secundario", "Mercado secundário")}
-      {hasFullPortfolio && topItem("regras", "Regras")}
-      {hasFullPortfolio && topItem("drivers", "Influenciadores")}
-      {canManageDomus && topItem("domus", "Gerir Domus")}
-    </div>
-  );
-
   return (
-    <div className={"app" + (sidebarOpen ? " sidebar-open" : "") + (page === "domus" ? " managing-domus" : "")}>
+    <div
+      className={
+        "app" +
+        (sidebarOpen ? " sidebar-open" : "") +
+        (sidebarCollapsed ? " sidebar-collapsed" : "") +
+        (page === "domus" ? " managing-domus" : "")
+      }
+      style={{ "--vesta-sidebar-width": `${sidebarWidth}px` } as CSSProperties}
+    >
       <div className={"mob-backdrop" + (sidebarOpen ? " open" : "")} onClick={() => setSidebarOpen(false)} />
       <nav className={"sidebar" + (sidebarOpen ? " open" : "")}>
         <div className="logo">
-          <div className="logo-icon" style={{ fontSize: 18 }}>✦</div>
+          <button
+            className="sidebar-collapse-btn logo-icon logo-icon-star"
+            aria-label={sidebarCollapsed ? "Mostrar menu" : "Esconder menu"}
+            onClick={() => setSidebarCollapsed((v) => !v)}
+          />
           <div>
             <div className="logo-name">Vesta</div>
             <div className="logo-sub">Sistema de Gestão Patrimonial Familiar</div>
           </div>
+          <button
+            className="sidebar-collapse-arrow"
+            aria-label={sidebarCollapsed ? "Expandir barra lateral" : "Encolher barra lateral"}
+            title={sidebarCollapsed ? "Expandir barra lateral" : "Encolher barra lateral"}
+            onClick={() => setSidebarCollapsed((v) => !v)}
+          >
+            {sidebarCollapsed ? "›" : "‹"}
+          </button>
         </div>
 
         {isVesta && (
-          <div className="active-profile-bar" onClick={onSwitchProfile} title="Trocar perfil">
+          <div className="active-profile-bar" title="Perfil em visualização">
             <div
               className="apb-avatar"
               style={{ background: meta.avatarBg, color: meta.avatarColor, fontSize: 14 }}
@@ -577,10 +607,9 @@ export function VestaShell({
               {meta.content}
             </div>
             <div className="apb-info">
-              <div className="apb-name">{meta.name}</div>
+              <div className="apb-name">{meta.name.toUpperCase()}</div>
               <div className="apb-sub">{meta.sub}</div>
             </div>
-            <div className="apb-change">↩</div>
           </div>
         )}
 
@@ -644,7 +673,7 @@ export function VestaShell({
           <div className="nav-sec">Principal</div>
           {item("home", "Visão geral")}
           {hasFullPortfolio && item("posicao", "Posição atual")}
-          {hasFullPortfolio && item("rendimentos", "Rendimentos recorrentes", <span style={{ marginLeft: "auto", fontSize: 12 }}>💰</span>)}
+          {hasFullPortfolio && item("rendimentos", "Rendimentos recorrentes", <span className="nav-money-icon" aria-label="proventos" />)}
           {item(
             "alertas",
             "Alertas",
@@ -661,7 +690,7 @@ export function VestaShell({
                 padding: "2px 6px",
                 borderRadius: 10,
               }}
-              title={`${alertaCounts.r} urgentes · ${alertaCounts.w} atenção · ${alertaCounts.g} positivos`}
+                title={`${alertaCounts.r} urgentes · ${alertaCounts.w} atenção · ${alertaCounts.g} positivos`}
             >
               {totalAlertas}
             </span>,
@@ -670,13 +699,13 @@ export function VestaShell({
           {hasFullPortfolio && (
             <>
               <div className="nav-sec">Decidir</div>
-              {item("breakeven", "Custo de oportunidade", <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--sidebar-primary)" }}>⚖</span>)}
+              {item("breakeven", "Custo de oportunidade")}
               {item("projecao", "Projeção patrimônio")}
               {item("secundario", "Saída secundário")}
               <div className="nav-sec">Sistema</div>
               {item("regras", "Regras — não mexer")}
               {item("drivers", "Influenciadores")}
-              {item("upload", "Importar arquivos XP")}
+              {!isFamily && item("upload", "Importar arquivos")}
             </>
           )}
 
@@ -686,21 +715,23 @@ export function VestaShell({
               {item(
                 "domus",
                 "Gerir Domus",
-                <span style={{ marginLeft: "auto", fontSize: 12 }}>🏛</span>,
               )}
             </>
           )}
         </div>
 
         <div className="sidebar-foot" />
+        {!sidebarCollapsed && (
+          <div className="sidebar-resizer" onPointerDown={startSidebarResize} title="Arraste para ajustar a largura" />
+        )}
 
       </nav>
 
       <div className="main">
         {page === "domus" && (
           <nav className="management-header">
-            <button onClick={onBackToHall ?? onSwitchProfile}>← Hall</button>
-            <strong>Vesta · Gestão do Domus</strong>
+            <button onClick={onBackToHall ?? onSwitchProfile}>â† Hall</button>
+            <strong>Vesta Â· GestÃ£o do Domus</strong>
             <span />
             {onLogout && <button onClick={onLogout}>Sair</button>}
           </nav>
@@ -711,24 +742,13 @@ export function VestaShell({
           </button>
           <div style={{ minWidth: 0, flex: 1 }}>
             <div className="topbar-title">
-              Vesta{" "}
-              <span
-                style={{
-                  color: "var(--accent)",
-                  fontFamily: "var(--font-display)",
-                  fontSize: 13,
-                  letterSpacing: ".05em",
-                }}
-              >
-                ✦
-              </span>{" "}
-              Centro de Decisão Financeira
+              Vesta · Centro de Decisão Financeira
             </div>
             <div className="topbar-sub" style={{ whiteSpace: "pre-line" }}>
               {isFamily 
                 ? `Visão do Domus ·\u00A0\n${gestoraName ?? "Cinthia"} VESTA como gestora\nPatrimonium Consolidatum` 
                 : `Carteira ${meta.name}\u00A0${
-                    profileId === "paulo" ? "\nPost Reformam\u00A0·\u00A0MMXXVI\u00A0" : 
+                    profileId === "paulo" ? "\nPost Reformam\u00A0Â·\u00A0MMXXVI\u00A0" : 
                     profileId === "cinthia" ? "\nCustos Ignis et Patrimonni" : ""
                   }`}
             </div>
@@ -737,43 +757,13 @@ export function VestaShell({
         </div>
 
         <nav className="context-nav" aria-label="Navegação da carteira">
-          <button className="context-nav__back" onClick={onBackToHall ?? onSwitchProfile}>← Hall</button>
           {topItem("home", "Visão geral")}
-          {hasFullPortfolio && topItem("posicao", "Posição", "context-nav__portrait-hidden")}
-          {hasFullPortfolio && topItem("breakeven", "Oportunidade", "context-nav__portrait-hidden")}
-          {hasFullPortfolio && topItem("projecao", "Projeção", "context-nav__portrait-hidden")}
-          {!isFamily && topItem("upload", "Importar posição mensal", "context-nav__portrait-hidden")}
-          <div className={"context-nav__more" + (moreOpen ? " open" : "")}>
-            <button
-              type="button"
-              aria-expanded={moreOpen}
-              onPointerDown={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                setMoreOpen((v) => !v);
-              }}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  setMoreOpen((v) => !v);
-                }
-              }}
-            >
-              Mais
-            </button>
-            <div className="context-nav__menu-legacy">
-              {topItem("alertas", `Alertas (${totalAlertas})`)}
-              {hasFullPortfolio && topItem("rendimentos", "Rendimentos")}
-              {hasFullPortfolio && topItem("secundario", "Mercado secundário")}
-              {hasFullPortfolio && topItem("regras", "Regras")}
-              {hasFullPortfolio && topItem("drivers", "Influenciadores")}
-              {canManageDomus && topItem("domus", "Gerir Domus")}
-            </div>
-          </div>
+          {hasFullPortfolio && topItem("posicao", "Posição")}
+          {topItem("alertas", `Alertas (${totalAlertas})`)}
+          {hasFullPortfolio && topItem("projecao", "Projeção patrimônio")}
           <span className="context-nav__spacer" />
           {onLogout && <button onClick={onLogout}>Sair</button>}
         </nav>
-        {moreOpen && moreMenu}
 
         <div className="update-bar">
           <div className={"upd-dot" + (bcbLive ? "" : " off")} />
@@ -829,12 +819,13 @@ export function VestaShell({
                 onUpdateScopes={onUpdateScopes}
                 profileIdForScopeKey={profileIdForScopeKey}
                 initialDomusId={activeDomusId}
+                activeProfileId={profileId}
               />
             )}
             {!["home", "posicao", "breakeven", "equiv", "validador", "projecao", "secundario", "alertas", "regras", "upload", "drivers", "aporte", "rendimentos", "domus", "rv", "oportunidade"].includes(page) && (
               <div className="ph">
                 <h1>Em breve</h1>
-                <p>Este módulo será migrado nas próximas rodadas.</p>
+                <p>Este mÃ³dulo serÃ¡ migrado nas prÃ³ximas rodadas.</p>
               </div>
             )}
             {children}
@@ -846,7 +837,7 @@ export function VestaShell({
 }
 
 /* ============================================================
-   BreakevenTabs — Breakeven & giros com "Acelerar com aporte"
+   BreakevenTabs â€” Breakeven & giros com "Acelerar com aporte"
    como aba, + painel de giros registrados pela tela
    Custo de Oportunidade (localStorage)
    ============================================================ */
@@ -857,7 +848,7 @@ function GirosRegistradosPanel() {
     <div className="card" style={{ marginBottom: 14 }}>
       <div className="card-hdr">
         Giros registrados no Custo de Oportunidade
-        <span>{giros.length} pendente(s) de execução</span>
+        <span>{giros.length} pendente(s) de execuÃ§Ã£o</span>
       </div>
       {giros.map((g) => {
         const bkMeses = g.ganhoMesEstimado > 0 && g.custoSaida > 0
@@ -872,13 +863,13 @@ function GirosRegistradosPanel() {
             }}
           >
             <div style={{ flex: 1, minWidth: 220 }}>
-              <b>{g.origem}</b> → {g.destino}
+              <b>{g.origem}</b> â†’ {g.destino}
               <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 2 }}>
-                Capital R$ {Math.round(g.capital).toLocaleString("pt-BR")} ·
-                ganho estimado +R$ {Math.round(g.ganhoMesEstimado).toLocaleString("pt-BR")}/mês ·
+                Capital R$ {Math.round(g.capital).toLocaleString("pt-BR")} Â·
+                ganho estimado +R$ {Math.round(g.ganhoMesEstimado).toLocaleString("pt-BR")}/mÃªs Â·
                 {g.custoSaida > 0
-                  ? ` paga custo de saída em ${bkMeses} ${bkMeses === 1 ? "mês" : "meses"}`
-                  : " sem custo de saída"} ·
+                  ? ` paga custo de saÃ­da em ${bkMeses} ${bkMeses === 1 ? "mÃªs" : "meses"}`
+                  : " sem custo de saÃ­da"} Â·
                 registrado {new Date(g.criadoEm).toLocaleDateString("pt-BR")}
               </div>
             </div>
@@ -899,9 +890,401 @@ function GirosRegistradosPanel() {
   );
 }
 
+function parseBRLText(value: string | undefined) {
+  if (!value) return 0;
+  const normalized = value.replace(/[^\d,.-]/g, "").replace(/\./g, "").replace(",", ".");
+  const n = Number(normalized);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function fgcLikelyCovered(nome: string) {
+  return /\b(CDB|LCI|LCA|LCD|LC\b|RDB)\b/i.test(nome);
+}
+
+function tesouroSoberano(nome: string) {
+  return /TESOURO|LFT|NTN-B|LTN/i.test(nome);
+}
+
+function fmtRk(n: number) {
+  if (Math.abs(n) >= 1_000_000) return "R$ " + (n / 1_000_000).toFixed(1) + "M";
+  if (Math.abs(n) >= 1_000) return "R$ " + Math.round(n / 1_000) + "k";
+  return "R$ " + Math.round(n).toLocaleString("pt-BR");
+}
+
+function fmtBRL(n: number) {
+  return "R$ " + Math.round(n).toLocaleString("pt-BR");
+}
+
+function stripImportadoXP(value: string) {
+  return value.replace(/\s*[·-]\s*Importado XP\s*/gi, "").replace(/\s*Importado XP\s*/gi, "").trim();
+}
+
+function parseMoneyFromText(value: string) {
+  const n = Number(value.replace(/[^\d,.-]/g, "").replace(/\./g, "").replace(",", "."));
+  return Number.isFinite(n) ? n : null;
+}
+
+function splitPMCotacao(value: string) {
+  const normalized = value.replace(/\s*[Â··-]\s*Importado XP\s*/gi, "").replace(/\s*Importado XP\s*/gi, "").replace(/\s+/g, " ").trim();
+  return {
+    pm: normalized.match(/PM\s*(R\$\s*[\d.,]+)/i)?.[1] ?? normalized.match(/^(R\$\s*[\d.,]+)/i)?.[1] ?? "",
+    cotacao: normalized.match(/Cot\.?\s*(R\$\s*[\d.,]+)/i)?.[1] ?? "",
+  };
+}
+
+function countAutoRVAlerts(userData: ReturnType<typeof getUser>) {
+  return (userData.rv_ativos ?? []).filter((a) => {
+    const ref = splitPMCotacao(a.pm);
+    const pm = parseMoneyFromText(ref.pm);
+    const cotacao = parseMoneyFromText(ref.cotacao);
+    return pm !== null && cotacao !== null && cotacao < pm;
+  }).length;
+}
+
+function rfTaxaLabel(a: NonNullable<ReturnType<typeof getUser>["rf_ativos"]>[number]) {
+  if (typeof a.cdi === "number") return `${a.cdi.toFixed(1).replace(".", ",")}% CDI`;
+  if (typeof a.t === "number") return `${a.t.toFixed(2).replace(".", ",")}% a.a.`;
+  return a.venc ? `vence ${a.venc}` : "taxa a conferir";
+}
+
+function taxaRFAnual(a: NonNullable<ReturnType<typeof getUser>["rf_ativos"]>[number], cdiRef: number) {
+  if (typeof a.t === "number") return a.t;
+  if (typeof a.cdi === "number") return (a.cdi / 100) * cdiRef;
+  if (/LFT|Tesouro Selic|Selic/i.test(a.n)) return cdiRef;
+  return 0;
+}
+
+function taxaRVReferencia(a: NonNullable<ReturnType<typeof getUser>["rv_ativos"]>[number]) {
+  const ticker = a.n.split(" ")[0].replace(/[^A-Z0-9]/g, "");
+  const classe = `${a.cls} ${a.n}`.toLowerCase();
+  if (/fii|fi-agro|fundo imobili|agro/.test(classe) || /^[A-Z]{4}11$/.test(ticker)) return 6;
+  if (/a[cç][aã]o|ações|acao/.test(classe) || /^[A-Z]{4}[0-9]$/.test(ticker)) return 2;
+  return 0;
+}
+
+function rvAbaixoDoPM(a: NonNullable<ReturnType<typeof getUser>["rv_ativos"]>[number]) {
+  const ref = splitPMCotacao(a.pm);
+  const pm = parseMoneyFromText(ref.pm);
+  const cotacao = parseMoneyFromText(ref.cotacao);
+  return pm !== null && cotacao !== null && cotacao < pm;
+}
+
+function rvEconomiaPM(a: NonNullable<ReturnType<typeof getUser>["rv_ativos"]>[number]) {
+  const ref = splitPMCotacao(a.pm);
+  const pm = parseMoneyFromText(ref.pm);
+  const cotacao = parseMoneyFromText(ref.cotacao);
+  const qtdMatch = a.pm.match(/([\d.]+)\s*(cotas|ações|aÃ§Ãµes|titulos|títulos)/i);
+  const qtd = qtdMatch ? Number(qtdMatch[1].replace(/\./g, "")) : null;
+  const atual = parseBRLText(a.v);
+  if (pm === null || cotacao === null) return { atual, investido: null, delta: null, deltaPct: null };
+  const investido = qtd && qtd > 0 ? pm * qtd : atual * (pm / Math.max(cotacao, 0.01));
+  const delta = atual - investido;
+  return {
+    atual,
+    investido,
+    delta,
+    deltaPct: investido > 0 ? (delta / investido) * 100 : null,
+  };
+}
+
+function projectedRF10(a: NonNullable<ReturnType<typeof getUser>["rf_ativos"]>[number]) {
+  const cdiBase = [14.75, 12.5, 10.5, 9.5, 9.0, 8.5, 8.5, 8.5, 8.5, 8.5, 8.5];
+  const ipcaBase = [5.5, 5.0, 4.5, 4.2, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0];
+  const text = `${a.n} ${a.nota ?? ""}`;
+  let value = a.v;
+  for (let i = 1; i <= 10; i++) {
+    const cdi = cdiBase[i] ?? cdiBase[cdiBase.length - 1];
+    const ipca = ipcaBase[i] ?? ipcaBase[ipcaBase.length - 1];
+    let taxa: number;
+    if (/NTN-B|IPCA\s*\+/i.test(text)) {
+      const real = Number((text.match(/IPCA\s*\+\s*(\d+(?:[,.]\d+)?)/i)?.[1] ?? "5").replace(",", "."));
+      taxa = ipca + (Number.isFinite(real) ? real : 5);
+    } else if (/pré|prefix|LTN|Daycoval/i.test(text)) {
+      taxa = a.t ?? 12;
+    } else if (a.cdi != null || /CDI|Selic|FIDC|CDB|LCA|LCI|LCD|XPAG|LFTB|Previdência|Brasilprev/i.test(text)) {
+      const cdiPct = a.cdi ?? 100;
+      taxa = (cdi * cdiPct) / 100;
+    } else {
+      // Mantem compatibilidade com a pagina Projecao patrimonio:
+      // ativo sem taxa/indexador claro fica sem crescimento automatico.
+      taxa = 0;
+    }
+    value *= 1 + taxa / 100;
+  }
+  return value;
+}
+
+function projectedRV10(value: number) {
+  return value * Math.pow(1 + 0.08, 10);
+}
+
+function projectionBase10(userData: ReturnType<typeof getUser>, profileId: ProfileId) {
+  return (
+    userData.rf_ativos.reduce((s, a) => s + projectedRF10(a), 0)
+    + projectedRV10(userData.rv)
+  );
+}
+
+function SugestaoGiroCarteira({ profileId }: { profileId: ProfileId }) {
+  const [carregoAlvo, setCarregoAlvo] = useState(15);
+  const u = getUser(profileId);
+  const rv = u.rv_ativos ?? [];
+  const cdiRef = 14.75;
+  const corteCdi = cdiRef * 0.9;
+  const rvProblematicos = rv.filter((a) => !isAssetLocked(profileId, a.n) && (rvAbaixoDoPM(a) || a.rc === "bad" || /^-/.test(a.r.trim())));
+  const rvCandidata = rvProblematicos;
+  const capitalRV = rvCandidata.reduce((s, a) => s + parseBRLText(a.v), 0);
+  const rvEconomia = rv.reduce(
+    (acc, a) => {
+      const e = rvEconomiaPM(a);
+      if (e.investido === null || e.delta === null) return acc;
+      acc.investido += e.investido;
+      acc.atual += e.atual;
+      acc.delta += e.delta;
+      return acc;
+    },
+    { investido: 0, atual: 0, delta: 0 },
+  );
+  const rvCandidataEconomia = rvCandidata.reduce(
+    (acc, a) => {
+      const e = rvEconomiaPM(a);
+      if (e.investido === null || e.delta === null) return acc;
+      acc.investido += e.investido;
+      acc.atual += e.atual;
+      acc.delta += e.delta;
+      return acc;
+    },
+    { investido: 0, atual: 0, delta: 0 },
+  );
+  const rfBaixoCdi = u.rf_ativos.filter((a) => !isAssetLocked(profileId, a.n) && typeof a.cdi === "number" && a.cdi < 90);
+  const rfTaxaBaixa = u.rf_ativos.filter((a) => !isAssetLocked(profileId, a.n) && a.cdi === null && typeof a.t === "number" && a.t < corteCdi && !tesouroSoberano(a.n));
+  const rfParaRever = [...rfBaixoCdi, ...rfTaxaBaixa].filter((a, idx, arr) => arr.findIndex((b) => b.n === a.n) === idx);
+  const tesouroParaRever = u.rf_ativos.filter((a) => tesouroSoberano(a.n));
+  const capitalRFRever = rfParaRever.reduce((s, a) => s + a.v, 0);
+  const capitalGiro = capitalRV + capitalRFRever;
+  const fgcCoberto = u.rf_ativos.filter((a) => fgcLikelyCovered(a.n)).reduce((s, a) => s + a.v, 0);
+  const soberano = u.rf_ativos.filter((a) => tesouroSoberano(a.n)).reduce((s, a) => s + a.v, 0);
+  const descoberto = Math.max(0, u.total - fgcCoberto - soberano);
+  const destinoConservador = 0.135;
+  const destinoForte = carregoAlvo / 100;
+  const rvCandidataNames = new Set(rvCandidata.map((a) => a.n));
+  const rfParaReverNames = new Set(rfParaRever.map((a) => a.n));
+  const carregoRF = u.rf_ativos.reduce((s, a) => s + a.v * taxaRFAnual(a, cdiRef), 0);
+  const carregoRV = rv.reduce((s, a) => s + parseBRLText(a.v) * taxaRVReferencia(a), 0);
+  const carregoRFRever = rfParaRever.reduce((s, a) => s + a.v * taxaRFAnual(a, cdiRef), 0);
+  const carregoRVCandidata = rvCandidata.reduce((s, a) => s + parseBRLText(a.v) * taxaRVReferencia(a), 0);
+  const carregoBlocoAtual = capitalGiro > 0 ? (carregoRFRever + carregoRVCandidata) / capitalGiro : 0;
+  const capitalMedido = u.rf_ativos.reduce((s, a) => s + a.v, 0) + rv.reduce((s, a) => s + parseBRLText(a.v), 0);
+  const carregoAtual = capitalMedido > 0 ? (carregoRF + carregoRV) / capitalMedido : 0;
+  const ganhoAnoConservador = capitalGiro * (destinoConservador - carregoBlocoAtual / 100);
+  const ganhoAnoForte = capitalGiro * (destinoForte - carregoBlocoAtual / 100);
+  const carregoNaoMexidoValor = (carregoRF + carregoRV) - (carregoRFRever + carregoRVCandidata);
+  const carregoComGiro = capitalMedido > 0
+    ? (carregoNaoMexidoValor + capitalGiro * carregoAlvo) / capitalMedido
+    : 0;
+  const custoCarregoAtual = u.total * (carregoAtual / 100);
+  const custoCarregoGiro = u.total * (carregoComGiro / 100);
+  const rfNaoMexida10 = u.rf_ativos
+    .filter((a) => !rfParaReverNames.has(a.n))
+    .reduce((s, a) => s + projectedRF10(a), 0);
+  const rfGiradaBase10 = rfParaRever.reduce((s, a) => s + projectedRF10(a), 0);
+  const rvNaoMexida10 = rv
+    .filter((a) => !rvCandidataNames.has(a.n))
+    .reduce((s, a) => s + projectedRV10(parseBRLText(a.v)), 0);
+  const rvGiradaBase10 = rvCandidata.reduce((s, a) => s + projectedRV10(parseBRLText(a.v)), 0);
+  const patrimonioAtual10 = projectionBase10(u, profileId);
+  const blocoBase10 = rfGiradaBase10 + rvGiradaBase10;
+  const patrimonioGiro10 = patrimonioAtual10 - blocoBase10 + capitalGiro * Math.pow(1 + destinoForte, 10);
+  const ganhoProjetado10 = patrimonioGiro10 - patrimonioAtual10;
+  const taxaProjecaoPatrimonio = u.total > 0 ? (Math.pow(patrimonioAtual10 / u.total, 1 / 10) - 1) * 100 : 0;
+
+  return (
+    <>
+      <div className="card" style={{ marginBottom: 14 }}>
+        <div className="card-hdr">
+          Sugestão de giro simples <span>carrego, giro e patrimônio projetado</span>
+        </div>
+        <div className="card carrego-simulator" style={{ marginBottom: 14, background: "rgba(255,255,255,.62)" }}>
+          <div className="card-hdr">
+            Carrego alvo do giro <span>{carregoAlvo.toFixed(1).replace(".", ",")}% a.a.</span>
+          </div>
+          <div className="kpi-row" style={{ marginBottom: 14 }}>
+            <div className="kpi">
+              <div className="kpi-l">Renda recorrente estimada</div>
+              <div className={"kpi-v " + (carregoAtual < 10 ? "bad" : carregoAtual < 13.3 ? "warn" : "good")}>
+                {carregoAtual.toFixed(2).replace(".", ",")}%
+              </div>
+              <div className="kpi-s">juros/proventos; não mede perda contra PM</div>
+            </div>
+            <div className="kpi">
+              <div className="kpi-l">Taxa da Projeção patrimônio</div>
+              <div className="kpi-v good">{taxaProjecaoPatrimonio.toFixed(2).replace(".", ",")}%</div>
+              <div className="kpi-s">régua comparável para 10 anos</div>
+            </div>
+            <div className="kpi">
+              <div className="kpi-l">Fluxo com giro</div>
+              <div className="kpi-v good">{carregoComGiro.toFixed(2).replace(".", ",")}%</div>
+              <div className="kpi-s">fluxo anual; não é CAGR da carteira</div>
+            </div>
+          </div>
+          <div className="kpi-row" style={{ marginBottom: 14 }}>
+            <div className="kpi">
+              <div className="kpi-l">RV contra preço médio</div>
+              <div className={"kpi-v " + (rvEconomia.delta < 0 ? "bad" : "good")}>
+                {rvEconomia.delta >= 0 ? "+" : ""}{fmtRk(rvEconomia.delta)}
+              </div>
+              <div className="kpi-s">principal marcado; provento não recompõe sozinho</div>
+            </div>
+            <div className="kpi">
+              <div className="kpi-l">Bloco candidato vs PM</div>
+              <div className={"kpi-v " + (rvCandidataEconomia.delta < 0 ? "bad" : "good")}>
+                {rvCandidataEconomia.delta >= 0 ? "+" : ""}{fmtRk(rvCandidataEconomia.delta)}
+              </div>
+              <div className="kpi-s">perda já embutida antes da decisão de venda</div>
+            </div>
+            <div className="kpi">
+              <div className="kpi-l">Patrimônio base em 10 anos</div>
+              <div className="kpi-v">{fmtRk(patrimonioAtual10)}</div>
+              <div className="kpi-s">mesma lógica da Projeção patrimônio</div>
+            </div>
+            <div className="kpi">
+              <div className="kpi-l">Com giro em 10 anos</div>
+              <div className="kpi-v good">{fmtRk(patrimonioGiro10)}</div>
+              <div className="kpi-s">base igual; só o bloco candidato muda: {ganhoProjetado10 >= 0 ? "+" : ""}{fmtRk(ganhoProjetado10)}</div>
+            </div>
+          </div>
+          <input
+            type="range"
+            min={9}
+            max={20}
+            step={0.25}
+            value={carregoAlvo}
+            onChange={(e) => setCarregoAlvo(Number(e.target.value))}
+            style={{ width: "100%" }}
+          />
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--muted)", marginTop: 6 }}>
+            <span>9% fraco</span>
+            <span>13,3% = 90% CDI</span>
+            <span>20% agressivo</span>
+          </div>
+        </div>
+        <div className="g2" style={{ marginBottom: 14 }}>
+          <div>
+            <div className="aitem">
+              <div className="dot dr" />
+              <div>
+                <div className="aitem-name">1. Listados/RV abaixo do corte entram para estudo</div>
+                <div className="aitem-det">
+                  Regra simples: RV abaixo do preço médio, tese ruim ou retorno claramente negativo vira candidata. A rentabilidade informada pela XP não é tratada como taxa anual.
+                </div>
+              </div>
+            </div>
+            <div className="aitem">
+              <div className="dot dw" />
+              <div>
+                <div className="aitem-name">2. Não mexer automaticamente em Tesouro</div>
+                <div className="aitem-det">Tesouro fica separado por ser risco soberano; a análise de FGC não mistura com LFT/NTN/LTN.</div>
+              </div>
+            </div>
+            <div className="aitem">
+              <div className="dot dg" />
+              <div>
+                <div className="aitem-name">3. Destino alvo: renda fixa limpa</div>
+                <div className="aitem-det">LC/LCI/LCA com FGC, IPCA+ alto ou debênture isenta só se pagar prêmio real suficiente.</div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div className="aitem">
+              <div className="dot dw" />
+              <div>
+                <div className="aitem-name">Resumo da troca</div>
+                <div className="aitem-det">
+                  O bloco candidato gera renda recorrente estimada de {carregoBlocoAtual.toFixed(2).replace(".", ",")}% a.a., mas carrega {fmtBRL(Math.abs(rvCandidataEconomia.delta))} de perda contra PM na RV. Girar {fmtBRL(capitalGiro)} para {carregoAlvo.toFixed(1).replace(".", ",")}% a.a. adiciona cerca de {ganhoAnoForte >= 0 ? "+" : ""}{fmtBRL(ganhoAnoForte)}/ano antes de IR, custos e preço de execução.
+                </div>
+              </div>
+            </div>
+            <div className="aitem">
+              <div className="dot dw" />
+              <div>
+                <div className="aitem-name">Cobertura e risco</div>
+                <div className="aitem-det">
+                  FGC provável: {fmtBRL(fgcCoberto)}. Sem FGC e sem Tesouro: {fmtBRL(descoberto)}. Tesouro separado para análise própria: {fmtBRL(soberano)}.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="g2" style={{ marginBottom: 14 }}>
+          <div>
+            <div className="card-hdr" style={{ marginBottom: 8 }}>Renda fixa para revisar</div>
+            {rfParaRever.length === 0 ? (
+              <div className="aitem"><div className="dot dg" /><div><div className="aitem-name">Nenhuma RF abaixo de 90% do CDI</div><div className="aitem-det">Não apareceu CDB/LC/LCI/LCA com taxa fraca pelo critério atual.</div></div></div>
+            ) : rfParaRever.map((a) => (
+              <div className="aitem" key={a.n}>
+                <div className="dot dr" />
+                <div>
+                  <div className="aitem-name">{a.n}</div>
+                  <div className="aitem-det">{fmtBRL(a.v)} · {rfTaxaLabel(a)} · venc. {a.venc || "a confirmar"} · comparar com FGC/IPCA+ melhor</div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div>
+            <div className="card-hdr" style={{ marginBottom: 8 }}>Tesouro / soberano</div>
+            {tesouroParaRever.length === 0 ? (
+              <div className="aitem"><div className="dot dw" /><div><div className="aitem-name">Sem Tesouro detectado</div><div className="aitem-det">Nada para comparar nessa carteira.</div></div></div>
+            ) : tesouroParaRever.map((a) => (
+              <div className="aitem" key={a.n}>
+                <div className="dot dw" />
+                <div>
+                  <div className="aitem-name">{a.n}</div>
+                  <div className="aitem-det">{fmtBRL(a.v)} · {rfTaxaLabel(a)} · olhar marcação a mercado, prazo e alternativa IPCA+/LC antes de mexer</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="g2" style={{ marginBottom: 0 }}>
+          <div>
+            <div className="card-hdr" style={{ marginBottom: 8 }}>RV / listados para estudar venda</div>
+            {rvCandidata.length === 0 ? (
+              <div className="aitem"><div className="dot dg" /><div><div className="aitem-name">Nenhum listado fraco detectado</div><div className="aitem-det">A carteira não mostrou ações, FIIs, ETFs ou fundos listados abaixo do corte.</div></div></div>
+            ) : rvCandidata.map((a) => (
+              <div className="aitem" key={a.n}>
+                <div className={"dot d" + (a.rc === "bad" ? "r" : "w")} />
+                <div>
+                  <div className="aitem-name">{a.n}</div>
+                  <div className="aitem-det">
+                    {a.v} · {(() => {
+                      const e = rvEconomiaPM(a);
+                      return e.delta === null
+                        ? "PM/cotação a confirmar"
+                        : `vs PM ${e.delta >= 0 ? "+" : ""}${fmtBRL(e.delta)}${e.deltaPct !== null ? ` (${e.deltaPct.toFixed(1).replace(".", ",")}%)` : ""}`;
+                    })()} · {stripImportadoXP(a.pm)}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div>
+            <div className="card-hdr" style={{ marginBottom: 8 }}>Resposta sugerida</div>
+            <div className="aitem"><div className="dot dg" /><div><div className="aitem-name">LC/LCI/LCA até limite FGC</div><div className="aitem-det">Usar por emissor até R$250k por CPF quando o risco for bancário e o prazo fizer sentido.</div></div></div>
+            <div className="aitem"><div className="dot dw" /><div><div className="aitem-name">IPCA+ alto para prazo médio</div><div className="aitem-det">Travar poder de compra se aparecer IPCA+7,5%/8% com emissor e liquidez aceitáveis.</div></div></div>
+            <div className="aitem"><div className="dot dw" /><div><div className="aitem-name">Debênture incentivada só com prêmio real</div><div className="aitem-det">Sem FGC: precisa pagar bastante mais que alternativa bancária/Tesouro para justificar.</div></div></div>
+            <div className="aitem"><div className="dot dg" /><div><div className="aitem-name">Breakeven estimado</div><div className="aitem-det">Ganho anual entre +{fmtRk(ganhoAnoConservador)} e +{fmtRk(ganhoAnoForte)}, antes de IR/custos/slippage.</div></div></div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 function BreakevenTabs({ profileId }: { profileId: ProfileId }) {
-  const [tab, setTab] = useState<"oportunidade" | "giros" | "aporte">("oportunidade");
-  const tabBtn = (id: "oportunidade" | "giros" | "aporte", label: string) => (
+  const [tab, setTab] = useState<"sugestao" | "oportunidade" | "giros" | "aporte">("sugestao");
+  const tabBtn = (id: "oportunidade" | "sugestao" | "giros" | "aporte", label: string) => (
     <button
       onClick={() => setTab(id)}
       style={{
@@ -919,10 +1302,12 @@ function BreakevenTabs({ profileId }: { profileId: ProfileId }) {
   return (
     <>
       <div style={{ display: "flex", gap: 4, borderBottom: "1px solid var(--border)", marginBottom: 18 }}>
-        {tabBtn("oportunidade", "⚖ Custo de oportunidade")}
+        {tabBtn("sugestao", "Giro + carrego")}
+        {tabBtn("oportunidade", "Custo de oportunidade")}
         {tabBtn("giros", "Giros & plano")}
         {tabBtn("aporte", "Acelerar com aporte")}
       </div>
+      {tab === "sugestao" && <SugestaoGiroCarteira profileId={profileId} />}
       {tab === "oportunidade" && <OportunidadePage />}
       {tab === "giros" && (
         <>
@@ -934,4 +1319,5 @@ function BreakevenTabs({ profileId }: { profileId: ProfileId }) {
     </>
   );
 }
+
 

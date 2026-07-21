@@ -2,14 +2,16 @@ export const ACCESS_DEFAULT_PASSWORD = "VESTADECIDETUDO";
 export const ACCESS_AUTH_KEY = "vesta_simple_auth_email";
 export const ACCESS_PASSWORDS_KEY = "vesta_access_passwords";
 
-export type AccessProfile = "paulo" | "daniel" | "cornelia" | "marcus";
+export type AccessProfile = "paulo" | "daniel" | "cornelia" | "marcus" | "cristina";
 
 export type AccessAccount = {
   profile: AccessProfile;
   email: string;
+  username?: string;
   name: string;
   domus: string;
   note: string;
+  pendingEmail?: boolean;
 };
 
 export const ACCESS_ACCOUNTS: AccessAccount[] = [
@@ -26,6 +28,15 @@ export const ACCESS_ACCOUNTS: AccessAccount[] = [
     name: "Daniel Malta Furtado",
     domus: "Domus Malta-Furtado",
     note: "acesso simples",
+  },
+  {
+    profile: "cristina",
+    email: "cristina@pendente.vesta",
+    username: "cristina",
+    name: "Cristina",
+    domus: "Domus Furtado",
+    note: "vesta local · email pendente",
+    pendingEmail: true,
   },
   {
     profile: "cornelia",
@@ -49,7 +60,7 @@ export function normalizeAccessEmail(email: string): string {
 
 export function getAccessAccount(email: string): AccessAccount | null {
   const normalized = normalizeAccessEmail(email);
-  return ACCESS_ACCOUNTS.find((account) => account.email === normalized) ?? null;
+  return ACCESS_ACCOUNTS.find((account) => account.email === normalized || account.username === normalized) ?? null;
 }
 
 export function isAccessEmail(email: string | null | undefined): boolean {

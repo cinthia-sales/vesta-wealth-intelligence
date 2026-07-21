@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { isBootstrapAvailable } from "@/lib/auth.functions";
@@ -17,14 +17,16 @@ export const Route = createFileRoute("/auth")({
   ssr: false,
   validateSearch: (s: Record<string, unknown>) => ({
     next: typeof s.next === "string" ? s.next : "/app",
+    mode: s.mode === "forgot" ? "forgot" : undefined,
   }),
   component: AuthPage,
 });
 
 function AuthPage() {
   const search = Route.useSearch();
+  const navigate = useNavigate();
   const nextTarget = search.next && search.next.startsWith("/") && !search.next.startsWith("//") ? search.next : "/app";
-  const [mode, setMode] = useState<"login" | "forgot" | "change">("login");
+  const [mode, setMode] = useState<"login" | "forgot" | "change">(search.mode === "forgot" ? "forgot" : "login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -233,13 +235,13 @@ function AuthPage() {
             </label>
           )}
           <label>
-            Email
+            Email ou usuário
             <input
-              type="email"
+              type={bootstrapMode ? "email" : "text"}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              autoComplete="email"
+              autoComplete={bootstrapMode ? "email" : "username"}
             />
           </label>
           {mode !== "forgot" && (
@@ -296,6 +298,9 @@ function AuthPage() {
                 </button>
                 <button type="button" className="auth-linkbtn" onClick={() => { setMode("change"); setError(null); setSuccess(null); }}>
                   Trocar senha
+                </button>
+                <button type="button" className="auth-linkbtn" onClick={() => navigate({ to: "/", search: { cadastro: true } })}>
+                  Cadastre-se
                 </button>
               </>
             )}

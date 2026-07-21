@@ -1,0 +1,45 @@
+{
+  "_info": "Backup do estado do banco Vesta (projeto anterior zsqwolristlqupoeuclr) extraído das telas do app em 2026-07-20, antes da migração para projeto Supabase próprio. Carteiras/simuladores ficam em localStorage dos navegadores e NÃO dependem deste banco.",
+  "senha_inicial_padrao": "VESTADECIDETUDO",
+  "profiles": [
+    { "nome": "Cinthia", "display": "CÍNTHIA VESTA", "email": "cinthiavr@yahoo.com.br", "role": "vesta_soberana", "obs": "XP 6414212; vê todas as carteiras e consolidados automaticamente (escopo não-editável)" },
+    { "nome": "Paulo", "email": "phfurtadovr@yahoo.com.br", "role": "membro", "obs": "Persona · Família Furtado · acesso simples" },
+    { "nome": "Daniel Malta Furtado", "email": "dmalta256@gmail.com", "role": "membro", "obs": "TYPO no app: chave de acesso = dmalta256@gmail.com, registro do domus = dmalta526@gmail.com. Usado dmalta256 como login. Carteira 'Aguardando importação'." },
+    { "nome": "Luiza", "email": "lu.abrantes@gmail.com", "role": "membro", "obs": "Supervisora nominal do Domus Abrantes" },
+    { "nome": "Cornelia", "email": "cornelia@domus-exemplum.vesta", "role": "vesta_demo", "obs": "Vesta do Domus Exemplum · demonstração" },
+    { "nome": "Marcus", "email": "marcus@domus-exemplum.vesta", "role": "membro_demo", "obs": "Persona · carteira demonstrativa" }
+  ],
+  "domus": [
+    {
+      "nome": "Domus Malta-Furtado",
+      "supervisao": "Cinthia (Vesta soberana)",
+      "membros": [
+        { "nome": "Cínthia", "escopos": "todos (soberana, não-editável)" },
+        { "nome": "Paulo", "escopos": { "propria_carteira": true, "consolidado": true, "ver_carteira_de": ["Cínthia"] } },
+        { "nome": "Daniel Malta Furtado", "escopos": { "propria_carteira": true, "consolidado": true } }
+      ],
+      "visoes": ["Consolidado", "Cínthia", "Paulo", "Daniel Malta Furtado"]
+    },
+    {
+      "nome": "Domus Abrantes",
+      "supervisao": "Luiza",
+      "membros": [
+        { "nome": "Luiza", "escopos": { "propria_carteira": true, "consolidado": true } }
+      ],
+      "visoes": ["Consolidado", "Luiza"]
+    },
+    {
+      "nome": "Domus Exemplum",
+      "supervisao": "Cornelia",
+      "tipo": "demonstração",
+      "membros": [
+        { "nome": "Cornelia", "papel": "Vesta · carteira demonstrativa" },
+        { "nome": "Marcus", "papel": "Persona · carteira demonstrativa" }
+      ],
+      "visoes": ["Consolidado", "Cornelia", "Marcus"]
+    }
+  ],
+  "domus_join_requests": [
+    { "nome": "Teste Pessoa", "email": "teste@example.com", "mensagem": "Quero pedir acesso ao Domus.", "status": "pendente", "domus": "a definir" }
+  ]
+}

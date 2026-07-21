@@ -8,9 +8,12 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   approveJoinRequest,
+  createDomus,
   DEFAULT_MEMBER_PASSWORD,
+  deleteDomus,
   getDomusAdmin,
   removeJoinRequest,
+  removeMember,
   saveMemberVisibilityScope,
   updateJoinRequestStatus,
 } from "@/lib/domus.functions";
@@ -26,11 +29,13 @@ export function DomusPage({
   onUpdateScopes,
   profileIdForScopeKey,
   initialDomusId,
+  activeProfileId,
 }: {
   scopes: ScopeMap;
   onUpdateScopes: (next: ScopeMap) => void;
   profileIdForScopeKey?: (key: string) => string | null;
   initialDomusId?: string | null;
+  activeProfileId?: string | null;
 }) {
   const membros: PersonaId[] = ["cinthia", "paulo"];
   const queryClient = useQueryClient();
@@ -41,6 +46,18 @@ export function DomusPage({
   });
 
   const [aprovado, setAprovado] = useState<{ email: string; senha: string } | null>(null);
+  const [novoDomusNome, setNovoDomusNome] = useState("");
+  const [novoDomusSlug, setNovoDomusSlug] = useState("");
+  const [novoDomusDescricao, setNovoDomusDescricao] = useState("");
+
+  const slugFromName = (name: string) =>
+    name
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 60);
 
   const approveMutation = useMutation({
     mutationFn: (id: string) => approveJoinRequest({ data: { id } }),
@@ -71,6 +88,44 @@ export function DomusPage({
   };
 
   // ─── Escopos para membros reais de outros Domus ──────────────────────────
+  const createMutation = useMutation({
+    mutationFn: () =>
+      createDomus({
+        data: {
+          nome: novoDomusNome.trim(),
+          slug: (novoDomusSlug.trim() || slugFromName(novoDomusNome)).toLowerCase(),
+          descricao: novoDomusDescricao.trim() || null,
+        },
+      }),
+    onSuccess: () => {
+      setNovoDomusNome("");
+      setNovoDomusSlug("");
+      setNovoDomusDescricao("");
+      flashSaved();
+      queryClient.invalidateQueries({ queryKey: ["domus-admin"] });
+      queryClient.invalidateQueries({ queryKey: ["domus-session"] });
+    },
+  });
+
+  const deleteDomusMutation = useMutation({
+    mutationFn: (id: string) => deleteDomus({ data: { id } }),
+    onSuccess: () => {
+      flashSaved();
+      queryClient.invalidateQueries({ queryKey: ["domus-admin"] });
+      queryClient.invalidateQueries({ queryKey: ["domus-session"] });
+    },
+  });
+
+  const removeMemberMutation = useMutation({
+    mutationFn: ({ profileId, domusId }: { profileId: string; domusId: string }) =>
+      removeMember({ data: { profileId, domusId } }),
+    onSuccess: () => {
+      flashSaved();
+      queryClient.invalidateQueries({ queryKey: ["domus-admin"] });
+      queryClient.invalidateQueries({ queryKey: ["domus-session"] });
+    },
+  });
+
   const [extScopes, setExtScopes] = useState<
     Record<string, { seeConsolidado: boolean; seePersonae: string[] }>
   >({});
@@ -220,8 +275,8 @@ export function DomusPage({
   const isFurtadoDomus =
     !activeDomus ||
     activeDomus.nome === DOMUS_NAME ||
-    activeDomus.slug?.includes("furtado") ||
-    activeDomus.slug?.includes("malta");
+    (/malta[\s-]*furtado/i.test(activeDomus.nome ?? "") || /malta[\s-]*furtado/i.test(activeDomus.slug ?? ""));
+  const isLocalFurtadoDomus = Boolean(activeDomus && /furtado/i.test(activeDomus.nome ?? "") && !isFurtadoDomus);
 
   // Membros e pedidos filtrados pelo Domus ativo
   const activeMembers = isDemoDomus
@@ -229,8 +284,31 @@ export function DomusPage({
     : (adminData?.members ?? []).filter(
         (m: any) => m.domus_id === activeDomusId || m.domus?.nome === activeDomus?.nome,
       );
-  const activeVesta = activeMembers.find((member: any) => member.papel === "vesta");
-  const vestaNome = activeVesta?.profile?.nome ?? activeVesta?.profile?.email ?? adminData?.vesta?.nome ?? "Vesta";
+  const activeVesta = activeMembers.find((member: any) => {
+    if (member.papel !== "vesta") return false;
+    if (!isLocalFurtadoDomus) return true;
+    const name = `${member.profile?.nome ?? ""} ${member.profile?.email ?? ""}`.toLowerCase();
+    return /cristina/.test(name);
+  });
+  const hasPendingCristinaVesta = Boolean(isLocalFurtadoDomus && !activeVesta);
+  const pendingCristinaVesta = hasPendingCristinaVesta
+    ? {
+        id: `pending-cristina-vesta:${activeDomusId}`,
+        domus_id: activeDomusId,
+        profile_id: "pending-cristina-vesta",
+        papel: "vesta",
+        created_at: "",
+        domus: { nome: activeDomus?.nome },
+        profile: { nome: "Cristina", email: "email pendente" },
+        pendingEmail: true,
+      }
+    : null;
+  const vestaNome = isLocalFurtadoDomus
+    ? "Cristina"
+    : activeVesta?.profile?.nome ?? activeVesta?.profile?.email ?? (hasPendingCristinaVesta ? "Cristina" : adminData?.vesta?.nome) ?? "Vesta";
+  const isSovereignVesta =
+    (adminData?.vesta?.email ?? "").toLowerCase() === "cinthiavr@yahoo.com.br" &&
+    activeProfileId === "cinthia";
 
   const allRequests: any[] = adminData?.requests ?? [];
   const domusRequests = allRequests.filter((r: any) => {
@@ -254,9 +332,12 @@ export function DomusPage({
   }, []);
   const pendingRequests = deduplicatedRequests.filter((request: any) => request.status === "pendente");
 
-  const activeExternalMembers = externalMembers.filter(
-    (m: any) => m.domus_id === activeDomusId || m.domus?.nome === activeDomus?.nome,
-  );
+  const activeExternalMembers = [
+    ...(pendingCristinaVesta ? [pendingCristinaVesta] : []),
+    ...externalMembers.filter(
+      (m: any) => m.domus_id === activeDomusId || m.domus?.nome === activeDomus?.nome,
+    ),
+  ];
 
   return (
     <>
@@ -272,6 +353,90 @@ export function DomusPage({
       </div>
 
       {/* ── Pedidos de entrada ────────────────────────────────────────────── */}
+      {isSovereignVesta && <div className="card" style={{ marginBottom: 14 }}>
+        <div className="card-hdr">
+          Criar Domus <span>novo núcleo familiar</span>
+        </div>
+        <form
+          className="domus-admin-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            createMutation.mutate();
+          }}
+        >
+          <label>
+            Nome do Domus
+            <input
+              value={novoDomusNome}
+              onChange={(event) => {
+                const value = event.target.value;
+                setNovoDomusNome(value);
+                if (!novoDomusSlug) setNovoDomusSlug(slugFromName(value));
+              }}
+              placeholder="Domus Abrantes"
+              required
+            />
+          </label>
+          <label>
+            Slug público
+            <input
+              value={novoDomusSlug}
+              onChange={(event) => setNovoDomusSlug(slugFromName(event.target.value))}
+              placeholder="domus-abrantes"
+              required
+            />
+          </label>
+          <button type="submit" disabled={createMutation.isPending || !novoDomusNome.trim()}>
+            {createMutation.isPending ? "criando..." : "criar"}
+          </button>
+          <label className="wide">
+            Descrição pública (opcional)
+            <textarea
+              value={novoDomusDescricao}
+              onChange={(event) => setNovoDomusDescricao(event.target.value)}
+              rows={2}
+              placeholder="Texto curto para a página de entrada deste Domus"
+            />
+          </label>
+          {createMutation.error && (
+            <div className="auth-error wide">{(createMutation.error as Error).message}</div>
+          )}
+        </form>
+      </div>}
+
+      {isSovereignVesta && activeDomus && !isDemoDomus && (
+        <div className="card" style={{ marginBottom: 14 }}>
+          <div className="card-hdr">
+            Excluir Domus <span>acao irreversivel</span>
+          </div>
+          <div style={{ padding: 16, display: "grid", gap: 10 }}>
+            <div style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.5 }}>
+              Remove o Domus <strong>{domusLabel(activeDomus.nome)}</strong> do cadastro.
+            </div>
+            <button
+              type="button"
+              disabled={deleteDomusMutation.isPending}
+              onClick={() => {
+                const ok = window.confirm(`Excluir ${domusLabel(activeDomus.nome)} inteiro? Esta acao nao pode ser desfeita.`);
+                if (ok) deleteDomusMutation.mutate(activeDomus.id);
+              }}
+              style={{
+                justifySelf: "start",
+                background: "transparent",
+                border: "1px solid rgba(161,29,62,.35)",
+                color: "var(--accent)",
+                borderRadius: 6,
+                padding: "7px 12px",
+                fontSize: 12,
+                cursor: "pointer",
+              }}
+            >
+              {deleteDomusMutation.isPending ? "excluindo..." : "excluir este Domus"}
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="card" style={{ marginBottom: 14 }}>
         <div className="card-hdr">
           Pedidos de entrada{" "}
@@ -471,7 +636,8 @@ export function DomusPage({
           </div>}
           <div style={{ padding: 16, display: "grid", gap: 14 }}>
             {activeExternalMembers.map((m: any) => {
-              const isVesta = m.papel === "vesta";
+              const memberNameKey = `${m.profile?.nome ?? ""} ${m.profile?.email ?? ""}`.toLowerCase();
+              const isVesta = m.papel === "vesta" && (!isLocalFurtadoDomus || /cristina/.test(memberNameKey));
               const extScope = extScopes[m.profile_id] ?? {
                 seeConsolidado: false,
                 seePersonae: [],
@@ -481,6 +647,10 @@ export function DomusPage({
               );
               const displayName = m.profile?.nome ?? m.profile?.email ?? "Membro";
               const initial = displayName.charAt(0).toUpperCase();
+              const canRemoveMember =
+                Boolean(activeDomusId) &&
+                !m.pendingEmail &&
+                /^[0-9a-f-]{36}$/i.test(m.profile_id);
 
               return (
                 <div
@@ -544,6 +714,29 @@ export function DomusPage({
                     >
                       {isVesta ? "Vesta local" : "Membro"}
                     </span>
+                    {canRemoveMember && (
+                      <button
+                        type="button"
+                        disabled={removeMemberMutation.isPending}
+                        onClick={() => {
+                          const ok = window.confirm(`Remover ${displayName} do ${domusNome}?`);
+                          if (ok && activeDomusId) {
+                            removeMemberMutation.mutate({ profileId: m.profile_id, domusId: activeDomusId });
+                          }
+                        }}
+                        style={{
+                          border: "1px solid rgba(161,29,62,.25)",
+                          background: "transparent",
+                          color: "var(--accent)",
+                          borderRadius: 6,
+                          padding: "4px 8px",
+                          fontSize: 11,
+                          cursor: "pointer",
+                        }}
+                      >
+                        remover
+                      </button>
+                    )}
                   </div>
 
                   {isVesta ? (
@@ -555,8 +748,9 @@ export function DomusPage({
                         fontStyle: "italic",
                       }}
                     >
-                      Vesta local — vê automaticamente todas as carteiras do{" "}
-                      {domusNome}.
+                      {m.pendingEmail
+                        ? `Vesta local - pendente acrescentar email antes do acesso definitivo ao ${domusNome}.`
+                        : `Vesta local - ve automaticamente todas as carteiras do ${domusNome}.`}
                     </div>
                   ) : (
                     <div style={{ display: "grid", gap: 8 }}>

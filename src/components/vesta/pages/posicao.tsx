@@ -4,6 +4,7 @@ import { getUser } from "@/data/vesta-users";
 import { DIVIDEND_TICKERS } from "@/data/dividendos";
 import { getSensibilidade, type Sensibilidade } from "@/data/sensibilidade";
 import type { ProfileId } from "@/lib/profile-derive";
+import { getAssetLockReason, isAssetLocked, removeAssetLock, setAssetLocked } from "@/data/asset-locks";
 
 type Filter = "todos" | "intocavel" | "urgente" | "monitorar" | "estrategico" | "planejar";
 
@@ -18,6 +19,86 @@ const IMPACTO_COR = {
 
 function fmtR(n: number) {
   return "R$ " + Math.round(n).toLocaleString("pt-BR");
+}
+
+function splitReferencia(pm: string) {
+  const normalized = pm.replace(/\s*[·-]\s*Importado XP\s*/gi, "").replace(/\s*Importado XP\s*/gi, "").replace(/\s+/g, " ").trim();
+  if (!normalized) return { pm: "—", cotacao: "—", qtd: "—" };
+  const pmMatch = normalized.match(/PM\s*(R\$\s*[\d.,]+)/i) ?? normalized.match(/^(R\$\s*[\d.,]+)/i);
+  const cotMatch = normalized.match(/Cot\.?\s*(R\$\s*[\d.,]+)/i);
+  const qtdMatch = normalized.match(/([\d.]+)\s*(cotas|ações|aÃ§Ãµes|títulos|titulos)/i);
+  const aplicadoMatch = normalized.match(/Aplicado\s*(R\$\s*[\d.,]+)/i);
+  return {
+    pm: pmMatch?.[1] ?? aplicadoMatch?.[1] ?? normalized,
+    cotacao: cotMatch?.[1] ?? "—",
+    qtd: qtdMatch ? `${qtdMatch[1]} ${qtdMatch[2].replace("aÃ§Ãµes", "ações")}` : "—",
+  };
+}
+
+function parsePercent(value: string) {
+  const n = Number(value.replace(/[^\d,.-]/g, "").replace(",", "."));
+  return Number.isFinite(n) ? n : null;
+}
+
+function parseMoney(value: string) {
+  const n = Number(value.replace(/[^\d,.-]/g, "").replace(/\./g, "").replace(",", "."));
+  return Number.isFinite(n) ? n : null;
+}
+
+function precoVsPM(ref: ReturnType<typeof splitReferencia>) {
+  const pm = parseMoney(ref.pm);
+  const cotacao = parseMoney(ref.cotacao);
+  if (pm === null || cotacao === null || pm <= 0) return null;
+  return ((cotacao / pm) - 1) * 100;
+}
+
+function cleanImported(value: string) {
+  return value.replace(/\s*[·-]\s*Importado XP\s*/gi, "").replace(/\s*Importado XP\s*/gi, "").trim() || "—";
+}
+
+function statusDot(status: Filter) {
+  if (status === "urgente") return "dr";
+  if (status === "monitorar" || status === "planejar") return "dw";
+  return "dg";
+}
+
+function StatusInline({ status }: { status: Filter }) {
+  return (
+    <span className="position-dot-only" title={ST[status]}>
+      <span className={"dot " + statusDot(status)} style={{ marginTop: 0 }} />
+    </span>
+  );
+}
+
+function classifyRF(r: ReturnType<typeof getUser>["rf_ativos"][number]): Filter {
+  const nota = r.nota ?? "";
+  const notaPct = parsePercent(nota);
+  if (/taxa xp|taxa|administra/i.test(nota) && notaPct !== null && notaPct > 2) return "urgente";
+  if (/FIF|FIC|FIDC|Fundo|Riza/i.test(r.n) && /taxa xp|taxa|administra/i.test(nota)) return "urgente";
+  if (typeof r.cdi === "number") {
+    if (r.cdi < 90) return "urgente";
+    if (r.cdi < 95) return "monitorar";
+    return "intocavel";
+  }
+  if (/LFT|Tesouro|NTN-B|LTN/i.test(r.n)) return "monitorar";
+  if (typeof r.t === "number") {
+    if (r.t < 13.3) return "urgente";
+    if (r.t < 14.5) return "monitorar";
+    return "intocavel";
+  }
+  return r.s;
+}
+
+function classifyRV(r: NonNullable<ReturnType<typeof getUser>["rv_ativos"]>[number]): Filter {
+  const retorno = parsePercent(r.retorno_posicao ?? r.r);
+  const ref = splitReferencia(r.pm);
+  const pm = parseMoney(ref.pm);
+  const cotacao = parseMoney(ref.cotacao);
+  if (pm !== null && cotacao !== null && cotacao < pm) return "urgente";
+  if (r.rc === "bad" || /^-/.test((r.retorno_posicao ?? r.r).trim()) || (retorno !== null && retorno < 0)) return "urgente";
+  if (retorno !== null && retorno < 13.3) return "monitorar";
+  if (r.rc === "good") return "intocavel";
+  return "monitorar";
 }
 
 function SensibilidadeModal({ s, onClose }: { s: Sensibilidade; onClose: () => void }) {
@@ -176,8 +257,26 @@ export function PosicaoPage({ profileId }: { profileId: ProfileId }) {
   const u = getUser(profileId);
   const [f, setF] = useState<Filter>("todos");
   const [sel, setSel] = useState<Sensibilidade | null>(null);
-  const list = f === "todos" ? u.rf_ativos : u.rf_ativos.filter((r) => r.s === f);
+  const [lockVersion, setLockVersion] = useState(0);
+  const rfDecorada = u.rf_ativos.map((r) => {
+    const locked = isAssetLocked(profileId, r.n);
+    return {
+      ...r,
+      locked,
+      lockReason: getAssetLockReason(profileId, r.n),
+      statusCalculado: classifyRF(r),
+    };
+  });
+  const list = f === "todos" ? rfDecorada : rfDecorada.filter((r) => r.statusCalculado === f);
   const total = list.reduce((s, r) => s + r.v, 0);
+  const rfCounts = rfDecorada.reduce(
+    (acc, r) => {
+      acc[r.statusCalculado] += 1;
+      return acc;
+    },
+    { intocavel: 0, urgente: 0, monitorar: 0 } as Record<"intocavel" | "urgente" | "monitorar", number>,
+  );
+  const lockedCount = rfDecorada.filter((r) => r.locked).length;
   const rv = u.rv_ativos ?? [];
   const showRV = u.rv > 0 && rv.length > 0;
 
@@ -186,11 +285,19 @@ export function PosicaoPage({ profileId }: { profileId: ProfileId }) {
     if (s) setSel(s);
   };
 
-  const fb = (id: Filter, label: string) => (
+  const fb = (id: Filter, label: string, count?: number, dot?: "dg" | "dr" | "dw") => (
     <button className={"fbtn" + (f === id ? " on" : "")} onClick={() => setF(id)}>
+      {dot && <span className={"dot " + dot} />}
       {label}
+      {typeof count === "number" && <span className="filter-count">{count}</span>}
     </button>
   );
+
+  const toggleLock = (assetName: string) => {
+    if (isAssetLocked(profileId, assetName)) removeAssetLock(profileId, assetName);
+    else setAssetLocked(profileId, assetName);
+    setLockVersion((v) => v + 1);
+  };
 
   const rowStyle: React.CSSProperties = { cursor: "pointer" };
 
@@ -227,11 +334,16 @@ export function PosicaoPage({ profileId }: { profileId: ProfileId }) {
         <div className="card-hdr">
           Renda fixa <span>{list.length} ativos · {fmtR(total)}</span>
         </div>
-        <div className="filter-row">
-          {fb("todos", "Todos")}
-          {fb("intocavel", "🔒 Intocáveis")}
-          {fb("urgente", "🔴 Urgentes")}
-          {fb("monitorar", "👁 Monitorar")}
+        <div className="filter-row position-filter-row">
+          {fb("todos", "Todos", rfDecorada.length)}
+          {fb("intocavel", "Bons", rfCounts.intocavel, "dg")}
+          {fb("urgente", "Urgentes", rfCounts.urgente, "dr")}
+          {fb("monitorar", "Monitorar", rfCounts.monitorar, "dw")}
+          {lockedCount > 0 && (
+            <span className="lock-filter-note" title="Travado por deságio, breakeven ou decisão temporária da Vesta">
+              🔒 {lockedCount} travado(s)
+            </span>
+          )}
         </div>
         <div style={{ overflowX: "auto" }}>
           <table className="tbl">
@@ -242,14 +354,21 @@ export function PosicaoPage({ profileId }: { profileId: ProfileId }) {
                 <th className="r">Taxa líq./ano</th>
                 <th className="r">% CDI equiv.</th>
                 <th>Vencimento</th>
-                <th>Status</th>
               </tr>
             </thead>
             <tbody>
               {list.map((r) => (
                 <tr key={r.n} style={rowStyle} onClick={() => openSens(r.n)}>
                   <td>
+                    <StatusInline status={r.statusCalculado} />
                     <strong>{r.n}</strong>
+                    <button
+                      className={"lock-mini-btn" + (r.locked ? " on" : "")}
+                      onClick={(ev) => { ev.stopPropagation(); toggleLock(r.n); }}
+                      title={r.locked ? r.lockReason : "Travar por deságio, breakeven ou decisão da Vesta"}
+                    >
+                      {r.locked ? "🔒" : "travar"}
+                    </button>
                     <span style={{ marginLeft: 6, fontSize: 10, color: "var(--muted)" }}>ⓘ</span>
                     {r.nota && (
                       <>
@@ -257,12 +376,19 @@ export function PosicaoPage({ profileId }: { profileId: ProfileId }) {
                         <span style={{ fontSize: 11, color: "var(--muted)" }}>{r.nota}</span>
                       </>
                     )}
+                    {r.locked && (
+                      <>
+                        <br />
+                        <span style={{ fontSize: 11, color: "var(--success)" }}>
+                          🔒 travado pela Vesta · {r.lockReason}
+                        </span>
+                      </>
+                    )}
                   </td>
                   <td className="r">{fmtR(r.v)}</td>
                   <td className="r">{r.t ? r.t.toFixed(2) + "%" : "—"}</td>
                   <td className="r">{r.cdi ? r.cdi.toFixed(1) + "% CDI" : "—"}</td>
                   <td>{r.venc}</td>
-                  <td><span className={"sb " + SL[r.s]}>{ST[r.s]}</span></td>
                 </tr>
               ))}
             </tbody>
@@ -280,20 +406,34 @@ export function PosicaoPage({ profileId }: { profileId: ProfileId }) {
               <thead>
                 <tr>
                   <th>Ativo</th>
-                  <th className="r">Valor atual</th>
-                  <th className="r">PM / referência</th>
-                  <th className="r">Rentabilidade</th>
-                  <th>Classe</th>
-                </tr>
+                <th className="r">Valor atual</th>
+                <th className="r">PM</th>
+                <th className="r">Cota atual</th>
+                <th className="r">Qtd.</th>
+                <th className="r" title="Variação acumulada contra o preço médio. Não é ao ano, não inclui proventos e não informa o tempo investido.">Acum. vs PM</th>
+                <th>Classe</th>
+              </tr>
               </thead>
               <tbody>
                 {rv.map((r) => {
                   const ticker = r.n.split(" ")[0].replace(/[^A-Z0-9]/g, "");
                   const paysDiv = DIVIDEND_TICKERS.has(ticker);
+                  const ref = splitReferencia(r.pm);
+                  const precoPM = precoVsPM(ref);
+                  const rvLocked = isAssetLocked(profileId, r.n);
+                  const rvStatus = classifyRV(r);
                   return (
                   <tr key={r.n} style={rowStyle} onClick={() => openSens(r.n, r.cls)}>
                     <td>
+                      <StatusInline status={rvStatus} />
                       <strong>{r.n}</strong>
+                      <button
+                        className={"lock-mini-btn" + (rvLocked ? " on" : "")}
+                        onClick={(ev) => { ev.stopPropagation(); toggleLock(r.n); }}
+                        title={rvLocked ? getAssetLockReason(profileId, r.n) : "Travar por deságio, breakeven ou decisão da Vesta"}
+                      >
+                        {rvLocked ? "🔒" : "travar"}
+                      </button>
                       <span style={{ marginLeft: 6, fontSize: 10, color: "var(--muted)" }}>ⓘ</span>
                       {paysDiv && (
                         <span
@@ -332,14 +472,31 @@ export function PosicaoPage({ profileId }: { profileId: ProfileId }) {
                           {r.come_cotas_aviso}
                         </span>
                       )}
+                      {rvLocked && (
+                        <>
+                          <br />
+                          <span style={{ fontSize: 11, color: "var(--success)" }}>
+                            🔒 travado pela Vesta · {getAssetLockReason(profileId, r.n)}
+                          </span>
+                        </>
+                      )}
                     </td>
                     <td className="r">{r.v}</td>
-                    <td className="r">{r.pm}</td>
+                    <td className="r">{ref.pm}</td>
+                    <td className="r">{ref.cotacao}</td>
+                    <td className="r">{ref.qtd}</td>
                     <td
                       className={"r " + (r.rc === "muted" ? "" : r.rc)}
                       style={r.rc === "muted" ? { color: "var(--muted)" } : undefined}
                     >
-                      {r.retorno_posicao && r.retorno_fundo_historico ? (
+                      {precoPM !== null ? (
+                        <span
+                          title="Acumulado contra o preço médio. Não é taxa ao ano; não inclui proventos nem inflação. Tempo investido não veio no arquivo."
+                          style={{ color: precoPM < 0 ? "var(--danger)" : "#4E7A5C", fontWeight: 700 }}
+                        >
+                          {precoPM > 0 ? "+" : ""}{precoPM.toFixed(1).replace(".", ",")}%
+                        </span>
+                      ) : r.retorno_posicao && r.retorno_fundo_historico ? (
                         <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
                           <span style={{ color: "var(--danger)", fontWeight: 600, fontSize: 12 }}>
                             Posição: {r.retorno_posicao}
@@ -348,7 +505,11 @@ export function PosicaoPage({ profileId }: { profileId: ProfileId }) {
                             Fundo desde início: {r.retorno_fundo_historico}
                           </span>
                         </span>
-                      ) : r.r}
+                      ) : (
+                        <span title="Rentabilidade importada pela XP. Base e período não vieram no arquivo.">
+                          {cleanImported(r.r)}
+                        </span>
+                      )}
                     </td>
                     <td><span className={"sb " + r.sb}>{r.cls}</span></td>
                   </tr>
@@ -357,6 +518,10 @@ export function PosicaoPage({ profileId }: { profileId: ProfileId }) {
               </tbody>
             </table>
           </div>
+          <div style={{ marginTop: 10, fontSize: 12, color: "var(--muted)", lineHeight: 1.5 }}>
+            <strong>Acum. vs PM</strong> não é rentabilidade ao ano: usa cota atual contra preço médio e não inclui proventos nem inflação.
+            Sem data de compra, o tempo investido fica indeterminado; a leitura completa fica em Rendimentos recorrentes / Provento não é lucro.
+          </div>
         </div>
       )}
 
@@ -364,3 +529,4 @@ export function PosicaoPage({ profileId }: { profileId: ProfileId }) {
     </>
   );
 }
+
