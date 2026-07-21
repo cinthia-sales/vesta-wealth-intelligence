@@ -1,10 +1,98 @@
+import { useEffect, useState } from "react";
 import { getUser } from "@/data/vesta-users";
+import { codigoAtivo } from "@/data/cadastro-ativos";
 import type { ProfileId } from "@/lib/profile-derive";
 
 function fmtRK(v: number) {
   if (v >= 1_000_000) return "R$ " + (v / 1_000_000).toFixed(2) + "M";
   if (v >= 1_000) return "R$ " + Math.round(v / 1_000) + "k";
   return "R$ " + Math.round(v).toLocaleString("pt-BR");
+}
+
+function parseValorBR(v: unknown): number {
+  if (typeof v === "number") return v;
+  const n = Number(String(v ?? "").replace(/[^\d,.-]/g, "").replace(/\./g, "").replace(",", "."));
+  return Number.isFinite(n) ? n : 0;
+}
+
+const CDI_ANO_ESTIMADO = 14.15; // fallback quando o BCB não responde
+
+/* Pulso do dia: RV ao vivo (brapi) + RF acruada pró-rata (CDI/252) */
+function PulsoDoDia({ u }: { u: ReturnType<typeof getUser> }) {
+  const [movs, setMovs] = useState<{ ticker: string; valor: number; pct: number }[] | null>(null);
+  const [erro, setErro] = useState(false);
+
+  const posicoesRV = (u.rv_ativos ?? [])
+    .map((a: any) => ({ ticker: codigoAtivo(String(a.nome ?? "")), valor: parseValorBR(a.v) }))
+    .filter((p) => p.ticker && p.valor > 0);
+
+  useEffect(() => {
+    if (posicoesRV.length === 0) { setMovs([]); return; }
+    const tickers = Array.from(new Set(posicoesRV.map((p) => p.ticker)));
+    fetch(`https://brapi.dev/api/quote/${tickers.join(",")}`)
+      .then((r) => r.json())
+      .then((json) => {
+        const porTicker = new Map<string, number>();
+        for (const q of json?.results ?? []) {
+          if (q?.symbol && q?.regularMarketChangePercent != null)
+            porTicker.set(String(q.symbol).toUpperCase(), q.regularMarketChangePercent);
+        }
+        setMovs(
+          posicoesRV
+            .filter((p) => porTicker.has(p.ticker))
+            .map((p) => ({ ticker: p.ticker, valor: p.valor, pct: porTicker.get(p.ticker)! })),
+        );
+      })
+      .catch(() => { setErro(true); setMovs([]); });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [u.total]);
+
+  const rfDia = u.rf * (Math.pow(1 + CDI_ANO_ESTIMADO / 100, 1 / 252) - 1);
+  if (movs === null) return (
+    <div className="card" style={{ marginBottom: 14 }}>
+      <div className="card-hdr">Pulso do dia <span>buscando cotações…</span></div>
+    </div>
+  );
+
+  const rvDia = movs.reduce((s, m) => s + (m.valor * m.pct) / 100, 0);
+  const totalDia = rvDia + rfDia;
+  const pctDia = u.total > 0 ? (totalDia / u.total) * 100 : 0;
+  const cor = totalDia >= 0 ? "var(--success, #4E7A5C)" : "var(--danger, #C0392B)";
+  const sinal = totalDia >= 0 ? "+" : "−";
+  const fmt = (n: number) =>
+    "R$ " + Math.abs(Math.round(n)).toLocaleString("pt-BR");
+  const topMovers = [...movs].sort((a, b) => Math.abs(b.valor * b.pct) - Math.abs(a.valor * a.pct)).slice(0, 3);
+
+  return (
+    <div className="card" style={{ marginBottom: 14 }}>
+      <div className="card-hdr">
+        Pulso do dia <span>{erro ? "bolsa indisponível · só RF estimada" : "RV ao vivo (B3) · RF pró-rata CDI"}</span>
+      </div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 22, alignItems: "baseline" }}>
+        <div>
+          <div style={{ fontSize: 26, fontWeight: 700, color: cor }}>
+            {sinal}{fmt(totalDia)}
+          </div>
+          <div style={{ fontSize: 12, color: "var(--muted)" }}>
+            hoje · {sinal}{Math.abs(pctDia).toFixed(2)}% do patrimônio
+          </div>
+        </div>
+        <div style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.7 }}>
+          <div>Renda variável: <b style={{ color: rvDia >= 0 ? "var(--success, #4E7A5C)" : "var(--danger, #C0392B)" }}>{rvDia >= 0 ? "+" : "−"}{fmt(rvDia)}</b></div>
+          <div>Renda fixa (estimada): <b>+{fmt(rfDia)}</b> <span style={{ fontSize: 11 }}>({CDI_ANO_ESTIMADO}% a.a. ÷ 252)</span></div>
+        </div>
+        {topMovers.length > 0 && (
+          <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.7 }}>
+            {topMovers.map((m) => (
+              <div key={m.ticker}>
+                <b>{m.ticker}</b>: {m.pct >= 0 ? "+" : ""}{m.pct.toFixed(2)}% ({m.pct >= 0 ? "+" : "−"}{fmt((m.valor * m.pct) / 100)})
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function saudacaoPorHora(): string {
@@ -84,6 +172,8 @@ export function HomePage({ profileId, overrideName, loggedName }: { profileId: P
           <div className="kpi-s">{u.kpi4_sub}</div>
         </div>
       </div>
+
+      <PulsoDoDia u={u} />
 
       <div className="g32">
         <div className="card">
