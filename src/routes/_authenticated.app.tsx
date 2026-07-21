@@ -600,12 +600,18 @@ function VestaApp() {
       const knownName = id === "cinthia" ? "Cínthia" : id === "paulo" ? "Paulo" : id === "member:luiza-abrantes" ? "Luiza" : null;
       const uuid = id.startsWith("member:") ? id.slice(7) : null;
       const member = uuid ? domusSession.members.find((m: any) => m.profile_id === uuid) : null;
+      // Ids apelidados (ex.: member:luiza-abrantes) não batem com o UUID real —
+      // resolve o membro pelo email/nome para não perder o papel de vesta local.
+      const memberForPapel =
+        member ?? (id === "member:luiza-abrantes" ? domusSession.members.find(isLuizaMember) : null);
+      const isVestaLocal = memberForPapel ? memberPapel(memberForPapel) === "vesta" : false;
       const name = knownName ?? member?.profile?.nome ?? member?.profile?.email;
       return {
         id,
         name: name ?? "Perfil indisponível",
-        subtitle: "Visão individual",
+        subtitle: isVestaLocal ? "Vesta local · visão individual" : "Visão individual",
         initials: (name ?? "V").charAt(0).toUpperCase(),
+        vestaLocal: isVestaLocal,
         waitingForData: getUser(id).total <= 0,
       };
     });
@@ -631,13 +637,18 @@ function VestaApp() {
     const cristinaIds = new Set(cristinaVestaCard.map((view) => view.id));
     const viewsWithoutCristina = views.filter((view) => !cristinaIds.has(view.id));
     const firstConsolidatedIndex = viewsWithoutCristina.findIndex((view) => view.consolidated);
-    const orderedViews = firstConsolidatedIndex >= 0
+    const orderedViews = (firstConsolidatedIndex >= 0
       ? [
           ...viewsWithoutCristina.slice(0, firstConsolidatedIndex + 1),
           ...cristinaVestaCard,
           ...viewsWithoutCristina.slice(firstConsolidatedIndex + 1),
         ]
-      : [...cristinaVestaCard, ...viewsWithoutCristina];
+      : [...cristinaVestaCard, ...viewsWithoutCristina]
+    // Ordem fixa: consolidado → vesta local → membros (ordem de cadastro preservada)
+    ).sort(
+      (a: any, b: any) =>
+        (a.consolidated ? 0 : a.vestaLocal ? 1 : 2) - (b.consolidated ? 0 : b.vestaLocal ? 1 : 2),
+    );
     const ownMembership = (sessionData?.memberships ?? []).find((m: any) => m.domus_id === domus.id);
     return {
       id: domus.id,
