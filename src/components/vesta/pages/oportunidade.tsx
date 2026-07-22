@@ -1,4 +1,5 @@
 import { useMemo, useState, type CSSProperties } from "react";
+import { brapiUrl } from "@/lib/brapi";
 
 /* ── helpers de gráfico SVG (espelhados do breakeven) ── */
 function niceNum(range: number, round: boolean) {
@@ -587,7 +588,7 @@ export function OportunidadePage({ profileId }: { profileId?: ProfileId }) {
                     if (!ticker) return;
                     setBuscaMsg("buscando…");
                     try {
-                      const r = await fetch(`https://brapi.dev/api/quote/${ticker}`);
+                      const r = await fetch(brapiUrl(`quote/${ticker}`));
                       const j = await r.json();
                       const q = j?.results?.[0];
                       if (q?.regularMarketPrice) {

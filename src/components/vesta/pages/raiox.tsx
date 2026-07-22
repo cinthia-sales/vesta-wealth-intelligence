@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { CARTEIRA } from "@/data/carteira-ativos";
 import { CADASTRO_ATIVOS, cadastroDoCodigo, codigoAtivo, type CadastroAtivo } from "@/data/cadastro-ativos";
 import { getSensibilidade } from "@/data/sensibilidade";
+import { brapiUrl } from "@/lib/brapi";
 
 type Cotacao = {
   preco?: number;
@@ -160,7 +161,7 @@ export function RaioXPage() {
     setSugestoes(meus);
     const t = setTimeout(async () => {
       try {
-        const r = await fetch(`https://brapi.dev/api/quote/list?search=${termo}&limit=10`);
+        const r = await fetch(brapiUrl(`quote/list?search=${termo}&limit=10`));
         const json = await r.json();
         const daB3 = (json?.stocks ?? [])
           .filter((s: any) => !codigos.includes(String(s.stock).toUpperCase()))
@@ -185,7 +186,7 @@ export function RaioXPage() {
     if (!normalizado) return;
     setBuscaMsg("buscando cotação…");
     try {
-      const response = await fetch(`https://brapi.dev/api/quote/${normalizado}`);
+      const response = await fetch(brapiUrl(`quote/${normalizado}`));
       const json = await response.json();
       const q = json?.results?.[0];
       if (!q?.regularMarketPrice) {

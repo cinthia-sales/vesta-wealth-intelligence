@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getUser } from "@/data/vesta-users";
 import { codigoAtivo } from "@/data/cadastro-ativos";
+import { brapiUrl } from "@/lib/brapi";
 import type { ProfileId } from "@/lib/profile-derive";
 
 function fmtRK(v: number) {
@@ -33,7 +34,7 @@ function PulsoDoDia({ u }: { u: ReturnType<typeof getUser> }) {
     let cancelado = false;
     Promise.allSettled(
       tickers.map((t) =>
-        fetch(`https://brapi.dev/api/quote/${t}`)
+        fetch(brapiUrl(`quote/${t}`))
           .then((r) => r.json())
           .then((json) => {
             const q = json?.results?.[0];
