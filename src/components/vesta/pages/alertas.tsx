@@ -59,7 +59,45 @@ export function AlertasPage({ profileId }: { profileId: ProfileId }) {
         dias: null,
       }];
     });
-    return [...base, ...rvAlerts];
+    // Veredito linha dura: em toda carteira com RV, soma o estrago em reais.
+    // Regra da casa: RV que não bate o CDI é passivo disfarçado de investimento.
+    const rvVeredito = (() => {
+      if (!u.rv || u.rv <= 0) return [];
+      let investido = 0;
+      let atual = 0;
+      let abaixoPM = 0;
+      let comDados = 0;
+      for (const a of u.rv_ativos ?? []) {
+        const valorAtual = parseMoney(String(a.v));
+        if (valorAtual === null) continue;
+        const qtdMatch = String(a.pm ?? "").match(/([\d.]+)\s*(ações|cotas)/i);
+        const pmMatch = String(a.pm ?? "").match(/R\$\s?([\d.,]+)/);
+        const aplicadoMatch = String(a.pm ?? "").match(/Aplicado\s*R\$\s?([\d.,]+)/i);
+        let aporte: number | null = null;
+        if (aplicadoMatch) aporte = parseMoney(aplicadoMatch[1]);
+        else if (qtdMatch && pmMatch) {
+          const qtd = Number(qtdMatch[1].replace(/\./g, ""));
+          const pm = parseMoney(pmMatch[1]);
+          if (pm !== null && qtd > 0) aporte = pm * qtd;
+        }
+        if (aporte === null) continue;
+        comDados++;
+        investido += aporte;
+        atual += valorAtual;
+        if (valorAtual < aporte) abaixoPM += aporte - valorAtual;
+      }
+      if (comDados === 0) return [];
+      const delta = atual - investido;
+      const fmtR = (n: number) => "R$ " + Math.abs(Math.round(n)).toLocaleString("pt-BR");
+      const pctCart = u.total > 0 ? ((u.rv / u.total) * 100).toFixed(0) : "?";
+      return [{
+        cor: (delta < 0 ? "r" : "w") as Sev,
+        titulo: `Renda variável — veredito linha dura`,
+        det: `${fmtR(u.rv)} em RV (${pctCart}% da carteira) · capital ${delta >= 0 ? "acima" : "ABAIXO"} do aporte em ${fmtR(delta)} · ${fmtR(abaixoPM)} presos em posições no prejuízo. Dividendo não compensa capital afundado; RV que perde do CDI é passivo. Regra da casa: 2 anos abaixo do CDI = migrar.`,
+        dias: null,
+      }];
+    })();
+    return [...rvVeredito, ...base, ...rvAlerts];
   }, [u]);
 
   const filtered = filtro === "todos" ? alertas : alertas.filter((a) => a.cor === filtro);

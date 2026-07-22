@@ -966,12 +966,15 @@ function splitPMCotacao(value: string) {
 }
 
 function countAutoRVAlerts(userData: ReturnType<typeof getUser>) {
-  return (userData.rv_ativos ?? []).filter((a) => {
+  const porAtivo = (userData.rv_ativos ?? []).filter((a) => {
     const ref = splitPMCotacao(a.pm);
     const pm = parseMoneyFromText(ref.pm);
     const cotacao = parseMoneyFromText(ref.cotacao);
     return pm !== null && cotacao !== null && cotacao < pm;
   }).length;
+  // +1 do veredito linha dura da RV (gerado em alertas.tsx para toda carteira com RV)
+  const veredito = userData.rv > 0 && (userData.rv_ativos?.length ?? 0) > 0 ? 1 : 0;
+  return porAtivo + veredito;
 }
 
 function rfTaxaLabel(a: NonNullable<ReturnType<typeof getUser>["rf_ativos"]>[number]) {
