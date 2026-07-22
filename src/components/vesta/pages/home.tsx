@@ -28,22 +28,34 @@ function PulsoDoDia({ u }: { u: ReturnType<typeof getUser> }) {
 
   useEffect(() => {
     if (posicoesRV.length === 0) { setMovs([]); return; }
+    // brapi grátis só aceita 1 ticker por chamada — busca em paralelo, tolerando falhas
     const tickers = Array.from(new Set(posicoesRV.map((p) => p.ticker)));
-    fetch(`https://brapi.dev/api/quote/${tickers.join(",")}`)
-      .then((r) => r.json())
-      .then((json) => {
-        const porTicker = new Map<string, number>();
-        for (const q of json?.results ?? []) {
-          if (q?.symbol && q?.regularMarketChangePercent != null)
-            porTicker.set(String(q.symbol).toUpperCase(), q.regularMarketChangePercent);
-        }
-        setMovs(
-          posicoesRV
-            .filter((p) => porTicker.has(p.ticker))
-            .map((p) => ({ ticker: p.ticker, valor: p.valor, pct: porTicker.get(p.ticker)! })),
-        );
-      })
-      .catch(() => { setErro(true); setMovs([]); });
+    let cancelado = false;
+    Promise.allSettled(
+      tickers.map((t) =>
+        fetch(`https://brapi.dev/api/quote/${t}`)
+          .then((r) => r.json())
+          .then((json) => {
+            const q = json?.results?.[0];
+            return q?.regularMarketChangePercent != null
+              ? { ticker: t, pct: q.regularMarketChangePercent as number }
+              : null;
+          }),
+      ),
+    ).then((resultados) => {
+      if (cancelado) return;
+      const porTicker = new Map<string, number>();
+      for (const r of resultados) {
+        if (r.status === "fulfilled" && r.value) porTicker.set(r.value.ticker, r.value.pct);
+      }
+      if (porTicker.size === 0) setErro(true);
+      setMovs(
+        posicoesRV
+          .filter((p) => porTicker.has(p.ticker))
+          .map((p) => ({ ticker: p.ticker, valor: p.valor, pct: porTicker.get(p.ticker)! })),
+      );
+    });
+    return () => { cancelado = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [u.total]);
 
